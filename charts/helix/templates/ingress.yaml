@@ -1,0 +1,12 @@
+{{- $config := include "helix.config" . }}
+
+{{- $_ := set . "config" (fromJson $config) }}
+
+{{- if .Values.ingress.enabled -}}
+---
+# ingress.yaml
+{{- $ingress := tpl (.Files.Get "files/ingress.yaml") . | fromYaml }}
+{{- $ingress = mergeOverwrite $ingress (deepCopy .Values.ingressTemplate) }}
+{{- $ingress = include "jsonpatch" (dict "doc" $ingress "patch" .Values.ingressPatch) | fromJson }}
+{{ toYaml $ingress }}
+{{- end }}

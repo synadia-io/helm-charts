@@ -1,0 +1,94 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helix.fullname" . }}
+  labels:
+    {{- include "helix.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "helix.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "helix.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- $imagePullSecrets := fromJson (include "helix.imagePullSecrets" .)}}
+      {{- with $imagePullSecrets.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "helix.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - -c
+            - /conf/rna.cue
+            - server
+            - start
+          volumeMounts:
+            - name: config
+              subPath: rna.cue
+              mountPath: "/conf/rna.cue"
+            {{- if or (not (hasKey .config "encryption_key")) (eq (get .config "encryption_key") "") }}
+            - name: {{ include "helix.fullname" . }}
+              mountPath: {{ get .config "data_dir" | default "/app/data" }}/encryption
+              subPath: encryption
+            {{- end }}
+            {{- if and .Values.embeddedPostgres.persistent .postgresEnabled}}
+            - name: postgres
+              mountPath: {{ get .config "data_dir" | default "/app/data" }}/postgres
+            {{- end }}
+            {{- if and .Values.embeddedPrometheus.persistent .prometheusEnabled }}
+            - name: prometheus
+              mountPath: {{ get .config "data_dir" | default "/app/data" }}/prometheus
+            {{- end }}
+            {{- range $name, $secretName := .secretNames }}
+            - name: "{{ $name }}"
+              mountPath: "/conf/helix/nsc/{{ $name }}"
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ get .config "http_public_addr" | splitList ":" | last | default 8080 }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ get .config "http_metrics_addr" | splitList ":" | last | default 7777 }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: "{{ include "helix.fullname" . }}-config"
+        {{- if or (not (hasKey .config "encryption_key")) (eq (get .config "encryption_key") "") }}
+        - name: {{ include "helix.fullname" . }}
+          persistentVolumeClaim:
+            claimName: {{ include "helix.fullname" . }}
+        {{- end }}
+        {{- if and .Values.embeddedPostgres.persistent .postgresEnabled }}
+        - name: postgres
+          persistentVolumeClaim:
+            claimName: "{{ include "helix.fullname" . }}-postgres"
+        {{- end }}
+        {{- if and .Values.embeddedPrometheus.persistent .prometheusEnabled }}
+        - name: prometheus
+          persistentVolumeClaim:
+            claimName: "{{ include "helix.fullname" . }}-prometheus"
+        {{- end }}
+        {{range $name, $secretName := .secretNames }}
+        - name: "{{ $name }}"
+          secret:
+            secretName: {{ $secretName }}
+        {{- end }}

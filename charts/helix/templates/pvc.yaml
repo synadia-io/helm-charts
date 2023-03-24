@@ -1,0 +1,32 @@
+{{- $config := include "helix.config" .}}
+
+{{- $_ := set . "config" (fromJson $config) }}
+
+---
+{{- if or (not (hasKey .config "encryption_key" )) (eq (get .config "encryption_key") "") }}
+# pvc.yaml
+{{- $pvc := tpl (.Files.Get "files/pvc.yaml") . | fromYaml }}
+{{- $pvc = mergeOverwrite $pvc (deepCopy .Values.helix.pvcTemplate) }}
+{{- $pvc = include "jsonpatch" (dict "doc" $pvc "patch" .Values.helix.pvcPatch) | fromJson }}
+{{ toYaml $pvc }}
+{{- end }}
+
+{{- $postgresEnabled := ternary (get .config "embedded_postgres_enabled") true (hasKey .config "embedded_postgres_enabled") }}
+{{- if and .Values.embeddedPostgres.persistent $postgresEnabled}}
+---
+# pvc-postgres.yaml
+{{- $pvc := tpl (.Files.Get "files/pvc-postgres.yaml") . | fromYaml }}
+{{- $pvc = mergeOverwrite $pvc (deepCopy .Values.embeddedPostgres.pvcTemplate) }}
+{{- $pvc = include "jsonpatch" (dict "doc" $pvc "patch" .Values.embeddedPostgres.pvcPatch) | fromJson }}
+{{ toYaml $pvc }}
+{{- end }}
+
+{{- $prometheusEnabled := ternary (get .config "embedded_prometheus_enabled") true (hasKey .config "embedded_prometheus_enabled") }}
+{{- if and .Values.embeddedPrometheus.persistent $prometheusEnabled }}
+---
+# pvc-prometheus.yaml
+{{- $pvc := tpl (.Files.Get "files/pvc-prometheus.yaml") . | fromYaml }}
+{{- $pvc = mergeOverwrite $pvc (deepCopy .Values.embeddedPrometheus.pvcTemplate) }}
+{{- $pvc = include "jsonpatch" (dict "doc" $pvc "patch" .Values.embeddedPrometheus.pvcPatch) | fromJson }}
+{{ toYaml $pvc }}
+{{- end }}
