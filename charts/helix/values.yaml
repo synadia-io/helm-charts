@@ -1,0 +1,91 @@
+replicaCount: 1
+
+image:
+  repository: registry.helix-dev.synadia.io/helix
+  tag: "tag-rc"
+  pullPolicy: IfNotPresent
+
+imageCredentials:
+  registry: "registry.helix-dev.synadia.io"
+  username: ""
+  password: ""
+  secretTemplate: {}
+  secretPatch: []
+
+imagePullSecrets: []
+
+helix:
+  config: {}
+  secrets: {}
+  secretsTemplate: {}
+  secretsPatch: []
+  pvc:
+    storageClassName: ""
+    size: ""
+  pvcTemplate: {}
+  pvcPatch: []
+
+embeddedPostgres:
+  persistent: true 
+  pvc:
+    storageClassName: ""
+    size: ""
+  pvcTemplate: {}
+  pvcPatch: []
+
+embeddedPrometheus:
+  persistent: true 
+  pvc:
+    storageClassName: ""
+    size: ""
+  pvcTemplate: {}
+  pvcPatch: []
+
+deploymentTemplate: {}
+deploymentPatch: []
+
+configMapTemplate: {}
+configMapPatch: []
+
+ingressTemplate: {}
+ingressPatch: []
+
+serviceTemplate: {}
+servicePatch: {}
+
+serviceAccountTemplate: {}
+serviceAccountPatch: []
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: helix.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

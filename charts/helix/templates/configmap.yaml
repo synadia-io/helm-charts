@@ -1,0 +1,10 @@
+{{- $config := include "helix.config" . }}
+
+{{- $_ := set . "config" $config }}
+
+---
+# configmap.yaml
+{{- $configMap := tpl (.Files.Get "files/configmap.yaml") . | fromYaml }}
+{{- $configMap = mergeOverwrite $configMap (deepCopy .Values.configMapTemplate) }}
+{{- $configMap = include "jsonpatch" (dict "doc" $configMap "patch" .Values.configMapPatch) | fromJson }}
+{{ toYaml $configMap }}
