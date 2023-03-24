@@ -3,7 +3,7 @@ name: helix
 description: Synadia Helix Chart
 home: https://github.com/connecteverything/helix
 type: application
-version: 0.0.1-alpha
+version: 0.0.2-alpha
 appVersion: "alpha"
 maintainers:
 - name: Samuel Attwood
