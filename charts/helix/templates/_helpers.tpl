@@ -114,6 +114,15 @@ Define JSON string of Helix secret names
 {{- end }}
 
 {{/*
+Check if using default encryption key
+*/}}
+{{- define "helix.defaultEncryptionKey" -}}
+    {{- if or (not (hasKey .config "encryption_key")) (eq (get .config "encryption_key") "") }}
+    {{- true }}
+    {{- end }}
+{{- end }}
+
+{{/*
 Define a Registry Credential Secret
 */}}
 {{- define "imagePullSecret" }}
