@@ -1,6 +1,6 @@
 ## Config Generation
 
-The [config generation](https://github.com/ConnectEverything/helix-alpha/tree/config-generation#config-generation) script can do the heavy lifting to populate values for your Helix deployment
+The [config generation script](https://github.com/ConnectEverything/helix-alpha/tree/config-generation#config-generation) can do much of the heavy lifting to populate values for your Helix deployment.
 
 ### Chart Values
 
@@ -64,6 +64,13 @@ helix:
 helm repo add synadia https://connecteverything.github.io/helm-charts
 helm repo update
 helm upgrade --install helix -n helix --create-namespace -f values.yaml -f values-secrets.yaml synadia/helix
+```
+
+### Login Details
+
+On first run, login credentials will be visible in the logs
+```
+kubectl logs -n helix deployment/helix
 ```
 
 ### Uninstall Chart and Purge Data
