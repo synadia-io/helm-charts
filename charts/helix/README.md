@@ -1,6 +1,6 @@
 ## Config Generation
 
-The [config generation script](https://github.com/ConnectEverything/helix-alpha/tree/config-generation#config-generation) can do much of the heavy lifting to populate values for your Helix deployment.
+The [config generation script](https://github.com/connecteverything/helix-alpha#config-generation) can do much of the heavy lifting to populate values for your Helix deployment.
 
 ### Chart Values
 
