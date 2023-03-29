@@ -33,6 +33,21 @@ entries:
     version: 0.0.2-alpha
   - apiVersion: v2
     appVersion: alpha
+    created: "2023-03-29T02:25:12.237960136Z"
+    description: Synadia Helix Chart
+    digest: efcffa0a6d719db62e17be655b3209cdfb9ed3e71fe58d84f9b83067283ad4b7
+    home: https://github.com/connecteverything/helix
+    maintainers:
+    - email: sam@synadia.com
+      name: Samuel Attwood
+      url: https://github.com/samuelattwood
+    name: helix
+    type: application
+    urls:
+    - https://github.com/ConnectEverything/helm-charts/releases/download/helix-0.0.2-alpha/helix-0.0.2-alpha.tgz
+    version: 0.0.2-alpha
+  - apiVersion: v2
+    appVersion: alpha
     created: "2023-03-24T11:51:08.965622456Z"
     description: Synadia Helix Chart
     digest: 25896d322d706def4a4db98d1cac95e00faad226e9921b6c4760e2feaf34e505
@@ -46,4 +61,4 @@ entries:
     urls:
     - https://github.com/ConnectEverything/helm-charts/releases/download/helix-0.0.1-alpha/helix-0.0.1-alpha.tgz
     version: 0.0.1-alpha
-generated: "2023-03-28T14:44:34.222935675Z"
+generated: "2023-03-29T02:25:12.237978036Z"
