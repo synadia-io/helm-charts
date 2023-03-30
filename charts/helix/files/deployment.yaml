@@ -16,10 +16,12 @@ spec:
       {{- include "helix.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
+        checksum/config: {{ .configmapChecksum }}
+        checksum/secrets: {{ .secretsChecksum }}
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       labels:
         {{- include "helix.selectorLabels" . | nindent 8 }}
     spec:
@@ -59,9 +61,9 @@ spec:
             - name: prometheus
               mountPath: {{ get .config "data_dir" | default "/app/data" }}/prometheus
             {{- end }}
-            {{- range $name, $secretName := .secretNames }}
-            - name: "{{ $name }}"
-              mountPath: "/conf/helix/nsc/{{ $name }}"
+            {{- range $system, $secretName := .secretNames }}
+            - name: "{{ $secretName }}"
+              mountPath: "/conf/helix/nsc/{{ $system }}"
             {{- end }}
           ports:
             - name: http
@@ -91,8 +93,8 @@ spec:
           persistentVolumeClaim:
             claimName: "{{ include "helix.fullname" . }}-prometheus"
         {{- end }}
-        {{range $name, $secretName := .secretNames }}
-        - name: "{{ $name }}"
+        {{range $system, $secretName := .secretNames }}
+        - name: "{{ $secretName }}"
           secret:
             secretName: {{ $secretName }}
         {{- end }}

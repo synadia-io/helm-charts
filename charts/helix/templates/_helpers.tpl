@@ -106,7 +106,7 @@ Define JSON string of Helix secret names
             {{- if kindIs "string" $system }}
                 {{- $secretNames = merge $secretNames (dict $name $system) }}
             {{- else }}
-                {{- $secretNames = merge $secretNames (dict $name (printf "helix-%s" $name)) }}
+                {{- $secretNames = merge $secretNames (dict $name (printf "helix-system-%s" $name)) }}
             {{- end }}
         {{- end }}
     {{- end }}
