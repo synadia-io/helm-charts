@@ -3,7 +3,7 @@ replicaCount: 1
 
 image:
   repository: registry.helix-dev.synadia.io/helix
-  tag: "tag-rc"
+  tag: "v0.1.0"
   pullPolicy: IfNotPresent
 
 imageCredentials:
