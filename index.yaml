@@ -8,72 +8,12 @@ entries:
     digest: 2c97991248c963bf662fb9dafb460680af51fb2c3498630353ed42430f34ff4d
     home: https://github.com/connecteverything/helix
     maintainers:
-    - email: sam@synadia.com
-      name: Samuel Attwood
-      url: https://github.com/samuelattwood
+    - name: Synadia
+      url: https://github.com/ConnectEverything
+      email: info@synadia.com
     name: helix
     type: application
     urls:
     - https://github.com/ConnectEverything/helm-charts/releases/download/helix-0.1.0/helix-0.1.0.tgz
     version: 0.1.0
-  - apiVersion: v2
-    appVersion: alpha
-    created: "2023-03-24T16:31:10.607884912Z"
-    description: Synadia Helix Chart
-    digest: e15e5fe4f27378bd958d05ea6192bf4133a29c8f10f6f04004ce9f8fd7f9c458
-    home: https://github.com/connecteverything/helix
-    maintainers:
-    - email: sam@synadia.com
-      name: Samuel Attwood
-      url: https://github.com/samuelattwood
-    name: helix
-    type: application
-    urls:
-    - https://github.com/ConnectEverything/helm-charts/releases/download/helix-0.0.2-alpha/helix-0.0.2-alpha.tgz
-    version: 0.0.2-alpha
-  - apiVersion: v2
-    appVersion: alpha
-    created: "2023-03-28T14:44:34.222918475Z"
-    description: Synadia Helix Chart
-    digest: 4ba45cca911d36024af03636bfbe669a76e76691642a337acb70553a5bd1a1ee
-    home: https://github.com/connecteverything/helix
-    maintainers:
-    - email: sam@synadia.com
-      name: Samuel Attwood
-      url: https://github.com/samuelattwood
-    name: helix
-    type: application
-    urls:
-    - https://github.com/ConnectEverything/helm-charts/releases/download/helix-0.0.2-alpha/helix-0.0.2-alpha.tgz
-    version: 0.0.2-alpha
-  - apiVersion: v2
-    appVersion: alpha
-    created: "2023-03-29T02:25:12.237960136Z"
-    description: Synadia Helix Chart
-    digest: efcffa0a6d719db62e17be655b3209cdfb9ed3e71fe58d84f9b83067283ad4b7
-    home: https://github.com/connecteverything/helix
-    maintainers:
-    - email: sam@synadia.com
-      name: Samuel Attwood
-      url: https://github.com/samuelattwood
-    name: helix
-    type: application
-    urls:
-    - https://github.com/ConnectEverything/helm-charts/releases/download/helix-0.0.2-alpha/helix-0.0.2-alpha.tgz
-    version: 0.0.2-alpha
-  - apiVersion: v2
-    appVersion: alpha
-    created: "2023-03-24T11:51:08.965622456Z"
-    description: Synadia Helix Chart
-    digest: 25896d322d706def4a4db98d1cac95e00faad226e9921b6c4760e2feaf34e505
-    home: https://github.com/connecteverything/helix
-    maintainers:
-    - email: sam@synadia.com
-      name: Samuel Attwood
-      url: https://github.com/samuelattwood
-    name: helix
-    type: application
-    urls:
-    - https://github.com/ConnectEverything/helm-charts/releases/download/helix-0.0.1-alpha/helix-0.0.1-alpha.tgz
-    version: 0.0.1-alpha
 generated: "2023-03-30T19:40:08.267502161Z"
