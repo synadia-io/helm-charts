@@ -1,17 +1,13 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "helix.fullname" . }}
+  name: {{ .name }}
 spec:
-  {{- if and .Values.helix.pvc .Values.helix.pvc.storageClassName }}
-  storageClassName: {{ .Values.helix.pvc.storageClassName }}
-  {{- end }}
   accessModes:
-    - "ReadWriteOnce"
+  - ReadWriteOnce
   resources:
     requests:
-      {{- if and .Values.helix.pvc .Values.helix.pvc.size }}
-      storage:  {{ .Values.embeddedPostgres.pvc.size }}
-      {{- else }}
-      storage: 1Gi
-      {{- end }}
+      storage: {{ .size | quote }}
+  {{- with .storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}

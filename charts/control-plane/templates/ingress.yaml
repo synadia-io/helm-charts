@@ -1,4 +1,4 @@
-{{- $config := include "helix.config" . }}
+{{- $config := include "cp.config" . }}
 
 {{- $_ := set . "config" (fromJson $config) }}
 

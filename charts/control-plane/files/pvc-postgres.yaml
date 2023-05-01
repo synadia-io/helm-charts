@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "helix.fullname" . }}-postgres
+  name: {{ include "cp.fullname" . }}-postgres
 spec:
   {{- if and .Values.embeddedPostgres.pvc .Values.embeddedPostgres.pvc.storageClassName }}
   storageClassName: {{ .Values.embeddedPostgres.pvc.storageClassName }}

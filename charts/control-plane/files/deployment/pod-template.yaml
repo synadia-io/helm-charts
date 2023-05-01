@@ -1,0 +1,48 @@
+metadata:
+  labels:
+    {{- include "cp.labels" $ | nindent 4 }}
+  annotations:
+    {{- if .Values.podTemplate.configChecksumAnnotation }}
+    {{- $configMap := include "cp.loadMergePatch" (merge (dict "file" "config-map.yaml" "ctx" $) $.Values.configMap) }}
+    checksum/config: {{ sha256sum $configMap }}
+    {{- end }}
+spec:
+  containers:
+  # cp
+  {{- $nats := dict }}
+  {{- with .Values.container }}
+  {{- $nats = include "cp.loadMergePatch" (merge (dict "file" "stateful-set/nats-container.yaml" "ctx" $) .) | fromYaml }}
+  - {{ toYaml $nats | nindent 4 }}
+  {{- end }}
+
+  # don't need service env vars
+  enableServiceLinks: false
+
+  {{- with .Values.serviceAccount }}
+  {{- if .enabled }}
+  serviceAccountName: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
+
+  volumes:
+  - name: config
+    configMap:
+      name: "{{ include "cp.fullname" . }}-config"
+  - name: data
+  {{- if and .dataPvc.enabled (not .config.kms.enabled) }}
+    persistentVolumeClaim: {{ .dataPvc.name }}
+  {{- else }}
+    emptyDir: {}
+  {{- end}}
+  {{- if and .postgresPvc.enabled (not .config.dataSources.postgres.enabled) }}
+  - name: postgres
+    persistentVolumeClaim: {{ .dataPvc.name }}
+  {{- else }}
+
+
+  {{- with .Values.podTemplate.topologySpreadConstraints }}
+  topologySpreadConstraints:
+  {{- range $k, $v := . }}
+  - {{ merge (dict "topologyKey" $k "labelSelector" (dict "matchLabels" (include "cp.selectorLabels" $ | fromYaml) "matchLabelKeys" (list "pod-template-hash"))) $v | toYaml | nindent 4 }}
+  {{- end }}
+  {{- end}}

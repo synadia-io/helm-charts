@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "helix.fullname" . }}
+  name: {{ include "cp.fullname" . }}
   labels:
-    {{- include "helix.labels" . | nindent 4 }}
+    {{- include "cp.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
-  {{- if or (include "helix.defaultEncryptionKey" .) (or .Values.embeddedPostgres.persistent .Values.embeddedPrometheus.persistent) }}
+  {{- if or (include "cp.defaultEncryptionKey" .) (or .Values.embeddedPostgres.persistent .Values.embeddedPrometheus.persistent) }}
   strategy:
     type: Recreate
   {{- end }}
   selector:
     matchLabels:
-      {{- include "helix.selectorLabels" . | nindent 6 }}
+      {{- include "cp.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -23,14 +23,14 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "helix.selectorLabels" . | nindent 8 }}
+        {{- include "cp.selectorLabels" . | nindent 8 }}
     spec:
-      {{- $imagePullSecrets := fromJson (include "helix.imagePullSecrets" .)}}
+      {{- $imagePullSecrets := fromJson (include "cp.imagePullSecrets" .)}}
       {{- with $imagePullSecrets.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "helix.serviceAccountName" . }}
+      serviceAccountName: {{ include "cp.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -48,8 +48,8 @@ spec:
             - name: config
               subPath: rna.cue
               mountPath: "/conf/rna.cue"
-            {{- if (include "helix.defaultEncryptionKey" .) }}
-            - name: {{ include "helix.fullname" . }}
+            {{- if (include "cp.defaultEncryptionKey" .) }}
+            - name: {{ include "cp.fullname" . }}
               mountPath: {{ get .config "data_dir" | default "/app/data" }}/encryption
               subPath: encryption
             {{- end }}
@@ -77,21 +77,21 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: "{{ include "helix.fullname" . }}-config"
+            name: "{{ include "cp.fullname" . }}-config"
         {{- if or (not (hasKey .config "encryption_key")) (eq (get .config "encryption_key") "") }}
-        - name: {{ include "helix.fullname" . }}
+        - name: {{ include "cp.fullname" . }}
           persistentVolumeClaim:
-            claimName: {{ include "helix.fullname" . }}
+            claimName: {{ include "cp.fullname" . }}
         {{- end }}
         {{- if and .Values.embeddedPostgres.persistent .postgresEnabled }}
         - name: postgres
           persistentVolumeClaim:
-            claimName: "{{ include "helix.fullname" . }}-postgres"
+            claimName: "{{ include "cp.fullname" . }}-postgres"
         {{- end }}
         {{- if and .Values.embeddedPrometheus.persistent .prometheusEnabled }}
         - name: prometheus
           persistentVolumeClaim:
-            claimName: "{{ include "helix.fullname" . }}-prometheus"
+            claimName: "{{ include "cp.fullname" . }}-prometheus"
         {{- end }}
         {{range $system, $secretName := .secretNames }}
         - name: "{{ $secretName }}"

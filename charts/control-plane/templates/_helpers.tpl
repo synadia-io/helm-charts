@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "helix.name" -}}
+{{- define "cp.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "helix.fullname" -}}
+{{- define "cp.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,47 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "helix.chart" -}}
+{{- define "cp.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Set default values.
+*/}}
+{{- define "cp.defaultValues" }}
+{{- if not .defaultValuesSet }}
+{{- $name := include "cp.fullname" . }}
+{{- with .Values }}
+{{- $_ := set .configSecret   "name" (.configSecret.name   | default (printf "%s-config" $name)) }}
+{{- $_ := set .deployment              "name" (.deployment.name              | default (printf "%s" $name)) }}
+{{- $_ := set .config.websocket.ingress         "name" (.config.websocket.ingress.name         | default (printf "%s-ws" $name)) }}
+{{- $_ := set .configMap                        "name" (.configMap.name                        | default (printf "%s-config" $name)) }}
+{{- $_ := set .headlessService                  "name" (.headlessService.name                  | default (printf "%s-headless" $name)) }}
+{{- $_ := set .natsBox.contentsSecret           "name" (.natsBox.contentsSecret.name           | default (printf "%s-box-contents" $name)) }}
+{{- $_ := set .natsBox.contextsSecret           "name" (.natsBox.contextsSecret.name           | default (printf "%s-box-contexts" $name)) }}
+{{- $_ := set .natsBox.deployment               "name" (.natsBox.deployment.name               | default (printf "%s-box" $name)) }}
+{{- $_ := set .natsBox.serviceAccount           "name" (.natsBox.serviceAccount.name           | default (printf "%s-box" $name)) }}
+{{- $_ := set .service                          "name" (.service.name                          | default $name) }}
+{{- $_ := set .serviceAccount                   "name" (.serviceAccount.name                   | default $name) }}
+{{- $_ := set .statefulSet                      "name" (.statefulSet.name                      | default $name) }}
+{{- $_ := set .promExporter.podMonitor          "name" (.promExporter.podMonitor.name          | default $name) }}
+{{- end }}
+{{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
+{{- $_ := set . "Values" $values }}
+{{- with .Values.config }}
+{{- $config := include "cp.loadMergePatch" (merge (dict "file" "config/config.yaml" "ctx" $) .) | fromYaml }}
+{{- $_ := set $ "config" $config }}
+{{- end }}
+{{- $_ := set . "defaultValuesSet" true }}
+{{- end }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "helix.labels" -}}
-helm.sh/chart: {{ include "helix.chart" . }}
-{{ include "helix.selectorLabels" . }}
+{{- define "cp.labels" -}}
+helm.sh/chart: {{ include "cp.chart" . }}
+{{ include "cp.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +76,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "helix.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "helix.name" . }}
+{{- define "cp.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "cp.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "helix.serviceAccountName" -}}
+{{- define "cp.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "helix.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "cp.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
@@ -64,10 +95,10 @@ Create the name of the service account to use
 {{/*
 Define Image Pull Secret List
 */}}
-{{- define "helix.imagePullSecrets" -}}
+{{- define "cp.imagePullSecrets" -}}
     {{ $imagePullSecrets := .Values.imagePullSecrets }}
     {{- if and .Values.imageCredentials.username .Values.imageCredentials.password }}
-        {{- $imagePullSecrets = append $imagePullSecrets (dict "name" (printf "%s-regcred" (include "helix.fullname" .))) }}
+        {{- $imagePullSecrets = append $imagePullSecrets (dict "name" (printf "%s-regcred" (include "cp.fullname" .))) }}
     {{- end }}
     {{- toJson (dict "imagePullSecrets" $imagePullSecrets) }}
 {{- end }}
@@ -75,7 +106,7 @@ Define Image Pull Secret List
 {{/*
 Define JSON string of the Helix configuration
 */}}
-{{- define "helix.config" -}}
+{{- define "cp.config" -}}
     {{- if .Values.helix.configFile -}}
         {{- fromJson .Values.helix.configFile | toJson -}}
     {{- else }}
@@ -86,7 +117,7 @@ Define JSON string of the Helix configuration
 {{/*
 Define JSON string of the Helix configuration
 */}}
-{{- define "helix.secrets" -}}
+{{- define "cp.secrets" -}}
     {{- if .Values.helix.secretsFile -}}
         {{- fromJson .Values.helix.secretsFile | toJson -}}
     {{- else }}
@@ -97,10 +128,10 @@ Define JSON string of the Helix configuration
 {{/*
 Define JSON string of Helix secret names
 */}}
-{{- define "helix.secretNames" -}}
+{{- define "cp.secretNames" -}}
     {{- $secretNames := dict }}
-    {{- $config := include "helix.config" . | fromJson }}
-    {{- $secrets := include "helix.secrets" . | fromJson }}
+    {{- $config := include "cp.config" . | fromJson }}
+    {{- $secrets := include "cp.secrets" . | fromJson }}
     {{- if $secrets }}
         {{- range $name, $system := (get $secrets "nats_systems") }}
             {{- if kindIs "string" $system }}
@@ -116,7 +147,7 @@ Define JSON string of Helix secret names
 {{/*
 Check if using default encryption key
 */}}
-{{- define "helix.defaultEncryptionKey" -}}
+{{- define "cp.defaultEncryptionKey" -}}
     {{- if or (not (hasKey .config "encryption_key")) (eq (get .config "encryption_key") "") }}
     {{- true }}
     {{- end }}
@@ -134,4 +165,36 @@ Define a Registry Credential Secret
 {{- $auths := dict .registry $auth }}
 {{- printf "{\"auths\":%s}" (toJson $auths) | b64enc }}
 {{- end }}
+{{- end }}
+
+{{/*
+translates env var map to list
+*/}}
+{{- define "cp.env" -}}
+{{- range $k, $v := . }}
+{{- if kindIs "string" $v }}
+- name: {{ $k | quote }}
+  value: {{ $v | quote }}
+{{- else if kindIs "map" $v }}
+- {{ merge (dict "name" $k) $v | toYaml | nindent 2 }}
+{{- else }}
+{{- fail (cat "env var" $k "must be string or map, got" (kindOf $v)) }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- /*
+cp.loadMergePatch
+input: map with 4 keys:
+- file: name of file to load
+- ctx: context to pass to tpl
+- merge: interface{} to merge
+- patch: []interface{} valid JSON Patch document
+output: JSON encoded map with 1 key:
+- doc: interface{} patched json result
+*/}}
+{{- define "cp.loadMergePatch" -}}
+{{- $doc := tpl (.ctx.Files.Get (printf "files/%s" .file)) .ctx | fromYaml -}}
+{{- $doc = mergeOverwrite $doc (deepCopy .merge) -}}
+{{- get (include "jsonpatch" (dict "doc" $doc "patch" .patch) | fromJson ) "doc" | toYaml -}}
 {{- end }}
