@@ -69,26 +69,30 @@ config:
       systemUserCreds:
         # set contents in order to create a secret with the creds file contents
         contents:
-        # set secretName in order to mount an existing secret to to /etc/scp-systems/sys-user-creds/<system-name>
+        # set secretName and key  in order to mount an existing secret to dir
         secretName:
+        # defaults to /etc/scp-systems/sys-user-creds/<system-name>
+        dir:
         key: system.creds
       # Operator Signing Key
       operatorSigningKey:
         # set contents in order to create a secret with the nkey file contents
         contents:
-        # set secretName in order to mount an existing secret to /etc/scp-systems/operator-sk/<system-name>
+        # set secretName in order to mount an existing secret to dir
         secretName:
+        # defaults to to /etc/scp-systems/operator-sk/<system-name>
+        dir:
         key: operator.nk
       # TLS options
       tls:
         enabled: false
         # set secretName in order to mount an existing secret to dir
         secretName:
-        # defaults to /etc/scp-certs/scp-systems/certs/<system-name>
+        # defaults to /etc/scp-systems/certs/<system-name>
         dir:
-        cert: tls.crt
-        key: tls.key
-        ca:
+        cert:
+        key:
+        ca: tls.ca
         # merge or patch the tls config
         merge: {}
         patch: []
@@ -132,9 +136,9 @@ config:
         # set secretName in order to mount an existing secret to dir
         secretName:
         dir: /etc/scp-certs/postgres
-        cert: tls.crt
-        key: tls.key
-        ca:
+        cert:
+        key:
+        ca: tls.ca
         # merge or patch the tls config
         merge: {}
         patch: []
@@ -153,9 +157,9 @@ config:
         # set secretName in order to mount an existing secret to dir
         secretName:
         dir: /etc/scp-certs/postgres
-        cert: tls.crt
-        key: tls.key
-        ca:
+        cert:
+        key:
+        ca: tls.ca
         # merge or patch the tls config
         merge: {}
         patch: []
@@ -179,7 +183,7 @@ deployment:
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#deployment-v1-apps
   merge: {}
   patch: []
-  # defaults to "{{ include "nats.fullname" $ }}"
+  # defaults to "{{ include "scp.fullname" $ }}"
   name:
 
 ############################################################
@@ -249,7 +253,7 @@ service:
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#service-v1-core
   merge: {}
   patch: []
-  # defaults to "{{ include "cp.fullname" $ }}"
+  # defaults to "{{ include "scp.fullname" $ }}"
   name:
 
 ############################################################
@@ -271,7 +275,7 @@ ingress:
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#ingress-v1-networking-k8s-io
   merge: {}
   patch: []
-  # defaults to "{{ include "cp.fullname" $ }}"
+  # defaults to "{{ include "scp.fullname" $ }}"
   name:
 
 ############################################################
@@ -300,7 +304,7 @@ singleReplicaMode:
     # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
     merge: {}
     patch: []
-    # defaults to "{{ include "cp.fullname" $ }}-data"
+    # defaults to "{{ include "scp.fullname" $ }}-data"
     name:
 
   ############################################################
@@ -319,7 +323,7 @@ singleReplicaMode:
     # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
     merge: {}
     patch: []
-    # defaults to "{{ include "cp.fullname" $ }}-postgres"
+    # defaults to "{{ include "scp.fullname" $ }}-postgres"
     name:
 
   ############################################################
@@ -338,7 +342,7 @@ singleReplicaMode:
     # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
     merge: {}
     patch: []
-    # defaults to "{{ include "cp.fullname" $ }}-prometheus"
+    # defaults to "{{ include "scp.fullname" $ }}-prometheus"
     name:
 
 ############################################################
@@ -351,7 +355,7 @@ configSecret:
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core
   merge: {}
   patch: []
-  # defaults to "{{ include "nats.fullname" $ }}-config"
+  # defaults to "{{ include "scp.fullname" $ }}-config"
   name:
 
 # service account
@@ -363,7 +367,7 @@ serviceAccount:
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#serviceaccount-v1-core
   merge: {}
   patch: []
-  # defaults to "{{ include "nats.fullname" $ }}"
+  # defaults to "{{ include "scp.fullname" $ }}"
   name:
 
 
@@ -380,10 +384,10 @@ serviceAccount:
 #   metadata:
 #     name:
 #       $tplYaml: >
-#         {{ include "nats.fullname" $ | quote }}
+#         {{ include "scp.fullname" $ | quote }}
 #     labels:
 #       $tplYaml: |
-#         {{ include "nats.labels" $ }}
+#         {{ include "scp.labels" $ }}
 #   spec:
 #     hosts:
 #     - demo.nats.io

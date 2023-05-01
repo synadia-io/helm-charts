@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "cp.fullname" . }}-prometheus
+  name: {{ include "scp.fullname" . }}-prometheus
 spec:
   {{- if and .Values.embeddedPrometheus.pvc .Values.embeddedPrometheus.pvc.storageClassName }}
   storageClassName: {{ .Values.embeddedPrometheus.pvc.storageClassName }}

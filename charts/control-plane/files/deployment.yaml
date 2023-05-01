@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "cp.fullname" . }}
+  name: {{ include "scp.fullname" . }}
   labels:
-    {{- include "cp.labels" . | nindent 4 }}
+    {{- include "scp.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
-  {{- if or (include "cp.defaultEncryptionKey" .) (or .Values.embeddedPostgres.persistent .Values.embeddedPrometheus.persistent) }}
+  {{- if or (include "scp.defaultEncryptionKey" .) (or .Values.embeddedPostgres.persistent .Values.embeddedPrometheus.persistent) }}
   strategy:
     type: Recreate
   {{- end }}
   selector:
     matchLabels:
-      {{- include "cp.selectorLabels" . | nindent 6 }}
+      {{- include "scp.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -23,14 +23,14 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "cp.selectorLabels" . | nindent 8 }}
+        {{- include "scp.selectorLabels" . | nindent 8 }}
     spec:
-      {{- $imagePullSecrets := fromJson (include "cp.imagePullSecrets" .)}}
+      {{- $imagePullSecrets := fromJson (include "scp.imagePullSecrets" .)}}
       {{- with $imagePullSecrets.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "cp.serviceAccountName" . }}
+      serviceAccountName: {{ include "scp.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -48,8 +48,8 @@ spec:
             - name: config
               subPath: rna.cue
               mountPath: "/conf/rna.cue"
-            {{- if (include "cp.defaultEncryptionKey" .) }}
-            - name: {{ include "cp.fullname" . }}
+            {{- if (include "scp.defaultEncryptionKey" .) }}
+            - name: {{ include "scp.fullname" . }}
               mountPath: {{ get .config "data_dir" | default "/app/data" }}/encryption
               subPath: encryption
             {{- end }}
@@ -77,21 +77,21 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: "{{ include "cp.fullname" . }}-config"
+            name: "{{ include "scp.fullname" . }}-config"
         {{- if or (not (hasKey .config "encryption_key")) (eq (get .config "encryption_key") "") }}
-        - name: {{ include "cp.fullname" . }}
+        - name: {{ include "scp.fullname" . }}
           persistentVolumeClaim:
-            claimName: {{ include "cp.fullname" . }}
+            claimName: {{ include "scp.fullname" . }}
         {{- end }}
         {{- if and .Values.embeddedPostgres.persistent .postgresEnabled }}
         - name: postgres
           persistentVolumeClaim:
-            claimName: "{{ include "cp.fullname" . }}-postgres"
+            claimName: "{{ include "scp.fullname" . }}-postgres"
         {{- end }}
         {{- if and .Values.embeddedPrometheus.persistent .prometheusEnabled }}
         - name: prometheus
           persistentVolumeClaim:
-            claimName: "{{ include "cp.fullname" . }}-prometheus"
+            claimName: "{{ include "scp.fullname" . }}-prometheus"
         {{- end }}
         {{range $system, $secretName := .secretNames }}
         - name: "{{ $secretName }}"

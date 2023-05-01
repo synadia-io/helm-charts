@@ -1,0 +1,10 @@
+{{- with .system }}
+url: {{ .url }}
+
+{{- with .tls }}
+{{- if .enabled }}
+tls:
+  {{- include "scp.loadMergePatch" (merge (dict "file" "config/tls.yaml" "ctx" (merge (dict "tls" .) $)) .) | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}

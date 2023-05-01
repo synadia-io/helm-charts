@@ -1,5 +1,5 @@
-{{- $config := include "cp.config" . }}
-{{- $secretNames := include "cp.secretNames" . }}
+{{- $config := include "scp.config" . }}
+{{- $secretNames := include "scp.secretNames" . }}
 {{- $configMapChecksum := include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
 {{- $secretsChecksum := include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
 

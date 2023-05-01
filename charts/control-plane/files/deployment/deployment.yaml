@@ -3,11 +3,11 @@ kind: Deployment
 metadata:
   name: {{ .Values.deployment.name }}
   labels:
-    {{- include "cp.labels" $ | nindent 4 }}
+    {{- include "scp.labels" $ | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      {{- include "cp.selectorLabels" $ | nindent 6 }}
+      {{- include "scp.selectorLabels" $ | nindent 6 }}
   {{- if .Values.config.cluster.enabled }}
   replicas: {{ .Values.config.cluster.replicas }}
   {{- else }}
@@ -17,20 +17,20 @@ spec:
   podManagementPolicy: Parallel
   template:
     {{- with .Values.podTemplate }}
-    {{ include "cp.loadMergePatch" (merge (dict "file" "stateful-set/pod-template.yaml" "ctx" $) .) | nindent 4 }}
+    {{ include "scp.loadMergePatch" (merge (dict "file" "stateful-set/pod-template.yaml" "ctx" $) .) | nindent 4 }}
     {{- end }}
   volumeClaimTemplates:
   {{- with .Values.config.jetstream }}
   {{- if and .enabled .fileStore.enabled .fileStore.pvc.enabled }}
   {{- with .fileStore.pvc }}
-  - {{ include "cp.loadMergePatch" (merge (dict "file" "stateful-set/jetstream-pvc.yaml" "ctx" $) .) | nindent 4 }}
+  - {{ include "scp.loadMergePatch" (merge (dict "file" "stateful-set/jetstream-pvc.yaml" "ctx" $) .) | nindent 4 }}
   {{- end }}
   {{- end }}
     {{- end }}
   {{- with .Values.config.resolver }}
   {{- if and .enabled .pvc.enabled }}
   {{- with .pvc }}
-  - {{ include "cp.loadMergePatch" (merge (dict "file" "stateful-set/resolver-pvc.yaml" "ctx" $) .) | nindent 4 }}
+  - {{ include "scp.loadMergePatch" (merge (dict "file" "stateful-set/resolver-pvc.yaml" "ctx" $) .) | nindent 4 }}
   {{- end }}
   {{- end }}
   {{- end }}

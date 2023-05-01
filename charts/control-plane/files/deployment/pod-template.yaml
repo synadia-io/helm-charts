@@ -1,17 +1,17 @@
 metadata:
   labels:
-    {{- include "cp.labels" $ | nindent 4 }}
+    {{- include "scp.labels" $ | nindent 4 }}
   annotations:
     {{- if .Values.podTemplate.configChecksumAnnotation }}
-    {{- $configMap := include "cp.loadMergePatch" (merge (dict "file" "config-map.yaml" "ctx" $) $.Values.configMap) }}
+    {{- $configMap := include "scp.loadMergePatch" (merge (dict "file" "config-map.yaml" "ctx" $) $.Values.configMap) }}
     checksum/config: {{ sha256sum $configMap }}
     {{- end }}
 spec:
   containers:
-  # cp
+  # scp
   {{- $nats := dict }}
   {{- with .Values.container }}
-  {{- $nats = include "cp.loadMergePatch" (merge (dict "file" "stateful-set/nats-container.yaml" "ctx" $) .) | fromYaml }}
+  {{- $nats = include "scp.loadMergePatch" (merge (dict "file" "stateful-set/nats-container.yaml" "ctx" $) .) | fromYaml }}
   - {{ toYaml $nats | nindent 4 }}
   {{- end }}
 
@@ -24,25 +24,31 @@ spec:
   {{- end }}
   {{- end }}
 
-  volumes:
-  - name: config
-    configMap:
-      name: "{{ include "cp.fullname" . }}-config"
-  - name: data
-  {{- if and .dataPvc.enabled (not .config.kms.enabled) }}
-    persistentVolumeClaim: {{ .dataPvc.name }}
-  {{- else }}
-    emptyDir: {}
-  {{- end}}
-  {{- if and .postgresPvc.enabled (not .config.dataSources.postgres.enabled) }}
-  - name: postgres
-    persistentVolumeClaim: {{ .dataPvc.name }}
-  {{- else }}
-
-
   {{- with .Values.podTemplate.topologySpreadConstraints }}
   topologySpreadConstraints:
   {{- range $k, $v := . }}
-  - {{ merge (dict "topologyKey" $k "labelSelector" (dict "matchLabels" (include "cp.selectorLabels" $ | fromYaml) "matchLabelKeys" (list "pod-template-hash"))) $v | toYaml | nindent 4 }}
+  - {{ merge (dict "topologyKey" $k "labelSelector" (dict "matchLabels" (include "scp.selectorLabels" $ | fromYaml) "matchLabelKeys" (list "pod-template-hash"))) $v | toYaml | nindent 4 }}
   {{- end }}
   {{- end}}
+
+  volumes:
+  - name: config
+    configMap:
+      name: "{{ include "scp.fullname" . }}-config"
+  - name: data
+  {{- if and .Values.singleReplicaMode.enabled .Values.singleReplicaMode.dataPvc.enabled (not .config.kms) }}
+    persistentVolumeClaim:
+      claimName: {{ .dataPvc.name }}
+  {{- else }}
+    emptyDir: {}
+  {{- end}}
+  {{- if and .Values.singleReplicaMode.enabled .Values.singleReplicaMode.postgresPvc.enabled (not .config.data_sources.postgres) }}
+  - name: postgres
+    persistentVolumeClaim:
+      claimName: {{ .dataPvc.name }}
+  {{- else }}
+  {{- if and .Values.singleReplicaMode.enabled .Values.singleReplicaMode.prometheusPvc.enabled (not .config.data_sources.prometheus) }}
+  - name: prometheus
+    persistentVolumeClaim:
+      claimName: {{ .dataPvc.name }}
+  {{- else }}

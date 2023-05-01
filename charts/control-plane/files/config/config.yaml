@@ -1,0 +1,51 @@
+{{- with .Values.config}}
+
+{{- with .server }}
+server:
+  {{ include "nats.loadMergePatch" (merge (dict "file" "config/server.yaml" "ctx" $) .) | nindent 2 }}
+{{- end }}
+
+{{- $hasSystems := false }}
+systems:
+{{- range $name, $system := .systems }}
+{{- if .enabled }}
+{{- $hasSystems = true }}
+  {{ $name | quote }}:
+    {{ include "nats.loadMergePatch" (merge (dict "file" "config/system.yaml" "ctx" $) .) | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- if not $hasSystems -}}
+{}
+{{- end }}
+
+{{- with .kms }}
+{{- if .enabled }}
+kms:
+  {{ include "nats.loadMergePatch" (merge (dict "file" "config/kms.yaml" "ctx" $) .) | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{ $hasDataSources := false }}
+data_sources:
+{{- with .dataSources }}
+{{- with .postgres }}
+{{- if .enabled }}
+{{- $hasDataSources = true }}
+  postgres:
+    {{ include "nats.loadMergePatch" (merge (dict "file" "config/postgres.yaml" "ctx" $) .) | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- with .prometheus }}
+{{- if .enabled }}
+{{- $hasDataSources = true }}
+  prometheus:
+    {{ include "nats.loadMergePatch" (merge (dict "file" "config/prometheus.yaml" "ctx" $) .) | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if not $hasDataSources -}}
+{}
+{{- end }}
+
+data_dir: /data
+{{- end }}

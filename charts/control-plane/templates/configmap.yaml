@@ -1,4 +1,4 @@
-{{- $config := include "cp.config" . }}
+{{- $config := include "scp.config" . }}
 
 {{- $_ := set . "config" $config }}
 

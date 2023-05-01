@@ -9,7 +9,7 @@ ports:
 
 {{- with .Values.container.env }}
 env:
-{{- include "cp.env" . }}
+{{- include "scp.env" . }}
 {{- end }}
 
 lifecycle:
@@ -19,37 +19,6 @@ lifecycle:
       command:
       - nats-server
       - -sl=ldm={{ $pidFile }}
-
-{{- if .Values.config.monitor.enabled }}
-startupProbe:
-  httpGet:
-    path: /healthz
-    port: monitor
-  initialDelaySeconds: 10
-  timeoutSeconds: 5
-  periodSeconds: 10
-  successThreshold: 1
-  failureThreshold: 90
-readinessProbe:
-  httpGet:
-    path: /healthz?js-server-only=true
-    port: monitor
-  initialDelaySeconds: 10
-  timeoutSeconds: 5
-  periodSeconds: 10
-  successThreshold: 1
-  failureThreshold: 3
-livenessProbe:
-  httpGet:
-    path: /healthz?js-enabled-only=true
-    port: monitor
-  initialDelaySeconds: 10
-  timeoutSeconds: 5
-  periodSeconds: 30
-  successThreshold: 1
-  failureThreshold: 3
-{{- end }}
-
 volumeMounts:
 - name: config
   mountPath: /etc/nats-config

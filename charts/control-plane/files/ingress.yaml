@@ -4,7 +4,7 @@ kind: Ingress
 metadata:
   name: {{ .name }}
   labels:
-    {{- include "cp.labels" $ | nindent 4 }}
+    {{- include "scp.labels" $ | nindent 4 }}
 spec:
   {{- with .className }}
   ingressClassName: {{ . | quote }}

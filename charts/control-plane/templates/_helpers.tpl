@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "cp.name" -}}
+{{- define "scp.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "cp.fullname" -}}
+{{- define "scp.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,47 +26,57 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "cp.chart" -}}
+{{- define "scp.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Set default values.
 */}}
-{{- define "cp.defaultValues" }}
+{{- define "scp.defaultValues" }}
 {{- if not .defaultValuesSet }}
-{{- $name := include "cp.fullname" . }}
-{{- with .Values }}
-{{- $_ := set .configSecret   "name" (.configSecret.name   | default (printf "%s-config" $name)) }}
-{{- $_ := set .deployment              "name" (.deployment.name              | default (printf "%s" $name)) }}
-{{- $_ := set .config.websocket.ingress         "name" (.config.websocket.ingress.name         | default (printf "%s-ws" $name)) }}
-{{- $_ := set .configMap                        "name" (.configMap.name                        | default (printf "%s-config" $name)) }}
-{{- $_ := set .headlessService                  "name" (.headlessService.name                  | default (printf "%s-headless" $name)) }}
-{{- $_ := set .natsBox.contentsSecret           "name" (.natsBox.contentsSecret.name           | default (printf "%s-box-contents" $name)) }}
-{{- $_ := set .natsBox.contextsSecret           "name" (.natsBox.contextsSecret.name           | default (printf "%s-box-contexts" $name)) }}
-{{- $_ := set .natsBox.deployment               "name" (.natsBox.deployment.name               | default (printf "%s-box" $name)) }}
-{{- $_ := set .natsBox.serviceAccount           "name" (.natsBox.serviceAccount.name           | default (printf "%s-box" $name)) }}
-{{- $_ := set .service                          "name" (.service.name                          | default $name) }}
-{{- $_ := set .serviceAccount                   "name" (.serviceAccount.name                   | default $name) }}
-{{- $_ := set .statefulSet                      "name" (.statefulSet.name                      | default $name) }}
-{{- $_ := set .promExporter.podMonitor          "name" (.promExporter.podMonitor.name          | default $name) }}
-{{- end }}
-{{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
-{{- $_ := set . "Values" $values }}
-{{- with .Values.config }}
-{{- $config := include "cp.loadMergePatch" (merge (dict "file" "config/config.yaml" "ctx" $) .) | fromYaml }}
-{{- $_ := set $ "config" $config }}
-{{- end }}
-{{- $_ := set . "defaultValuesSet" true }}
+  {{- $name := include "scp.fullname" . }}
+  {{- with .Values }}
+    {{- $_ := set .configSecret                    "name" (.configSecret.name                    | default (printf "%s-config" $name)) }}
+    {{- $_ := set .deployment                      "name" (.deployment.name                      | default $name) }}
+    {{- $_ := set .ingress                         "name" (.ingress.name                         | default $name) }}
+    {{- $_ := set .service                         "name" (.service.name                         | default $name) }}
+    {{- $_ := set .serviceAccount                  "name" (.serviceAccount.name                  | default $name) }}
+    {{- $_ := set .singleReplicaMode.dataPvc       "name" (.singleReplicaMode.dataPvc.name       | default (printf "%s-data" $name)) }}
+    {{- $_ := set .singleReplicaMode.postgresPvc   "name" (.singleReplicaMode.postgresPvc.name   | default (printf "%s-postgres" $name)) }}
+    {{- $_ := set .singleReplicaMode.prometheusPvc "name" (.singleReplicaMode.prometheusPvc.name | default (printf "%s-prometheus" $name)) }}
+  {{- end }}
+
+  {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
+  {{- $_ := set . "Values" $values }}
+
+  {{- with .Values.config }}
+    {{- $config := include "scp.loadMergePatch" (merge (dict "file" "config/config.yaml" "ctx" $) .) | fromYaml }}
+    {{- $_ := set $ "config" $config }}
+  {{- end }}
+
+  {{- if not .Values.singleReplicaMode.enabled }}
+    {{- if not .config.kms }}
+      {{- fail "config.kms must enabled singleReplicaMode is disabled" }}
+    {{- end }}
+    {{- if not .config.data_sources.postgres }}
+      {{- fail "config.dataSources.postgres must be enabled when singleReplicaMode is disabled" }}
+    {{- end }}
+    {{- if not .config.data_sources.prometheus }}
+      {{- fail "config.dataSources.prometheus must be enabled when singleReplicaMode is disabled" }}
+    {{- end }}
+  {{- end }}
+
+  {{- $_ := set . "defaultValuesSet" true }}
 {{- end }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "cp.labels" -}}
-helm.sh/chart: {{ include "cp.chart" . }}
-{{ include "cp.selectorLabels" . }}
+{{- define "scp.labels" -}}
+helm.sh/chart: {{ include "scp.chart" . }}
+{{ include "scp.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -76,17 +86,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "cp.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "cp.name" . }}
+{{- define "scp.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "scp.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "cp.serviceAccountName" -}}
+{{- define "scp.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "cp.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "scp.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
@@ -95,10 +105,10 @@ Create the name of the service account to use
 {{/*
 Define Image Pull Secret List
 */}}
-{{- define "cp.imagePullSecrets" -}}
+{{- define "scp.imagePullSecrets" -}}
     {{ $imagePullSecrets := .Values.imagePullSecrets }}
     {{- if and .Values.imageCredentials.username .Values.imageCredentials.password }}
-        {{- $imagePullSecrets = append $imagePullSecrets (dict "name" (printf "%s-regcred" (include "cp.fullname" .))) }}
+        {{- $imagePullSecrets = append $imagePullSecrets (dict "name" (printf "%s-regcred" (include "scp.fullname" .))) }}
     {{- end }}
     {{- toJson (dict "imagePullSecrets" $imagePullSecrets) }}
 {{- end }}
@@ -106,7 +116,7 @@ Define Image Pull Secret List
 {{/*
 Define JSON string of the Helix configuration
 */}}
-{{- define "cp.config" -}}
+{{- define "scp.config" -}}
     {{- if .Values.helix.configFile -}}
         {{- fromJson .Values.helix.configFile | toJson -}}
     {{- else }}
@@ -117,7 +127,7 @@ Define JSON string of the Helix configuration
 {{/*
 Define JSON string of the Helix configuration
 */}}
-{{- define "cp.secrets" -}}
+{{- define "scp.secrets" -}}
     {{- if .Values.helix.secretsFile -}}
         {{- fromJson .Values.helix.secretsFile | toJson -}}
     {{- else }}
@@ -128,10 +138,10 @@ Define JSON string of the Helix configuration
 {{/*
 Define JSON string of Helix secret names
 */}}
-{{- define "cp.secretNames" -}}
+{{- define "scp.secretNames" -}}
     {{- $secretNames := dict }}
-    {{- $config := include "cp.config" . | fromJson }}
-    {{- $secrets := include "cp.secrets" . | fromJson }}
+    {{- $config := include "scp.config" . | fromJson }}
+    {{- $secrets := include "scp.secrets" . | fromJson }}
     {{- if $secrets }}
         {{- range $name, $system := (get $secrets "nats_systems") }}
             {{- if kindIs "string" $system }}
@@ -147,7 +157,7 @@ Define JSON string of Helix secret names
 {{/*
 Check if using default encryption key
 */}}
-{{- define "cp.defaultEncryptionKey" -}}
+{{- define "scp.defaultEncryptionKey" -}}
     {{- if or (not (hasKey .config "encryption_key")) (eq (get .config "encryption_key") "") }}
     {{- true }}
     {{- end }}
@@ -167,10 +177,48 @@ Define a Registry Credential Secret
 {{- end }}
 {{- end }}
 
+{{- define "scp.secretNames" -}}
+{{- $secrets := list }}
+  {{- with .Values.config }}
+    {{- with .server.tls }}
+      {{- if and .enabled .secretName }}
+        {{- $secrets = append $secrets . }}
+      {{- end }}
+    {{- end }}
+    {{- with .dataSources.postgres }}
+      {{- if .enabled }}
+        {{- with .tls }}
+          {{- if and .enabled .secretName }}
+            {{- $secrets = append $secrets . }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- with .dataSources.prometheus }}
+      {{- if .enabled }}
+        {{- with .tls }}
+          {{- if and .enabled .secretName }}
+            {{- $secrets = append $secrets . }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- range $name, $system := .systems }}
+      {{- if .enabled }}
+        {{- with .tls }}
+          {{- if and .enabled .secretName }}
+            {{- $secrets = append $secrets . }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
 {{/*
 translates env var map to list
 */}}
-{{- define "cp.env" -}}
+{{- define "scp.env" -}}
 {{- range $k, $v := . }}
 {{- if kindIs "string" $v }}
 - name: {{ $k | quote }}
@@ -184,7 +232,7 @@ translates env var map to list
 {{- end }}
 
 {{- /*
-cp.loadMergePatch
+scp.loadMergePatch
 input: map with 4 keys:
 - file: name of file to load
 - ctx: context to pass to tpl
@@ -193,8 +241,8 @@ input: map with 4 keys:
 output: JSON encoded map with 1 key:
 - doc: interface{} patched json result
 */}}
-{{- define "cp.loadMergePatch" -}}
-{{- $doc := tpl (.ctx.Files.Get (printf "files/%s" .file)) .ctx | fromYaml -}}
+{{- define "scp.loadMergePatch" -}}
+{{- $doc := tpl (.ctx.Files.Get (printf "files/%s" .file)) .ctx | fromYaml | default dict -}}
 {{- $doc = mergeOverwrite $doc (deepCopy .merge) -}}
 {{- get (include "jsonpatch" (dict "doc" $doc "patch" .patch) | fromJson ) "doc" | toYaml -}}
 {{- end }}

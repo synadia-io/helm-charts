@@ -1,3 +1,3 @@
-{{- include "nats.defaultValues" . }}
+{{- include "scp.defaultValues" . }}
 
 {{- end }}
