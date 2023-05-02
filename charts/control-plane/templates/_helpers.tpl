@@ -38,6 +38,7 @@ Set default values.
   {{- $name := include "scp.fullname" . }}
   {{- with .Values }}
     {{- $_ := set .configSecret                    "name" (.configSecret.name                    | default (printf "%s-config" $name)) }}
+    {{- $_ := set .contentsSecret                  "name" (.contentsSecret.name                  | default (printf "%s-contents" $name)) }}
     {{- $_ := set .deployment                      "name" (.deployment.name                      | default $name) }}
     {{- $_ := set .ingress                         "name" (.ingress.name                         | default $name) }}
     {{- $_ := set .service                         "name" (.service.name                         | default $name) }}
@@ -49,6 +50,24 @@ Set default values.
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
   {{- $_ := set . "Values" $values }}
+
+  {{- $hasContentsSecret := false }}
+  {{- range $systemKey, $systemVal := .Values.config.systems }}
+    {{- range $secretKey, $secretVal := dict "systemUserCreds" "sys-user-creds" "operatorSigningKey" "operator-sk" "tls" "cert" }}
+      {{- $secret := get $systemVal $secretKey }}
+      {{- if $secret }}
+        {{- $_ := set $secret "dir" ($secret.dir | default (printf "/etc/syn-cp/systems/%s/%s" $systemKey $secretVal)) }}
+        {{- if and $systemVal.enabled (ne $secretKey "tls") $secret.contents }}
+          {{- $hasContentsSecret = true }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- $_ := set $ "hasContentsSecret" $hasContentsSecret }}
+
+  {{- range $k, $v := .Values.config.kms.rotatedKeys }}
+    {{- $_ := set $v "dir" ($v.dir | default (printf "/etc/syn-cp/kms/rotated-key-%s" $k)) }}
+  {{- end }}
 
   {{- with .Values.config }}
     {{- $config := include "scp.loadMergePatch" (merge (dict "file" "config/config.yaml" "ctx" $) .) | fromYaml }}

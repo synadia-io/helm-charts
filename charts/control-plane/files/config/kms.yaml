@@ -1,0 +1,24 @@
+{{- with .Values.config.kms }}
+
+{{- with .key }}
+{{- if .url }}
+key_url: {{ .url | quote }}
+{{- else if .secretName }}
+{{- $dir := trimSuffix "/" .dir }}
+key_url: file://{{ $dir }}/{{ .key }}
+{{- end }}
+{{- end }}
+
+{{- with .rotatedKeys }}
+rotated_key_urls:
+{{- range . }}
+{{- if .url }}
+- {{ .url | quote }}
+{{- else if .secretName }}
+{{- $dir := trimSuffix "/" .dir }}
+- file://{{ $dir }}/{{ .key }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- end }}

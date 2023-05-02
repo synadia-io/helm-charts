@@ -22,8 +22,8 @@ global:
 ############################################################
 imagePullSecret:
   registry: "registry.helix-dev.synadia.io"
-  username: ""
-  password: ""
+  username:
+  password:
   secretTemplate: {}
   secretPatch: []
 
@@ -36,7 +36,7 @@ imagePullSecret:
 config:
   server:
     # URL where Control Plane server will be accessed
-    url: ""
+    url:
     # port for HTTP server to listen on
     httpPort: 8080
     # port for HTTPS server to listen on, TLS must be enabled
@@ -46,7 +46,7 @@ config:
       enabled: false
       # set secretName in order to mount an existing secret to dir
       secretName:
-      dir: /etc/scp-certs/server
+      dir: /etc/syn-cp/certs/server
       cert: tls.crt
       key: tls.key
       ca:
@@ -64,14 +64,14 @@ config:
       # enable/disable the system
       enabled: false
       # NATS server URL
-      url: ""
+      url:
       # System User Creds
       systemUserCreds:
         # set contents in order to create a secret with the creds file contents
         contents:
         # set secretName and key  in order to mount an existing secret to dir
         secretName:
-        # defaults to /etc/scp-systems/sys-user-creds/<system-name>
+        # defaults to /etc/syn-cp/systems/<system-name>/sys-user-creds
         dir:
         key: system.creds
       # Operator Signing Key
@@ -80,7 +80,7 @@ config:
         contents:
         # set secretName in order to mount an existing secret to dir
         secretName:
-        # defaults to to /etc/scp-systems/operator-sk/<system-name>
+        # defaults to to /etc/syn-cp/systems/<system-name>/operator-sk
         dir:
         key: operator.nk
       # TLS options
@@ -88,7 +88,7 @@ config:
         enabled: false
         # set secretName in order to mount an existing secret to dir
         secretName:
-        # defaults to /etc/scp-systems/certs/<system-name>
+        # defaults to /etc/syn-cp/systems/<system-name>/cert
         dir:
         cert:
         key:
@@ -107,16 +107,19 @@ config:
     enabled: false
     key:
       # set to use a KMS URL
-      url:value
-      # set secretName and key in order to mount an existing secret to to /etc/scp-kms/key
+      url:
+      # set secretName and key in order to mount an existing secret to dir
       secretName:
+      dir: /etc/syn-cp/kms/key
       key: key.enc
 
     # rotatedKeys is a list of:
     # - # set to use a KMS URL
     #   url:
-    #   # set secretName and key in order to mount an existing secret to to /etc/scp-kms/rotated-key-<index>
+    #   # set secretName and key in order to mount an existing secret to dir
     #   secretName:
+    #   # defaults to /etc/syn-cp/kms/rotated-key-<index>
+    #   dir:
     #   key: key.enc
     rotatedKeys: []
 
@@ -129,16 +132,23 @@ config:
       # enable/disable external PostgreSQL
       enabled: false
       # DSN to external PostgreSQL, TLS settings will be automatically added if supplied
-      # DSN will be stored in the config secret since it contains potentially sensitive information
-      dsn: ""
+      dsn:
       tls:
         enabled: false
         # set secretName in order to mount an existing secret to dir
         secretName:
-        dir: /etc/scp-certs/postgres
+        dir: /etc/syn-cp/certs/postgres
         cert:
         key:
         ca: tls.ca
+        
+        # add TLS options to DSN
+        # if cert and key are set, sslcert and sslkey will be added to the dsn 
+        # if ca is set, sslrootcert will be added to the dsn
+        addToDsn: true
+        # sslmode to add to dsn, if addToDsn is true
+        addToDsnSslMode: verify-full
+
         # merge or patch the tls config
         merge: {}
         patch: []
@@ -151,12 +161,12 @@ config:
       # enable/disable external Prometheus
       enabled: false
       # URL to external Prometheus
-      url: ""
+      url:
       tls:
         enabled: false
         # set secretName in order to mount an existing secret to dir
         secretName:
-        dir: /etc/scp-certs/postgres
+        dir: /etc/syn-cp/certs/postgres
         cert:
         key:
         ca: tls.ca
@@ -356,6 +366,15 @@ configSecret:
   merge: {}
   patch: []
   # defaults to "{{ include "scp.fullname" $ }}-config"
+  name:
+
+# contents secret
+contentsSecret:
+  # merge or patch the contents secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}-contents"
   name:
 
 # service account

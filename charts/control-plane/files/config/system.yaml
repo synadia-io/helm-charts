@@ -1,5 +1,24 @@
+{{- $systemName := .systemName }}
 {{- with .system }}
 url: {{ .url }}
+
+{{- with .systemUserCreds }}
+{{- if .contents }}
+system_user_creds_file: /etc/syn-cp/contents/{{ $systemName }}/sys-user.creds
+{{- else if .secretName }}
+{{- $dir := trimSuffix "/" .dir }}
+system_user_creds_file: {{ $dir }}/{{ .key }}
+{{- end }}
+{{- end }}
+
+{{- with .operatorSigningKey }}
+{{- if .contents }}
+operator_signing_key_file: /etc/syn-cp/contents/{{ $systemName }}/operator-sk.nk
+{{- else if .secretName }}
+{{- $dir := trimSuffix "/" .dir }}
+operator_signing_key_file: {{ $dir }}/{{ .key }}
+{{- end }}
+{{- end }}
 
 {{- with .tls }}
 {{- if .enabled }}
@@ -7,4 +26,5 @@ tls:
   {{- include "scp.loadMergePatch" (merge (dict "file" "config/tls.yaml" "ctx" (merge (dict "tls" .) $)) .) | nindent 2 }}
 {{- end }}
 {{- end }}
+
 {{- end }}

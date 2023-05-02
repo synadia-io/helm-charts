@@ -1,14 +1,11 @@
-{{- with .Values.config.server }}
+{{- with .Values.config.dataSources.prometheus }}
 
 {{- with .url }}
 url: {{ . | quote }}
 {{- end }}
 
-http_addr: ":{{ .httpPort }}"
-
 {{- with .tls }}
 {{- if .enabled }}
-https_addr: ":{{ .httpsPort }}"
 tls:
   {{- include "scp.loadMergePatch" (merge (dict "file" "config/tls.yaml" "ctx" (merge (dict "tls" .) $)) .) | nindent 2 }}
 {{- end }}
