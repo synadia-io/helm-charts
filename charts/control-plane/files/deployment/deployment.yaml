@@ -8,29 +8,15 @@ spec:
   selector:
     matchLabels:
       {{- include "scp.selectorLabels" $ | nindent 6 }}
-  {{- if .Values.config.cluster.enabled }}
-  replicas: {{ .Values.config.cluster.replicas }}
-  {{- else }}
-  replicas: 1
+
+  replicas: {{ .Values.deployment.replicas }}
+
+  {{- if .singleReplicaMode.enabled }}
+  strategy:
+    type: Recreate
   {{- end }}
-  serviceName: {{ .Values.headlessService.name }}
-  podManagementPolicy: Parallel
+
   template:
     {{- with .Values.podTemplate }}
-    {{ include "scp.loadMergePatch" (merge (dict "file" "stateful-set/pod-template.yaml" "ctx" $) .) | nindent 4 }}
+    {{- include "scp.loadMergePatch" (merge (dict "file" "stateful-set/pod-template.yaml" "ctx" $) .) | nindent 4 }}
     {{- end }}
-  volumeClaimTemplates:
-  {{- with .Values.config.jetstream }}
-  {{- if and .enabled .fileStore.enabled .fileStore.pvc.enabled }}
-  {{- with .fileStore.pvc }}
-  - {{ include "scp.loadMergePatch" (merge (dict "file" "stateful-set/jetstream-pvc.yaml" "ctx" $) .) | nindent 4 }}
-  {{- end }}
-  {{- end }}
-    {{- end }}
-  {{- with .Values.config.resolver }}
-  {{- if and .enabled .pvc.enabled }}
-  {{- with .pvc }}
-  - {{ include "scp.loadMergePatch" (merge (dict "file" "stateful-set/resolver-pvc.yaml" "ctx" $) .) | nindent 4 }}
-  {{- end }}
-  {{- end }}
-  {{- end }}

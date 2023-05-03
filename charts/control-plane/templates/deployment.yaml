@@ -1,19 +1,4 @@
-{{- $config := include "scp.config" . }}
-{{- $secretNames := include "scp.secretNames" . }}
-{{- $configMapChecksum := include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-{{- $secretsChecksum := include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
-
-{{- $_ := set . "config" (fromJson $config) }}
-{{- $_ := set . "secretNames" (fromJson $secretNames) }}
-{{- $_ := set . "postgresEnabled" (ternary (get .config "embedded_postgres_enabled") true (hasKey .config "embedded_postgres_enabled")) }}
-{{- $_ := set . "prometheusEnabled" (ternary (get .config "embedded_prometheus_enabled") true (hasKey .config "embedded_prometheus_enabled")) }}
-{{- $_ := set . "configmapChecksum" $configMapChecksum }}
-{{- $_ := set . "secretsChecksum" $secretsChecksum }}
-
----
-# deployment.yaml
-{{- $deployment := tpl (.Files.Get "files/deployment.yaml") . | fromYaml }}
-{{- $deployment = mergeOverwrite $deployment (deepCopy .Values.deploymentTemplate) }}
-{{- $deployment = include "jsonpatch" (dict "doc" $deployment "patch" .Values.deploymentPatch) | fromJson }}
-
-{{ toYaml $deployment }}
+{{- include "nats.defaultValues" . }}
+{{- with .Values.deployment }}
+{{- include "nats.loadMergePatch" (merge (dict "file" "deployment/deployment.yaml" "ctx" $) .) }}
+{{- end }}

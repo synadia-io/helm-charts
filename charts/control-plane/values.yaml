@@ -20,12 +20,20 @@ global:
 ############################################################
 # image pull secret
 ############################################################
+# when enabled, the registry for images in the control plane deployment
+# will default to imagePullSecret.registry
 imagePullSecret:
-  registry: "registry.helix-dev.synadia.io"
+  enabled: true
+  registry: registry.helix-dev.synadia.io
   username:
   password:
-  secretTemplate: {}
-  secretPatch: []
+
+  # merge or patch the image pull secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}-regcred"
+  name:
 
 ############################################################
 # config
@@ -223,9 +231,12 @@ podTemplate:
 ############################################################
 container:
   image:
-    repository: registry.helix-dev.synadia.io/helix
-    tag: v0.1.0
-    pullPolicy: IfNotPresent
+    repository: helix
+    tag: branch-main
+    pullPolicy:
+    # defaults to imagePullSecret.registry (if imagePullSecret is enabled)
+    # or global.registry (if imagePullSecret is disabled)
+    registry:
 
   # map with key as env var name, value can be string or map
   # example:
@@ -248,16 +259,16 @@ container:
 # service
 ############################################################
 service:
-  enabled: true
-
   # service port options
-  # must be enabled in the config section also
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#serviceport-v1-core
   ports:
     http:
       enabled: true
+      port: 80
+    # config.server.tls must also be enabled
     https:
       enabled: true
+      port: 443
 
   # merge or patch the service
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#service-v1-core

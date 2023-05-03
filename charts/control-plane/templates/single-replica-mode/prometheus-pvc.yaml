@@ -1,0 +1,10 @@
+{{- include "scp.defaultValues" . }}
+{{- with .Values.singleReplicaMode }}
+{{- if .enabled }}
+{{- with .prometheusPvc }}
+{{- if .enabled }}
+{{- include "scp.loadMergePatch" (merge (dict "file" "pvc.yaml" "ctx" $) .) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -40,6 +40,7 @@ Set default values.
     {{- $_ := set .configSecret                    "name" (.configSecret.name                    | default (printf "%s-config" $name)) }}
     {{- $_ := set .contentsSecret                  "name" (.contentsSecret.name                  | default (printf "%s-contents" $name)) }}
     {{- $_ := set .deployment                      "name" (.deployment.name                      | default $name) }}
+    {{- $_ := set .imagePullSecret                 "name" (.imagePullSecret.name                 | default (printf "%s-regcred" $name)) }}
     {{- $_ := set .ingress                         "name" (.ingress.name                         | default $name) }}
     {{- $_ := set .service                         "name" (.service.name                         | default $name) }}
     {{- $_ := set .serviceAccount                  "name" (.serviceAccount.name                  | default $name) }}
@@ -52,12 +53,12 @@ Set default values.
   {{- $_ := set . "Values" $values }}
 
   {{- $hasContentsSecret := false }}
-  {{- range $systemKey, $systemVal := .Values.config.systems }}
+  {{- range $systemName, $system := .Values.config.systems }}
     {{- range $secretKey, $secretVal := dict "systemUserCreds" "sys-user-creds" "operatorSigningKey" "operator-sk" "tls" "cert" }}
-      {{- $secret := get $systemVal $secretKey }}
+      {{- $secret := get $system $secretKey }}
       {{- if $secret }}
-        {{- $_ := set $secret "dir" ($secret.dir | default (printf "/etc/syn-cp/systems/%s/%s" $systemKey $secretVal)) }}
-        {{- if and $systemVal.enabled (ne $secretKey "tls") $secret.contents }}
+        {{- $_ := set $secret "dir" ($secret.dir | default (printf "/etc/syn-cp/systems/%s/%s" $systemName $secretVal)) }}
+        {{- if and $system.enabled (ne $secretKey "tls") $secret.contents }}
           {{- $hasContentsSecret = true }}
         {{- end }}
       {{- end }}
@@ -74,7 +75,11 @@ Set default values.
     {{- $_ := set $ "config" $config }}
   {{- end }}
 
-  {{- if not .Values.singleReplicaMode.enabled }}
+  {{- if .Values.singleReplicaMode.enabled }}
+    {{- if gt .deployment.replicas 1 }}
+      {{- fail "deployment.replicas must be 1 when singleReplicaMode is enabled" }}
+    {{- end }}
+  {{- else }}
     {{- if not .config.kms }}
       {{- fail "config.kms must enabled singleReplicaMode is disabled" }}
     {{- end }}
@@ -108,107 +113,53 @@ Selector labels
 {{- define "scp.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "scp.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: control-plane
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Print the image
 */}}
-{{- define "scp.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "scp.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "scp.image" }}
+{{- $image := printf "%s:%s" .repository .tag }}
+{{- if or .registry .imagePullSecret.enabled .global.image.registry }}
+{{- $image = printf "%s/%s" (.registry | default (ternary .imagePullSecret.registry .global.image.registry imagePullSecret.enabled)) $image }}
+{{- end -}}
+image: {{ $image }}
+{{- if or .pullPolicy .global.image.pullPolicy }}
+imagePullPolicy: {{ .pullPolicy | default .global.image.pullPolicy }}
 {{- end }}
 {{- end }}
 
 {{/*
-Define Image Pull Secret List
+List of external secretNames
 */}}
-{{- define "scp.imagePullSecrets" -}}
-    {{ $imagePullSecrets := .Values.imagePullSecrets }}
-    {{- if and .Values.imageCredentials.username .Values.imageCredentials.password }}
-        {{- $imagePullSecrets = append $imagePullSecrets (dict "name" (printf "%s-regcred" (include "scp.fullname" .))) }}
-    {{- end }}
-    {{- toJson (dict "imagePullSecrets" $imagePullSecrets) }}
-{{- end }}
-
-{{/*
-Define JSON string of the Helix configuration
-*/}}
-{{- define "scp.config" -}}
-    {{- if .Values.helix.configFile -}}
-        {{- fromJson .Values.helix.configFile | toJson -}}
-    {{- else }}
-        {{- toJson .Values.helix.config }}
-    {{- end }}
-{{- end }}
-
-{{/*
-Define JSON string of the Helix configuration
-*/}}
-{{- define "scp.secrets" -}}
-    {{- if .Values.helix.secretsFile -}}
-        {{- fromJson .Values.helix.secretsFile | toJson -}}
-    {{- else }}
-        {{- toJson .Values.helix.secrets }}
-    {{- end }}
-{{- end }}
-
-{{/*
-Define JSON string of Helix secret names
-*/}}
-{{- define "scp.secretNames" -}}
-    {{- $secretNames := dict }}
-    {{- $config := include "scp.config" . | fromJson }}
-    {{- $secrets := include "scp.secrets" . | fromJson }}
-    {{- if $secrets }}
-        {{- range $name, $system := (get $secrets "nats_systems") }}
-            {{- if kindIs "string" $system }}
-                {{- $secretNames = merge $secretNames (dict $name $system) }}
-            {{- else }}
-                {{- $secretNames = merge $secretNames (dict $name (printf "helix-system-%s" $name)) }}
-            {{- end }}
-        {{- end }}
-    {{- end }}
-    {{- toJson $secretNames }}
-{{- end }}
-
-{{/*
-Check if using default encryption key
-*/}}
-{{- define "scp.defaultEncryptionKey" -}}
-    {{- if or (not (hasKey .config "encryption_key")) (eq (get .config "encryption_key") "") }}
-    {{- true }}
-    {{- end }}
-{{- end }}
-
-{{/*
-Define a Registry Credential Secret
-*/}}
-{{- define "imagePullSecret" }}
-{{- with .Values.imageCredentials }}
-{{- $auth := dict "username" .username "password" .password "auth" (printf "%s:%s" .username .password | b64enc) }}
-{{- if .email }}
-  {{- $auth = merge $auth (dict "email" .email) }}
-{{- end }}
-{{- $auths := dict .registry $auth }}
-{{- printf "{\"auths\":%s}" (toJson $auths) | b64enc }}
-{{- end }}
-{{- end }}
-
 {{- define "scp.secretNames" -}}
 {{- $secrets := list }}
   {{- with .Values.config }}
     {{- with .server.tls }}
       {{- if and .enabled .secretName }}
-        {{- $secrets = append $secrets . }}
+        {{- $secrets = append $secrets (merge (dict "name" "server-tls") .) }}
+      {{- end }}
+    {{- end }}
+    {{- with .kms }}
+      {{- if .enabled }}
+        {{- with .key }}
+          {{- if .secretName }}
+            {{- $secrets = append $secrets (merge (dict "name" "kms-key") .) }}
+          {{- end }}
+        {{- end }}
+        {{- range $k, $v := .rotatedKeys }}
+          {{- if .secretName }}
+            {{- $secrets = append $secrets (merge (dict "name" (printf "kms-rotated-key-%s" $k)) .) }}
+          {{- end }}
+        {{- end }}
       {{- end }}
     {{- end }}
     {{- with .dataSources.postgres }}
       {{- if .enabled }}
         {{- with .tls }}
           {{- if and .enabled .secretName }}
-            {{- $secrets = append $secrets . }}
+            {{- $secrets = append $secrets (merge (dict "name" "postgres-tls") .) }}
           {{- end }}
         {{- end }}
       {{- end }}
@@ -217,25 +168,27 @@ Define a Registry Credential Secret
       {{- if .enabled }}
         {{- with .tls }}
           {{- if and .enabled .secretName }}
-            {{- $secrets = append $secrets . }}
+            {{- $secrets = append $secrets (merge (dict "name" "prometheus-tls") .) }}
           {{- end }}
         {{- end }}
       {{- end }}
     {{- end }}
-    {{- range $name, $system := .systems }}
+    {{- range $systemName, $system := .systems }}
       {{- if .enabled }}
-        {{- with .tls }}
-          {{- if and .enabled .secretName }}
-            {{- $secrets = append $secrets . }}
+        {{- range $secretKey, $secretVal := dict "systemUserCreds" "sys-user-creds" "operatorSigningKey" "operator-sk" "tls" "cert" }}
+        {{- $secret := get $system $secretKey }}
+          {{- if and $secret $secret.secretName (or (ne $secretKey "tls") ($secret.enabled)) }}
+            {{- $secrets = append $secrets (merge (dict "name" printf ("system-%s-%s" $systemName $secretVal)) .) }}
           {{- end }}
         {{- end }}
       {{- end }}
     {{- end }}
   {{- end }}
+{{- toJson (dict "secretNames" $secrets) }}
 {{- end }}
 
 {{/*
-translates env var map to list
+Translates env var map to list
 */}}
 {{- define "scp.env" -}}
 {{- range $k, $v := . }}

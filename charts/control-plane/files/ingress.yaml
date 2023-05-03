@@ -22,7 +22,11 @@ spec:
           service:
             name: {{ $.Values.service.name }}
             port:
-              name: websocket
+              {{- if .config.server.tls }}
+              name: https
+              {{- else }}
+              name: http
+              {{- end }}
   {{- end }}
   {{- if .tlsSecretName }}
   tls:

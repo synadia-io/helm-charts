@@ -1,12 +1,4 @@
-{{- $config := include "scp.config" . }}
-
-{{- $_ := set . "config" (fromJson $config) }}
-
-{{- if .Values.serviceAccount.create -}}
----
-# service.yaml
-{{- $service := tpl (.Files.Get "files/service.yaml") . | fromYaml }}
-{{- $service = mergeOverwrite $service (deepCopy .Values.serviceTemplate) }}
-{{- $service = include "jsonpatch" (dict "doc" $service "patch" .Values.servicePatch) | fromJson }}
-{{ toYaml $service }}
+{{- include "scp.defaultValues" . }}
+{{- with .Values.service }}
+{{- include "scp.loadMergePatch" (merge (dict "file" "service.yaml" "ctx" $) .) }}
 {{- end }}
