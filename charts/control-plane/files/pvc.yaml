@@ -1,7 +1,10 @@
+{{- with .pvc }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .name }}
+  name: {{ .name | quote }}
+  labels:
+    {{- include "scp.labels" $ | nindent 4 }}
 spec:
   accessModes:
   - ReadWriteOnce
@@ -11,3 +14,4 @@ spec:
   {{- with .storageClassName }}
   storageClassName: {{ . | quote }}
   {{- end }}
+{{- end }}

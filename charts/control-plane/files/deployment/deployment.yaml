@@ -11,12 +11,12 @@ spec:
 
   replicas: {{ .Values.deployment.replicas }}
 
-  {{- if .singleReplicaMode.enabled }}
+  {{- if .Values.singleReplicaMode.enabled }}
   strategy:
     type: Recreate
   {{- end }}
 
   template:
     {{- with .Values.podTemplate }}
-    {{- include "scp.loadMergePatch" (merge (dict "file" "stateful-set/pod-template.yaml" "ctx" $) .) | nindent 4 }}
+    {{- include "scp.loadMergePatch" (merge (dict "file" "deployment/pod-template.yaml" "ctx" $) .) | nindent 4 }}
     {{- end }}

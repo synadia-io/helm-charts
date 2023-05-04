@@ -67,7 +67,7 @@ Set default values.
   {{- $_ := set $ "hasContentsSecret" $hasContentsSecret }}
 
   {{- range $k, $v := .Values.config.kms.rotatedKeys }}
-    {{- $_ := set $v "dir" ($v.dir | default (printf "/etc/syn-cp/kms/rotated-key-%s" $k)) }}
+    {{- $_ := set $v "dir" ($v.dir | default (printf "/etc/syn-cp/kms/rotated-key-%d" $k)) }}
   {{- end }}
 
   {{- with .Values.config }}
@@ -76,7 +76,7 @@ Set default values.
   {{- end }}
 
   {{- if .Values.singleReplicaMode.enabled }}
-    {{- if gt .deployment.replicas 1 }}
+    {{- if gt (int .Values.deployment.replicas) 1 }}
       {{- fail "deployment.replicas must be 1 when singleReplicaMode is enabled" }}
     {{- end }}
   {{- else }}
@@ -122,7 +122,7 @@ Print the image
 {{- define "scp.image" }}
 {{- $image := printf "%s:%s" .repository .tag }}
 {{- if or .registry .imagePullSecret.enabled .global.image.registry }}
-{{- $image = printf "%s/%s" (.registry | default (ternary .imagePullSecret.registry .global.image.registry imagePullSecret.enabled)) $image }}
+{{- $image = printf "%s/%s" (.registry | default (ternary .imagePullSecret.registry .global.image.registry .imagePullSecret.enabled)) $image }}
 {{- end -}}
 image: {{ $image }}
 {{- if or .pullPolicy .global.image.pullPolicy }}
@@ -149,8 +149,8 @@ List of external secretNames
           {{- end }}
         {{- end }}
         {{- range $k, $v := .rotatedKeys }}
-          {{- if .secretName }}
-            {{- $secrets = append $secrets (merge (dict "name" (printf "kms-rotated-key-%s" $k)) .) }}
+          {{- if $v.secretName }}
+            {{- $secrets = append $secrets (merge (dict "name" (printf "kms-rotated-key-%d" $k)) $v) }}
           {{- end }}
         {{- end }}
       {{- end }}
@@ -178,7 +178,7 @@ List of external secretNames
         {{- range $secretKey, $secretVal := dict "systemUserCreds" "sys-user-creds" "operatorSigningKey" "operator-sk" "tls" "cert" }}
         {{- $secret := get $system $secretKey }}
           {{- if and $secret $secret.secretName (or (ne $secretKey "tls") ($secret.enabled)) }}
-            {{- $secrets = append $secrets (merge (dict "name" printf ("system-%s-%s" $systemName $secretVal)) .) }}
+            {{- $secrets = append $secrets (merge (dict "name" printf ("system-%s-%s" $systemName $secretVal)) $secret) }}
           {{- end }}
         {{- end }}
       {{- end }}

@@ -1,4 +1,4 @@
-{{- include "nats.defaultValues" . }}
+{{- include "scp.defaultValues" . }}
 {{- with .Values.deployment }}
-{{- include "nats.loadMergePatch" (merge (dict "file" "deployment/deployment.yaml" "ctx" $) .) }}
+{{- include "scp.loadMergePatch" (merge (dict "file" "deployment/deployment.yaml" "ctx" $) .) }}
 {{- end }}

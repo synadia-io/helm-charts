@@ -231,7 +231,7 @@ podTemplate:
 ############################################################
 container:
   image:
-    repository: helix
+    repository: control-plane
     tag: branch-main
     pullPolicy:
     # defaults to imagePullSecret.registry (if imagePullSecret is enabled)

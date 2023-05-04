@@ -3,14 +3,14 @@ metadata:
     {{- include "scp.labels" $ | nindent 4 }}
   annotations:
     {{- if .Values.podTemplate.configChecksumAnnotation }}
-    {{- $configMap := include "scp.loadMergePatch" (merge (dict "file" "config-map.yaml" "ctx" $) $.Values.configMap) }}
+    {{- $configMap := include "scp.loadMergePatch" (merge (dict "file" "config-secret.yaml" "ctx" $) .Values.configSecret) }}
     checksum/config: {{ sha256sum $configMap }}
     {{- end }}
 spec:
   containers:
   # syn-cp
   {{- with .Values.container }}
-  - {{ include "scp.loadMergePatch" (merge (dict "file" "deployment/syn-cp-container.yaml" "ctx" $) .) | fromYaml | nindent 4 }}
+  - {{ include "scp.loadMergePatch" (merge (dict "file" "deployment/syn-cp-container.yaml" "ctx" $) .) | nindent 4 }}
   {{- end }}
 
   # don't need service env vars
@@ -19,7 +19,7 @@ spec:
   {{- with .Values.imagePullSecret }}
   {{- if .enabled }}
   imagePullSecrets:
-  - {{ .name | quote }}
+  - name: {{ .name | quote }}
   {{- end }}
   {{- end }}
 

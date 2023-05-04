@@ -3,7 +3,7 @@
 {{- if .enabled }}
 {{- with .dataPvc }}
 {{- if .enabled }}
-{{- include "scp.loadMergePatch" (merge (dict "file" "pvc.yaml" "ctx" $) .) }}
+{{- include "scp.loadMergePatch" (merge (dict "file" "pvc.yaml" "ctx" (merge (dict "pvc" .) $)) .) }}
 {{- end }}
 {{- end }}
 {{- end }}

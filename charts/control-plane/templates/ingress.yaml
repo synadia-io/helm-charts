@@ -1,6 +1,6 @@
 {{- include "scp.defaultValues" . }}
-{{- with .ingress }}
-{{- if .enabled .hosts }}
+{{- with .Values.ingress }}
+{{- if and .enabled .hosts }}
 {{- include "scp.loadMergePatch" (merge (dict "file" "ingress.yaml" "ctx" $) .) }}
 {{- end }}
 {{- end }}

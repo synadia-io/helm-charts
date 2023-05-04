@@ -1,4 +1,4 @@
-{{- with .Values.config}}
+{{- with .Values.config }}
 
 ############################################################
 # server
@@ -20,8 +20,8 @@ systems:
     {{- include "scp.loadMergePatch" (merge (dict "file" "config/system.yaml" "ctx" (merge (dict "systemName" $systemName "system" $system) $)) $system) | nindent 4 }}
 {{- end }}
 {{- end }}
-{{- if not $hasSystems -}}
-{}
+{{- if not $hasSystems }}
+  {}
 {{- end }}
 
 ############################################################
@@ -55,8 +55,8 @@ data_sources:
 {{- end }}
 {{- end }}
 {{- end }}
-{{- if not $hasDataSources -}}
-{}
+{{- if not $hasDataSources }}
+  {}
 {{- end }}
 
 ############################################################
