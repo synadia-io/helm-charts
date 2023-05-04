@@ -2,6 +2,8 @@ name: syn-cp
 {{ include "scp.image" (merge (pick .Values "global" "imagePullSecret") .Values.container.image) }}
 
 args:
+- server
+- start
 - -c
 - /etc/syn-cp/syn-cp.yaml
 

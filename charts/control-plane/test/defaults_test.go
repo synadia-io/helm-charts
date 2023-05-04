@@ -158,6 +158,8 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 									ImagePullPolicy: corev1.PullAlways,
 									Name:            "syn-cp",
 									Args: []string{
+										"server",
+										"start",
 										"-c",
 										"/etc/syn-cp/syn-cp.yaml",
 									},
