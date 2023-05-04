@@ -1,6 +1,10 @@
 name: syn-cp
 {{ include "scp.image" (merge (pick .Values "global" "imagePullSecret") .Values.container.image) }}
 
+args:
+- -c
+- /etc/syn-cp/syn-cp.yaml
+
 {{- with .Values.container.env }}
 env:
 {{- include "scp.env" . }}

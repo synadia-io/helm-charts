@@ -157,6 +157,10 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 									Image:           dd.ControlPlaneImage,
 									ImagePullPolicy: corev1.PullAlways,
 									Name:            "syn-cp",
+									Args: []string{
+										"-c",
+										"/etc/syn-cp/syn-cp.yaml",
+									},
 									Ports: []corev1.ContainerPort{
 										{
 											Name:          "http",
