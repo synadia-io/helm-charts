@@ -18,11 +18,6 @@ volumeMounts:
 # config secret
 - name: config
   mountPath: /etc/syn-cp
-# contents secret
-{{- if .hasContentsSecret }}
-- name: contents
-  mountPath: /etc/syn-cp/contents
-{{- end }}
 {{- $dataDir := trimSuffix "/" .config.data_dir }}
 # data PVC or emptyDir
 - name: data
@@ -40,7 +35,12 @@ volumeMounts:
   mountPath: {{ printf "%s/prometheus" $dataDir | quote}}
 {{- end }}
 {{- end }}
-# secrets
+# contents secret
+{{- if .hasContentsSecret }}
+- name: contents
+  mountPath: /etc/syn-cp/contents
+{{- end }}
+# external secrets
 {{- range (include "scp.secretNames" $ | fromJson).secretNames }}
 - name: {{ .name | quote }}
   mountPath: {{ .dir | quote }}

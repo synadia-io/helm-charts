@@ -1,10 +1,13 @@
 {{- $systemName := .systemName }}
 {{- with .system }}
-url: {{ .url }}
+
+{{- with .url }}
+url: {{ . }}
+{{- end }}
 
 {{- with .systemUserCreds }}
 {{- if .contents }}
-system_user_creds_file: /etc/syn-cp/contents/{{ $systemName }}/sys-user.creds
+system_user_creds_file: /etc/syn-cp/contents/{{ $systemName }}.sys-user.creds
 {{- else if .secretName }}
 {{- $dir := trimSuffix "/" .dir }}
 system_user_creds_file: {{ $dir }}/{{ .key }}
@@ -13,7 +16,7 @@ system_user_creds_file: {{ $dir }}/{{ .key }}
 
 {{- with .operatorSigningKey }}
 {{- if .contents }}
-operator_signing_key_file: /etc/syn-cp/contents/{{ $systemName }}/operator-sk.nk
+operator_signing_key_file: /etc/syn-cp/contents/{{ $systemName }}.operator-sk.nk
 {{- else if .secretName }}
 {{- $dir := trimSuffix "/" .dir }}
 operator_signing_key_file: {{ $dir }}/{{ .key }}

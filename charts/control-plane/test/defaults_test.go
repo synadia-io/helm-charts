@@ -91,12 +91,10 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 			ID:       dr.Conf.ID,
 			HasValue: true,
 			Value: map[string]any{
-				"data_dir":     "/data",
-				"data_sources": map[string]any{},
+				"data_dir": "/data",
 				"server": map[string]any{
 					"http_addr": ":8080",
 				},
-				"systems": map[string]any{},
 			},
 		},
 		ConfigSecret: Resource[corev1.Secret]{
@@ -119,12 +117,12 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 			HasValue: false,
 			Value: corev1.Secret{
 				TypeMeta: v1.TypeMeta{
-					Kind:       "ConfigMap",
+					Kind:       "Secret",
 					APIVersion: "v1",
 				},
 				Type: corev1.SecretTypeOpaque,
 				ObjectMeta: v1.ObjectMeta{
-					Name:   fullName + "-config",
+					Name:   fullName + "-contents",
 					Labels: cpLabels(),
 				},
 			},

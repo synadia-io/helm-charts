@@ -41,12 +41,6 @@ spec:
   - name: config
     secret:
       secretName: {{ .Values.configSecret.name }}
-  # contents secret
-  {{- if .hasContentsSecret }}
-  - name: contents
-    secret:
-      secretName: {{ .Values.contentsSecret.name }}
-  {{- end }}
   # PVCs
   {{- with .Values.singleReplicaMode }}
   # data is either a PVC or an emptyDir
@@ -70,7 +64,13 @@ spec:
       claimName: {{ .prometheusPvc.name | quote }}
   {{- end }}
   {{- end }}
-  # secrets
+  # contents secret
+  {{- if .hasContentsSecret }}
+  - name: contents
+    secret:
+      secretName: {{ .Values.contentsSecret.name }}
+  {{- end }}
+  # external secrets
   {{- range (include "scp.secretNames" $ | fromJson).secretNames }}
   - name: {{ .name | quote }}
     secret:

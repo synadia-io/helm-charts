@@ -1,260 +1,140 @@
 package test
 
-//import (
-//	"testing"
-//
-//	corev1 "k8s.io/api/core/v1"
-//	"k8s.io/apimachinery/pkg/api/resource"
-//	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-//	"k8s.io/apimachinery/pkg/util/intstr"
-//)
-//
-//func TestConfigDisable(t *testing.T) {
-//	t.Parallel()
-//	test := DefaultTest()
-//	test.Values = `
-//config:
-//  monitor:
-//    enabled: false
-//`
-//	expected := DefaultResources(t, test)
-//	delete(expected.Conf.Value, "http_port")
-//
-//	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].LivenessProbe = nil
-//	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].ReadinessProbe = nil
-//	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].StartupProbe = nil
-//
-//	cp := expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].Ports
-//	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{cp[0]}
-//
-//	hsp := expected.HeadlessService.Value.Spec.Ports
-//	expected.HeadlessService.Value.Spec.Ports = []corev1.ServicePort{hsp[0]}
-//
-//	RenderAndCheck(t, test, expected)
-//}
-//
-//func TestConfigJetStreamCluster(t *testing.T) {
-//	t.Parallel()
-//	test := DefaultTest()
-//	test.Values = `
-//config:
-//  cluster:
-//    enabled: true
-//  jetstream:
-//    enabled: true
-//`
-//	expected := DefaultResources(t, test)
-//
-//	expected.Conf.Value["cluster"] = map[string]any{
-//		"name":         "nats",
-//		"no_advertise": true,
-//		"port":         int64(6222),
-//		"routes": []any{
-//			"nats://nats-0.nats-headless:6222",
-//			"nats://nats-1.nats-headless:6222",
-//			"nats://nats-2.nats-headless:6222",
-//		},
-//	}
-//	expected.Conf.Value["jetstream"] = map[string]any{
-//		"max_memory_store": int64(0),
-//		"store_dir":        "/data",
-//	}
-//
-//	replicas3 := int32(3)
-//	expected.StatefulSet.Value.Spec.Replicas = &replicas3
-//
-//	vm := expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].VolumeMounts
-//	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].VolumeMounts = append(vm, corev1.VolumeMount{
-//		MountPath: "/data/jetstream",
-//		Name:      test.FullName + "-js",
-//	})
-//
-//	resource10Gi, _ := resource.ParseQuantity("10Gi")
-//	expected.StatefulSet.Value.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
-//		{
-//			ObjectMeta: v1.ObjectMeta{
-//				Name: test.FullName + "-js",
-//			},
-//			Spec: corev1.PersistentVolumeClaimSpec{
-//				AccessModes: []corev1.PersistentVolumeAccessMode{
-//					"ReadWriteOnce",
-//				},
-//				Resources: corev1.ResourceRequirements{
-//					Requests: corev1.ResourceList{
-//						"storage": resource10Gi,
-//					},
-//				},
-//			},
-//		},
-//	}
-//
-//	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{
-//		{
-//			Name:          "nats",
-//			ContainerPort: 4222,
-//		},
-//		{
-//			Name:          "cluster",
-//			ContainerPort: 6222,
-//		},
-//		{
-//			Name:          "monitor",
-//			ContainerPort: 8222,
-//		},
-//	}
-//
-//	expected.HeadlessService.Value.Spec.Ports = []corev1.ServicePort{
-//		{
-//			Name:       "nats",
-//			Port:       4222,
-//			TargetPort: intstr.FromString("nats"),
-//		},
-//		{
-//			Name:       "cluster",
-//			Port:       6222,
-//			TargetPort: intstr.FromString("cluster"),
-//		},
-//		{
-//			Name:       "monitor",
-//			Port:       8222,
-//			TargetPort: intstr.FromString("monitor"),
-//		},
-//	}
-//
-//	RenderAndCheck(t, test, expected)
-//}
-//
-//func TestConfigOptions(t *testing.T) {
-//	t.Parallel()
-//	test := DefaultTest()
-//	test.Values = `
-//config:
-//  jetstream:
-//    enabled: true
-//    fileStore:
-//      dir: /mnt
-//      pvc:
-//        size: 5Gi
-//        storageClassName: gp3
-//      maxSize: 1Gi
-//    memoryStore:
-//      enabled: true
-//      maxSize: 2Gi
-//  cluster:
-//    enabled: true
-//    replicas: 2
-//  resolver:
-//    enabled: true
-//    dir: /mnt/resolver
-//    pvc:
-//      size: 5Gi
-//      storageClassName: gp3
-//`
-//	expected := DefaultResources(t, test)
-//
-//	expected.Conf.Value["cluster"] = map[string]any{
-//		"name":         "nats",
-//		"no_advertise": true,
-//		"port":         int64(6222),
-//		"routes": []any{
-//			"nats://nats-0.nats-headless:6222",
-//			"nats://nats-1.nats-headless:6222",
-//		},
-//	}
-//	expected.Conf.Value["jetstream"] = map[string]any{
-//		"max_file_store":   int64(1073741824),
-//		"max_memory_store": int64(2147483648),
-//		"store_dir":        "/mnt",
-//	}
-//	expected.Conf.Value["resolver"] = map[string]any{
-//		"dir": "/mnt/resolver",
-//	}
-//
-//	replicas2 := int32(2)
-//	expected.StatefulSet.Value.Spec.Replicas = &replicas2
-//
-//	resource5Gi, _ := resource.ParseQuantity("5Gi")
-//	storageClassGp3 := "gp3"
-//	expected.StatefulSet.Value.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
-//		{
-//			ObjectMeta: v1.ObjectMeta{
-//				Name: test.FullName + "-js",
-//			},
-//			Spec: corev1.PersistentVolumeClaimSpec{
-//				AccessModes: []corev1.PersistentVolumeAccessMode{
-//					"ReadWriteOnce",
-//				},
-//				Resources: corev1.ResourceRequirements{
-//					Requests: corev1.ResourceList{
-//						"storage": resource5Gi,
-//					},
-//				},
-//				StorageClassName: &storageClassGp3,
-//			},
-//		},
-//		{
-//			ObjectMeta: v1.ObjectMeta{
-//				Name: test.FullName + "-resolver",
-//			},
-//			Spec: corev1.PersistentVolumeClaimSpec{
-//				AccessModes: []corev1.PersistentVolumeAccessMode{
-//					"ReadWriteOnce",
-//				},
-//				Resources: corev1.ResourceRequirements{
-//					Requests: corev1.ResourceList{
-//						"storage": resource5Gi,
-//					},
-//				},
-//				StorageClassName: &storageClassGp3,
-//			},
-//		},
-//	}
-//
-//	vm := expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].VolumeMounts
-//	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].VolumeMounts = append(vm, corev1.VolumeMount{
-//		MountPath: "/mnt/jetstream",
-//		Name:      test.FullName + "-js",
-//	}, corev1.VolumeMount{
-//		MountPath: "/mnt/resolver",
-//		Name:      test.FullName + "-resolver",
-//	})
-//
-//	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{
-//		{
-//			Name:          "nats",
-//			ContainerPort: 4222,
-//		},
-//		{
-//			Name:          "cluster",
-//			ContainerPort: 6222,
-//		},
-//		{
-//			Name:          "monitor",
-//			ContainerPort: 8222,
-//		},
-//	}
-//
-//	expected.HeadlessService.Value.Spec.Ports = []corev1.ServicePort{
-//		{
-//			Name:       "nats",
-//			Port:       4222,
-//			TargetPort: intstr.FromString("nats"),
-//		},
-//		{
-//			Name:       "cluster",
-//			Port:       6222,
-//			TargetPort: intstr.FromString("cluster"),
-//		},
-//		{
-//			Name:       "monitor",
-//			Port:       8222,
-//			TargetPort: intstr.FromString("monitor"),
-//		},
-//	}
-//
-//	RenderAndCheck(t, test, expected)
-//}
-//
+import (
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"testing"
+)
+
+func TestDisableSingleReplicaMode(t *testing.T) {
+	t.Parallel()
+	test := DefaultTest()
+	test.Values = `
+config:
+  kms:
+    enabled: true
+    key:
+      url: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
+  dataSources:
+    postgres:
+      enabled: true
+      dsn: postgres://localhost:5432/localdb
+    prometheus:
+      enabled: true
+      url: https://localhost:9090
+singleReplicaMode:
+  enabled: false
+`
+	expected := DefaultResources(t, test)
+	expected.Conf.Value["kms"] = map[string]any{
+		"key_url": "base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=",
+	}
+	expected.Conf.Value["data_sources"] = map[string]any{
+		"postgres": map[string]any{
+			"dsn": "postgres://localhost:5432/localdb",
+		},
+		"prometheus": map[string]any{
+			"url": "https://localhost:9090",
+		},
+	}
+
+	expected.Deployment.Value.Spec.Strategy = appsv1.DeploymentStrategy{}
+
+	pts := &expected.Deployment.Value.Spec.Template.Spec
+	pts.Volumes = append(pts.Volumes[:2], pts.Volumes[4:]...)
+	pts.Volumes[1].PersistentVolumeClaim = nil
+	pts.Volumes[1].EmptyDir = &corev1.EmptyDirVolumeSource{}
+
+	ctr := &pts.Containers[0]
+	ctr.VolumeMounts = append(ctr.VolumeMounts[:2], ctr.VolumeMounts[4:]...)
+
+	expected.SingleReplicaModeDataPvc.HasValue = false
+	expected.SingleReplicaModePostgresPvc.HasValue = false
+	expected.SingleReplicaModePrometheusPvc.HasValue = false
+
+	RenderAndCheck(t, test, expected)
+}
+
+func TestConfigOptions(t *testing.T) {
+	t.Parallel()
+	test := DefaultTest()
+	test.Values = `
+config:
+  server:
+    url: https://cp.nats.io
+    httpPort: 8081
+  systems:
+    TestContents:
+      url: nats://localhost:4222
+      systemUserCreds:
+        contents: creds
+      operatorSigningKey:
+        contents: nk
+    TestSecretName:
+      url: nats://localhost:4222
+      systemUserCreds:
+        secretName: system-creds
+      operatorSigningKey:
+        secretName: system-nk
+  kms:
+    key:
+      secretName: key
+    rotatedKeys:
+    - url: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
+    - secretName: rotated-key
+`
+	expected := DefaultResources(t, test)
+	expected.Conf.Value["server"] = map[string]any{
+		"url":       "https://cp.nats.io",
+		"http_addr": ":8081",
+	}
+	expected.Conf.Value["systems"] = map[string]any{
+		"TestContents": map[string]any{
+			"url":                       "nats://localhost:4222",
+			"system_user_creds_file":    "/etc/syn-cp/contents/TestContents.sys-user.creds",
+			"operator_signing_key_file": "/etc/syn-cp/contents/TestContents.operator-sk.nk",
+		},
+		"TestSecretName": map[string]any{
+			"url":                       "nats://localhost:4222",
+			"system_user_creds_file":    "/etc/syn-cp/systems/TestSecretName/sys-user-creds/sys-user.creds",
+			"operator_signing_key_file": "/etc/syn-cp/systems/TestSecretName/operator-sk/operator-sk.nk",
+		},
+	}
+	expected.Conf.Value["kms"] = map[string]any{
+		"key_url": "file:///etc/syn-cp/kms/key.enc",
+		"rotated_key_urls": []any{
+			"base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=",
+			"file:///etc/syn-cp/kms/rotated-key-1/key.enc",
+		},
+	}
+
+	expected.ContentsSecret.HasValue = true
+	expected.ContentsSecret.Value.StringData = map[string]string{
+		"TestContents.sys-user.creds": "creds",
+		"TestContents.operator-sk.nk": "nk",
+	}
+
+	pts := &expected.Deployment.Value.Spec.Template.Spec
+	pts.Volumes = append(pts.Volumes, corev1.Volume{
+		Name: "contents",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: "control-plane-contents",
+			},
+		},
+	})
+
+	ctr := &pts.Containers[0]
+	ctr.VolumeMounts = append(ctr.VolumeMounts, corev1.VolumeMount{
+		MountPath: "/etc/syn-cp/contents",
+		Name:      "contents",
+	})
+
+	ctr.Ports[0].ContainerPort = 8081
+
+	RenderAndCheck(t, test, expected)
+}
+
 //func TestConfigMergePatch(t *testing.T) {
 //	t.Parallel()
 //	test := DefaultTest()
@@ -382,7 +262,7 @@ package test
 //	storageClassGp3 := "gp3"
 //	expected.StatefulSet.Value.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
 //		{
-//			ObjectMeta: v1.ObjectMeta{
+//			ObjectMeta: corev1.ObjectMeta{
 //				Name: test.FullName + "-js",
 //			},
 //			Spec: corev1.PersistentVolumeClaimSpec{
@@ -399,7 +279,7 @@ package test
 //			},
 //		},
 //		{
-//			ObjectMeta: v1.ObjectMeta{
+//			ObjectMeta: corev1.ObjectMeta{
 //				Name: test.FullName + "-resolver",
 //			},
 //			Spec: corev1.PersistentVolumeClaimSpec{
@@ -787,7 +667,7 @@ package test
 //	resource10Gi, _ := resource.ParseQuantity("10Gi")
 //	expected.StatefulSet.Value.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{
 //		{
-//			ObjectMeta: v1.ObjectMeta{
+//			ObjectMeta: corev1.ObjectMeta{
 //				Name: test.FullName + "-js",
 //			},
 //			Spec: corev1.PersistentVolumeClaimSpec{
@@ -811,7 +691,7 @@ package test
 //	test := DefaultTest()
 //	test.Values = `
 //extraResources:
-//- apiVersion: v1
+//- apiVersion: corev1
 //  kind: Service
 //  metadata:
 //    name:
@@ -831,7 +711,7 @@ package test
 //          port: 7222
 //          targetPort: gateway
 //- $tplYaml: |
-//    apiVersion: v1
+//    apiVersion: corev1
 //    kind: ConfigMap
 //    metadata:
 //      name: {{ include "scp.fullname" $ }}-extra

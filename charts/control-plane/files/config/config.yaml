@@ -11,52 +11,50 @@ server:
 ############################################################
 # systems
 ############################################################
-{{- $hasSystems := false }}
-systems:
+{{- $systems := dict }}
 {{- range $systemName, $system := .systems }}
-{{- if .enabled }}
-{{- $hasSystems = true }}
-  {{ $systemName | quote }}:
-    {{- include "scp.loadMergePatch" (merge (dict "file" "config/system.yaml" "ctx" (merge (dict "systemName" $systemName "system" $system) $)) $system) | nindent 4 }}
+  {{- $system := include "scp.loadMergePatch" (merge (dict "file" "config/system.yaml" "ctx" (merge (dict "systemName" $systemName "system" $system) $)) $system) | fromYaml }}
+  {{- if $system }}
+    {{- $_ := set $systems $systemName $system }}
+  {{- end }}
 {{- end }}
-{{- end }}
-{{- if not $hasSystems }}
-  {}
+{{- if $systems }}
+systems:
+  {{- toYaml $systems | nindent 2 }}
 {{- end }}
 
 ############################################################
 # kms
 ############################################################
 {{- with .kms }}
-{{- if .enabled }}
+{{- $kms := include "scp.loadMergePatch" (merge (dict "file" "config/kms.yaml" "ctx" $) .) | fromYaml }}
+{{- if $kms }}
 kms:
-  {{- include "scp.loadMergePatch" (merge (dict "file" "config/kms.yaml" "ctx" $) .) | nindent 2 }}
+  {{- toYaml $kms | nindent 2 }}
 {{- end }}
 {{- end }}
 
 ############################################################
 # data sources
 ############################################################
-{{ $hasDataSources := false }}
-data_sources:
 {{- with .dataSources }}
+{{- $dataSources := dict }}
 {{- with .postgres }}
-{{- if .enabled }}
-{{- $hasDataSources = true }}
-  postgres:
-    {{- include "scp.loadMergePatch" (merge (dict "file" "config/postgres.yaml" "ctx" $) .) | nindent 4 }}
-{{- end }}
+  {{- $postgres := include "scp.loadMergePatch" (merge (dict "file" "config/postgres.yaml" "ctx" $) .) | fromYaml }}
+  {{- if $postgres}}
+    {{- $_ := set $dataSources "postgres" $postgres }}
+  {{- end }}
 {{- end }}
 {{- with .prometheus }}
-{{- if .enabled }}
-{{- $hasDataSources = true }}
-  prometheus:
-    {{- include "scp.loadMergePatch" (merge (dict "file" "config/prometheus.yaml" "ctx" $) .) | nindent 4 }}
+  {{- $prometheus := include "scp.loadMergePatch" (merge (dict "file" "config/prometheus.yaml" "ctx" $) .) | fromYaml }}
+  {{- if $prometheus}}
+    {{- $_ := set $dataSources "prometheus" $prometheus }}
+  {{- end }}
 {{- end }}
+{{- if $dataSources }}
+data_sources:
+  {{- toYaml $dataSources | nindent 2 }}
 {{- end }}
-{{- end }}
-{{- if not $hasDataSources }}
-  {}
 {{- end }}
 
 ############################################################

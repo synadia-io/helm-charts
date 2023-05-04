@@ -68,9 +68,7 @@ config:
 
   # systems takes a map of System Name : System
   systems:
-    Default:
-      # enable/disable the system
-      enabled: false
+    SystemName:
       # NATS server URL
       url:
       # System User Creds
@@ -81,7 +79,7 @@ config:
         secretName:
         # defaults to /etc/syn-cp/systems/<system-name>/sys-user-creds
         dir:
-        key: system.creds
+        key: sys-user.creds
       # Operator Signing Key
       operatorSigningKey:
         # set contents in order to create a secret with the nkey file contents
@@ -90,7 +88,7 @@ config:
         secretName:
         # defaults to to /etc/syn-cp/systems/<system-name>/operator-sk
         dir:
-        key: operator.nk
+        key: operator-sk.nk
       # TLS options
       tls:
         enabled: false
@@ -110,15 +108,13 @@ config:
       patch: []
 
   kms:
-    # enable/disable explicit KMS configuration
-    # when set to false, a default KMS key will be generated and written to the data PVC 
-    enabled: false
+    # if the key is not configured, a default KMS key will be generated and written to the data PVC
     key:
       # set to use a KMS URL
       url:
       # set secretName and key in order to mount an existing secret to dir
       secretName:
-      dir: /etc/syn-cp/kms/key
+      dir: /etc/syn-cp/kms
       key: key.enc
 
     # rotatedKeys is a list of:
@@ -137,8 +133,6 @@ config:
 
   dataSources:
     postgres:
-      # enable/disable external PostgreSQL
-      enabled: false
       # DSN to external PostgreSQL, TLS settings will be automatically added if supplied
       dsn:
       tls:
@@ -166,8 +160,6 @@ config:
       patch: []
 
     prometheus:
-      # enable/disable external Prometheus
-      enabled: false
       # URL to external Prometheus
       url:
       tls:

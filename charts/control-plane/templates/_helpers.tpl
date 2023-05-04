@@ -58,7 +58,16 @@ Set default values.
       {{- $secret := get $system $secretKey }}
       {{- if $secret }}
         {{- $_ := set $secret "dir" ($secret.dir | default (printf "/etc/syn-cp/systems/%s/%s" $systemName $secretVal)) }}
-        {{- if and $system.enabled (ne $secretKey "tls") $secret.contents }}
+        {{- if eq $secretKey "systemUserCreds" -}}
+          {{- $_ := merge $secret (dict "key" "sys-user.creds") }}
+        {{- end -}}
+        {{- if eq $secretKey "operatorSigningKey" -}}
+          {{- $_ := merge $secret (dict "key" "operator-sk.nk") }}
+        {{- end -}}
+        {{- if eq $secretKey "tls" -}}
+          {{- $_ := merge $secret (dict "ca" "tls.ca") }}
+        {{- end -}}
+        {{- if and (ne $secretKey "tls") $secret.contents }}
           {{- $hasContentsSecret = true }}
         {{- end }}
       {{- end }}
@@ -68,6 +77,7 @@ Set default values.
 
   {{- range $k, $v := .Values.config.kms.rotatedKeys }}
     {{- $_ := set $v "dir" ($v.dir | default (printf "/etc/syn-cp/kms/rotated-key-%d" $k)) }}
+    {{- $_ := set $v "key" ($v.key | default "key.enc") }}
   {{- end }}
 
   {{- with .Values.config }}
@@ -80,14 +90,14 @@ Set default values.
       {{- fail "deployment.replicas must be 1 when singleReplicaMode is enabled" }}
     {{- end }}
   {{- else }}
-    {{- if not .config.kms }}
-      {{- fail "config.kms must enabled singleReplicaMode is disabled" }}
+    {{- if or (not .config.kms) (not .config.kms.key_url) }}
+      {{- fail "config.kms.key must configured singleReplicaMode is disabled" }}
     {{- end }}
-    {{- if not .config.data_sources.postgres }}
-      {{- fail "config.dataSources.postgres must be enabled when singleReplicaMode is disabled" }}
+    {{- if or (not .config.data_sources.postgres) (not .config.data_sources.postgres.dsn) }}
+      {{- fail "config.dataSources.postgres must be configured when singleReplicaMode is disabled" }}
     {{- end }}
-    {{- if not .config.data_sources.prometheus }}
-      {{- fail "config.dataSources.prometheus must be enabled when singleReplicaMode is disabled" }}
+    {{- if or (not .config.data_sources.prometheus) (not .config.data_sources.prometheus.url) }}
+      {{- fail "config.dataSources.prometheus must be configured when singleReplicaMode is disabled" }}
     {{- end }}
   {{- end }}
 
@@ -215,6 +225,6 @@ output: JSON encoded map with 1 key:
 */}}
 {{- define "scp.loadMergePatch" -}}
 {{- $doc := tpl (.ctx.Files.Get (printf "files/%s" .file)) .ctx | fromYaml | default dict -}}
-{{- $doc = mergeOverwrite $doc (deepCopy .merge) -}}
-{{- get (include "jsonpatch" (dict "doc" $doc "patch" .patch) | fromJson ) "doc" | toYaml -}}
+{{- $doc = mergeOverwrite $doc (deepCopy (.merge | default dict)) -}}
+{{- get (include "jsonpatch" (dict "doc" $doc "patch" (.patch | default list)) | fromJson ) "doc" | toYaml -}}
 {{- end }}
