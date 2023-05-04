@@ -156,7 +156,6 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 							Containers: []corev1.Container{
 								{
 									Image:           dd.ControlPlaneImage,
-									ImagePullPolicy: corev1.PullAlways,
 									Name:            "syn-cp",
 									Args: []string{
 										"server",

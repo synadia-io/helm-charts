@@ -1,10 +1,10 @@
 apiVersion: v2
 name: control-plane
-description: Synadia Helix Chart
-home: https://github.com/connecteverything/helix
+description: Synadia Control Plane
+home: https://www.synadia.com/
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 0.2.0-rc.0
+appVersion: 0.2.0-rc.0
 maintainers:
 - name: Synadia
   url: https://github.com/ConnectEverything

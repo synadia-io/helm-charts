@@ -1,61 +1,49 @@
+# Synadia Control Plane
+
 ## Config Generation
 
-The [config generation script](https://github.com/connecteverything/helix-alpha#config-generation) can do much of the heavy lifting to populate values for your Helix deployment.
+The [config generation script](https://github.com/ConnectEverything/control-plane-beta#config-generation) can do much of the heavy lifting to populate values for your Synadia Control Plane deployment.
 
 ### Chart Values
 
-Details in the [values.yaml](values.yaml)
+Details in [values.yaml](values.yaml)
 
 ### Example
 
-values.yaml
-```
-helix:
-  config:
-    public_url: "https://helix.example.com"
-    nats_systems:
-      - name: "nats-us-east-1"
-        urls: "nats://nats-00.us-east-1a.example.com,nats://nats-01.us-east-1a.example.com"
-        system_account_creds_file: "/conf/helix/nsc/nats-us-east-1/sys.creds"
-        operator_signing_key_file: "/conf/helix/nsc/nats-us-east-1/operator.nk"
-        
-embeddedPostgres:
-  persistent: true
-  pvc:
-    storageClassName: "gp3"
-    size: "15Gi"
+**values.yaml**
 
-embeddedPrometheus:
-  persistent: true
-  pvc:
-    storageClassName: "gp3"
+```yaml
+config:
+  server:
+    url: https://cp.nats.io
+  systems:
+    MySystem:
+      url: nats://demo.nats.io
 
 ingress:
   enabled: true
-  className: "nginx"
+  className: nginx
   hosts:
-    - host: helix.example.com
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls:
-    - hosts:
-        - helix.example.com
-      secretName: helix-tls
+  - host: cp.nats.io
+  tlsSecretName: ingress-tls
 ```
 
-values-secrets.yaml
-```
-imageCredentials:
-  username: "synadia"
-  password: "guest"
+**values-secrets.yaml**
 
-helix:
-  secrets:
-    nats_systems:
-      nats-us-east-1:
-        operator.nk: "k9yMHOqO1V8U24A+8ntyqY8lkvgo9fsGPaxUrQ0cDdgYcfZ2EAA7XdMAxvs6RY4C+c3zX0dYtJqBlvII=="
-        sys.creds: "k8a8MyIcyQEofyF1W0hbn2BFFLh9236cSeXT2i4OggAndas5KRb5bI2doEtw9p03CPFr7o1ifaLCR6Vx..."
+```yaml
+imagePullSecret:
+  username: my-user
+  password: my-password
+
+config:
+  systems:
+    MySystem:
+      systemUserCreds:
+        contents: |
+          paste system account user creds file contents here
+      operatorSigningKey:
+        contents: |
+          paste operator signing key here
 ```
 
 ### Deploy the Helm Chart
@@ -63,17 +51,19 @@ helix:
 ```bash
 helm repo add synadia https://connecteverything.github.io/helm-charts
 helm repo update
-helm upgrade --install helix -n helix --create-namespace -f values.yaml -f values-secrets.yaml synadia/helix
+helm upgrade --install control-plane -n syn-cp --create-namespace -f values.yaml -f values-secrets.yaml synadia/control-plane
 ```
 
 ### Login Details
 
 On first run, login credentials will be visible in the logs
-```
-kubectl logs -n helix deployment/helix
+
+```bash
+kubectl logs -n syn-cp deployment/control-plane
 ```
 
 ### Uninstall Chart and Purge Data
-```
-helm uninstall -n helix helix
+
+```bash
+helm uninstall -n syn-cp control-plane
 ```

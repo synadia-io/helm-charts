@@ -225,10 +225,8 @@ podTemplate:
 container:
   image:
     repository: control-plane
-    # TODO: change this to a version tag after next beta release
-    tag: branch-main
-    # TODO: unset this after next beta release
-    pullPolicy: Always
+    tag: v0.2.0-rc.0
+    pullPolicy:
     # defaults to imagePullSecret.registry if imagePullSecret is enabled
     # defaults to global.registry if imagePullSecret is disabled
     registry:
