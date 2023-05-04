@@ -1,10 +1,11 @@
 package test
 
 import (
-	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"strings"
 	"testing"
+
+	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

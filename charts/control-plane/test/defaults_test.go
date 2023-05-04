@@ -1,9 +1,10 @@
 package test
 
 import (
-	"k8s.io/apimachinery/pkg/api/resource"
 	"sync"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
