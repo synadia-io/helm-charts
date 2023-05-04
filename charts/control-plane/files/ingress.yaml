@@ -22,7 +22,7 @@ spec:
           service:
             name: {{ $.Values.service.name }}
             port:
-              {{- if .config.server.tls }}
+              {{- if $.config.server.tls }}
               name: https
               {{- else }}
               name: http

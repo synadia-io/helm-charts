@@ -109,6 +109,9 @@ Set default values.
 Common labels
 */}}
 {{- define "scp.labels" -}}
+{{- with .Values.global.labels -}}
+{{ toYaml . }}
+{{ end -}}
 helm.sh/chart: {{ include "scp.chart" . }}
 {{ include "scp.selectorLabels" . }}
 {{- if .Chart.AppVersion }}

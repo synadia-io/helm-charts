@@ -23,6 +23,9 @@ config:
     prometheus:
       enabled: true
       url: https://localhost:9090
+deployment:
+  replicas:
+    2
 singleReplicaMode:
   enabled: false
 `
@@ -39,7 +42,9 @@ singleReplicaMode:
 		},
 	}
 
+	two := int32(2)
 	expected.Deployment.Value.Spec.Strategy = appsv1.DeploymentStrategy{}
+	expected.Deployment.Value.Spec.Replicas = &two
 
 	pts := &expected.Deployment.Value.Spec.Template.Spec
 	pts.Volumes = append(pts.Volumes[:2], pts.Volumes[4:]...)

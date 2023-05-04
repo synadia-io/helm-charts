@@ -154,8 +154,9 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
 								{
-									Image: dd.ControlPlaneImage,
-									Name:  "syn-cp",
+									Image:           dd.ControlPlaneImage,
+									ImagePullPolicy: corev1.PullAlways,
+									Name:            "syn-cp",
 									Ports: []corev1.ContainerPort{
 										{
 											Name:          "http",
@@ -255,13 +256,13 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 					APIVersion: "networking.k8s.io/v1",
 				},
 				ObjectMeta: v1.ObjectMeta{
-					Name:   fullName + "-ws",
+					Name:   fullName,
 					Labels: cpLabels(),
 				},
 				Spec: networkingv1.IngressSpec{
 					Rules: []networkingv1.IngressRule{
 						{
-							Host: "demo.nats.io",
+							Host: "cp.nats.io",
 							IngressRuleValue: networkingv1.IngressRuleValue{
 								HTTP: &networkingv1.HTTPIngressRuleValue{
 									Paths: []networkingv1.HTTPIngressPath{
@@ -272,7 +273,7 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 												Service: &networkingv1.IngressServiceBackend{
 													Name: fullName,
 													Port: networkingv1.ServiceBackendPort{
-														Name: "websocket",
+														Name: "http",
 													},
 												},
 											},

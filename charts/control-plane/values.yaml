@@ -24,6 +24,7 @@ global:
 # will default to imagePullSecret.registry
 imagePullSecret:
   enabled: true
+  # TODO: transition to registry.synadia.io once ready
   registry: registry.helix-dev.synadia.io
   username:
   password:
@@ -219,15 +220,17 @@ podTemplate:
   patch: []
 
 ############################################################
-# deployment -> pod template -> scp container
+# deployment -> pod template -> syn-cp container
 ############################################################
 container:
   image:
     repository: control-plane
+    # TODO: change this to a version tag after next beta release
     tag: branch-main
-    pullPolicy:
-    # defaults to imagePullSecret.registry (if imagePullSecret is enabled)
-    # or global.registry (if imagePullSecret is disabled)
+    # TODO: unset this after next beta release
+    pullPolicy: Always
+    # defaults to imagePullSecret.registry if imagePullSecret is enabled
+    # defaults to global.registry if imagePullSecret is disabled
     registry:
 
   # map with key as env var name, value can be string or map
