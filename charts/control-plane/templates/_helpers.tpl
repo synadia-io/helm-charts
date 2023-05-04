@@ -165,34 +165,24 @@ List of external secretNames
         {{- end }}
       {{- end }}
     {{- end }}
-    {{- with .dataSources.postgres }}
-      {{- if .enabled }}
-        {{- with .tls }}
-          {{- if and .enabled .secretName }}
-            {{- $secrets = append $secrets (merge (dict "name" "postgres-tls") .) }}
-          {{- end }}
-        {{- end }}
+    {{- with .dataSources.postgres.tls }}
+      {{- if and .enabled .secretName }}
+        {{- $secrets = append $secrets (merge (dict "name" "postgres-tls") .) }}
       {{- end }}
     {{- end }}
-    {{- with .dataSources.prometheus }}
-      {{- if .enabled }}
-        {{- with .tls }}
-          {{- if and .enabled .secretName }}
-            {{- $secrets = append $secrets (merge (dict "name" "prometheus-tls") .) }}
-          {{- end }}
-        {{- end }}
+    {{- with .dataSources.prometheus.tls }}
+      {{- if and .enabled .secretName }}
+        {{- $secrets = append $secrets (merge (dict "name" "prometheus-tls") .) }}
       {{- end }}
     {{- end }}
     {{- range $systemName, $system := .systems }}
-      {{- if .enabled }}
-        {{- range $secretKey, $secretVal := dict "systemUserCreds" "sys-user-creds" "operatorSigningKey" "operator-sk" "tls" "cert" }}
+      {{- range $secretKey, $secretVal := dict "systemUserCreds" "sys-user-creds" "operatorSigningKey" "operator-sk" "tls" "tls" }}
         {{- $secret := get $system $secretKey }}
           {{- if and $secret $secret.secretName (or (ne $secretKey "tls") ($secret.enabled)) }}
-            {{- $secrets = append $secrets (merge (dict "name" printf ("system-%s-%s" $systemName $secretVal)) $secret) }}
+            {{- $secrets = append $secrets (merge (dict "name" (printf "system-%s-%s" $systemName $secretVal)) $secret) }}
           {{- end }}
         {{- end }}
       {{- end }}
-    {{- end }}
   {{- end }}
 {{- toJson (dict "secretNames" $secrets) }}
 {{- end }}

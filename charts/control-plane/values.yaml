@@ -48,7 +48,7 @@ config:
     # port for HTTP server to listen on
     httpPort: 8080
     # port for HTTPS server to listen on, TLS must be enabled
-    httpsPort: 8433
+    httpsPort: 8443
     # TLS options
     tls:
       enabled: false
@@ -166,7 +166,7 @@ config:
         enabled: false
         # set secretName in order to mount an existing secret to dir
         secretName:
-        dir: /etc/syn-cp/certs/postgres
+        dir: /etc/syn-cp/certs/prometheus
         cert:
         key:
         ca: tls.ca

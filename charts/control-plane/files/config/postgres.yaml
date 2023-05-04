@@ -4,8 +4,8 @@
   {{- $dsn := .dsn }}
   {{- if and .tls.enabled .tls.addToDsn }}
     {{- $dsnMap := urlParse .dsn }}
-    {{- $dsnQuery := $dsn.query | default "" }}
-    {{- $dsnQuery = printf "%s%ssslmode=%s" $dsnQuery (ternary "" "&" (not $dsnQuery)) .addToDsnSslMode }}
+    {{- $dsnQuery := $dsnMap.query | default "" }}
+    {{- $dsnQuery = printf "%s%ssslmode=%s" $dsnQuery (ternary "" "&" (not $dsnQuery)) .tls.addToDsnSslMode }}
 
     {{- with .tls }}
       {{- if .secretName }}
