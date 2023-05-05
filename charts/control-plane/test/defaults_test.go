@@ -86,6 +86,8 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 	replicas1 := int32(1)
 	falseBool := false
 	prefixPath := networkingv1.PathTypePrefix
+	fsGroup := int64(1000)
+	fsGroupChangePolicy := corev1.FSGroupChangeOnRootMismatch
 
 	return &Resources{
 		Conf: Resource[map[string]any]{
@@ -155,8 +157,8 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
 								{
-									Image:           dd.ControlPlaneImage,
-									Name:            "syn-cp",
+									Image: dd.ControlPlaneImage,
+									Name:  "syn-cp",
 									Args: []string{
 										"server",
 										"start",
@@ -194,6 +196,10 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 								{
 									Name: "control-plane-regcred",
 								},
+							},
+							SecurityContext: &corev1.PodSecurityContext{
+								FSGroup:             &fsGroup,
+								FSGroupChangePolicy: &fsGroupChangePolicy,
 							},
 							Volumes: []corev1.Volume{
 								{

@@ -23,6 +23,10 @@ spec:
   {{- end }}
   {{- end }}
 
+  securityContext:
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
+
   {{- with .Values.serviceAccount }}
   {{- if .enabled }}
   serviceAccountName: {{ .name | quote }}
