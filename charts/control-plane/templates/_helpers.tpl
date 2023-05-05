@@ -181,11 +181,13 @@ List of external secretNames
     {{- range $systemName, $system := .systems }}
       {{- range $secretKey, $secretVal := dict "systemUserCreds" "sys-user-creds" "operatorSigningKey" "operator-sk" "tls" "tls" }}
         {{- $secret := get $system $secretKey }}
-          {{- if and $secret $secret.secretName (or (ne $secretKey "tls") ($secret.enabled)) }}
+        {{- if $secret }}
+          {{- if and $secret.secretName (or (ne $secretKey "tls") ($secret.enabled)) }}
             {{- $secrets = append $secrets (merge (dict "name" (printf "system-%s-%s" $systemName $secretVal)) $secret) }}
           {{- end }}
         {{- end }}
       {{- end }}
+    {{- end }}
   {{- end }}
 {{- toJson (dict "secretNames" $secrets) }}
 {{- end }}
