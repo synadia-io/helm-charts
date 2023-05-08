@@ -24,3 +24,6 @@
 
 # template tests
 /test
+
+# docs snc
+/docs-sync.yaml

@@ -1,0 +1,3 @@
+ConnectEverything/synadia-docs:
+- source: charts/control-plane/README.md
+  dest: pages/control-plane/deployment/helm.md
