@@ -1,7 +1,7 @@
 {{- include "scp.defaultValues" . }}
 {{- with .Values.singleReplicaMode }}
 {{- if .enabled }}
-{{- with .dataPvc }}
+{{- with .encryptionPvc }}
 {{- if .enabled }}
 {{- include "scp.loadMergePatch" (merge (dict "file" "pvc.yaml" "ctx" (merge (dict "pvc" .) $)) .) }}
 {{- end }}

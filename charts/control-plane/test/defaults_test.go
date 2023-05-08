@@ -181,6 +181,10 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 											Name:      "data",
 										},
 										{
+											MountPath: "/data/encryption",
+											Name:      "encryption",
+										},
+										{
 											MountPath: "/data/postgres",
 											Name:      "postgres",
 										},
@@ -213,8 +217,14 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 								{
 									Name: "data",
 									VolumeSource: corev1.VolumeSource{
+										EmptyDir: &corev1.EmptyDirVolumeSource{},
+									},
+								},
+								{
+									Name: "encryption",
+									VolumeSource: corev1.VolumeSource{
 										PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-											ClaimName: "control-plane-data",
+											ClaimName: "control-plane-encryption",
 										},
 									},
 								},
@@ -336,7 +346,7 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 				},
 			},
 		},
-		SingleReplicaModeDataPvc: Resource[corev1.PersistentVolumeClaim]{
+		SingleReplicaModeEncryptionPvc: Resource[corev1.PersistentVolumeClaim]{
 			ID:       dr.ServiceAccount.ID,
 			HasValue: true,
 			Value: corev1.PersistentVolumeClaim{
@@ -345,7 +355,7 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 					APIVersion: "v1",
 				},
 				ObjectMeta: v1.ObjectMeta{
-					Name:   fullName + "-data",
+					Name:   fullName + "-encryption",
 					Labels: cpLabels(),
 				},
 				Spec: corev1.PersistentVolumeClaimSpec{

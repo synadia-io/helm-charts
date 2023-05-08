@@ -48,14 +48,12 @@ singleReplicaMode:
 	expected.Deployment.Value.Spec.Replicas = &two
 
 	pts := &expected.Deployment.Value.Spec.Template.Spec
-	pts.Volumes = append(pts.Volumes[:2], pts.Volumes[4:]...)
-	pts.Volumes[1].PersistentVolumeClaim = nil
-	pts.Volumes[1].EmptyDir = &corev1.EmptyDirVolumeSource{}
+	pts.Volumes = append(pts.Volumes[:2], pts.Volumes[5:]...)
 
 	ctr := &pts.Containers[0]
-	ctr.VolumeMounts = append(ctr.VolumeMounts[:2], ctr.VolumeMounts[4:]...)
+	ctr.VolumeMounts = append(ctr.VolumeMounts[:2], ctr.VolumeMounts[5:]...)
 
-	expected.SingleReplicaModeDataPvc.HasValue = false
+	expected.SingleReplicaModeEncryptionPvc.HasValue = false
 	expected.SingleReplicaModePostgresPvc.HasValue = false
 	expected.SingleReplicaModePrometheusPvc.HasValue = false
 
@@ -249,15 +247,13 @@ singleReplicaMode:
 			expected.Deployment.Value.Spec.Strategy = appsv1.DeploymentStrategy{}
 
 			pts := &expected.Deployment.Value.Spec.Template.Spec
-			pts.Volumes = append(pts.Volumes[:2], pts.Volumes[4:]...)
-			pts.Volumes[1].PersistentVolumeClaim = nil
-			pts.Volumes[1].EmptyDir = &corev1.EmptyDirVolumeSource{}
+			pts.Volumes = append(pts.Volumes[:2], pts.Volumes[5:]...)
 
 			ctr := &pts.Containers[0]
-			ctr.VolumeMounts = append(ctr.VolumeMounts[:2], ctr.VolumeMounts[4:]...)
+			ctr.VolumeMounts = append(ctr.VolumeMounts[:2], ctr.VolumeMounts[5:]...)
 			ctr.VolumeMounts[1].MountPath = "/mnt/data"
 
-			expected.SingleReplicaModeDataPvc.HasValue = false
+			expected.SingleReplicaModeEncryptionPvc.HasValue = false
 			expected.SingleReplicaModePostgresPvc.HasValue = false
 			expected.SingleReplicaModePrometheusPvc.HasValue = false
 

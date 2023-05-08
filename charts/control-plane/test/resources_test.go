@@ -30,7 +30,7 @@ imagePullSecret:
 		&expected.Deployment.Value.ObjectMeta,
 		&expected.Deployment.Value.Spec.Template.ObjectMeta,
 		&expected.Service.Value.ObjectMeta,
-		&expected.SingleReplicaModeDataPvc.Value.ObjectMeta,
+		&expected.SingleReplicaModeEncryptionPvc.Value.ObjectMeta,
 		&expected.SingleReplicaModePostgresPvc.Value.ObjectMeta,
 		&expected.SingleReplicaModePrometheusPvc.Value.ObjectMeta,
 	}
@@ -181,7 +181,7 @@ serviceAccount:
       labels:
         test: test
 singleReplicaMode:
-  dataPvc:
+  encryptionPvc:
     merge:
       metadata:
         labels:
@@ -224,7 +224,7 @@ serviceAccount:
   enabled: true
   patch: [{op: add, path: /metadata/labels/test, value: test}]
 singleReplicaMode:
-  dataPvc:
+  encryptionPvc:
     patch: [{op: add, path: /metadata/labels/test, value: test}]
   postgresPvc:
     patch: [{op: add, path: /metadata/labels/test, value: test}]
@@ -247,7 +247,7 @@ singleReplicaMode:
 				&expected.ImagePullSecret.Value.ObjectMeta,
 				&expected.Service.Value.ObjectMeta,
 				&expected.ServiceAccount.Value.ObjectMeta,
-				&expected.SingleReplicaModeDataPvc.Value.ObjectMeta,
+				&expected.SingleReplicaModeEncryptionPvc.Value.ObjectMeta,
 				&expected.SingleReplicaModePostgresPvc.Value.ObjectMeta,
 				&expected.SingleReplicaModePrometheusPvc.Value.ObjectMeta,
 			}

@@ -25,7 +25,7 @@ type Resources struct {
 	Ingress                        Resource[networkingv1.Ingress]
 	Service                        Resource[corev1.Service]
 	ServiceAccount                 Resource[corev1.ServiceAccount]
-	SingleReplicaModeDataPvc       Resource[corev1.PersistentVolumeClaim]
+	SingleReplicaModeEncryptionPvc Resource[corev1.PersistentVolumeClaim]
 	SingleReplicaModePostgresPvc   Resource[corev1.PersistentVolumeClaim]
 	SingleReplicaModePrometheusPvc Resource[corev1.PersistentVolumeClaim]
 	ExtraConfigMap                 Resource[corev1.ConfigMap]
@@ -42,7 +42,7 @@ func (r *Resources) Iter() []MutableResource {
 		r.Ingress.Mutable(),
 		r.Service.Mutable(),
 		r.ServiceAccount.Mutable(),
-		r.SingleReplicaModeDataPvc.Mutable(),
+		r.SingleReplicaModeEncryptionPvc.Mutable(),
 		r.SingleReplicaModePostgresPvc.Mutable(),
 		r.SingleReplicaModePrometheusPvc.Mutable(),
 		r.ExtraConfigMap.Mutable(),
@@ -105,8 +105,8 @@ func GenerateResources(fullName string) *Resources {
 		ServiceAccount: Resource[corev1.ServiceAccount]{
 			ID: "ServiceAccount/" + fullName,
 		},
-		SingleReplicaModeDataPvc: Resource[corev1.PersistentVolumeClaim]{
-			ID: "PersistentVolumeClaim/" + fullName + "-data",
+		SingleReplicaModeEncryptionPvc: Resource[corev1.PersistentVolumeClaim]{
+			ID: "PersistentVolumeClaim/" + fullName + "-encryption",
 		},
 		SingleReplicaModePostgresPvc: Resource[corev1.PersistentVolumeClaim]{
 			ID: "PersistentVolumeClaim/" + fullName + "-postgres",
