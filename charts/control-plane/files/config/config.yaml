@@ -1,0 +1,65 @@
+{{- with .Values.config }}
+
+############################################################
+# server
+############################################################
+{{- with .server }}
+server:
+  {{- include "scp.loadMergePatch" (merge (dict "file" "config/server.yaml" "ctx" $) .) | nindent 2 }}
+{{- end }}
+
+############################################################
+# systems
+############################################################
+{{- $systems := dict }}
+{{- range $systemName, $system := .systems }}
+  {{- $system := include "scp.loadMergePatch" (merge (dict "file" "config/system.yaml" "ctx" (merge (dict "systemName" $systemName "system" $system) $)) $system) | fromYaml }}
+  {{- if $system }}
+    {{- $_ := set $systems $systemName $system }}
+  {{- end }}
+{{- end }}
+{{- if $systems }}
+systems:
+  {{- toYaml $systems | nindent 2 }}
+{{- end }}
+
+############################################################
+# kms
+############################################################
+{{- with .kms }}
+{{- $kms := include "scp.loadMergePatch" (merge (dict "file" "config/kms.yaml" "ctx" $) .) | fromYaml }}
+{{- if $kms }}
+kms:
+  {{- toYaml $kms | nindent 2 }}
+{{- end }}
+{{- end }}
+
+############################################################
+# data sources
+############################################################
+{{- with .dataSources }}
+{{- $dataSources := dict }}
+{{- with .postgres }}
+  {{- $postgres := include "scp.loadMergePatch" (merge (dict "file" "config/postgres.yaml" "ctx" $) .) | fromYaml }}
+  {{- if $postgres}}
+    {{- $_ := set $dataSources "postgres" $postgres }}
+  {{- end }}
+{{- end }}
+{{- with .prometheus }}
+  {{- $prometheus := include "scp.loadMergePatch" (merge (dict "file" "config/prometheus.yaml" "ctx" $) .) | fromYaml }}
+  {{- if $prometheus}}
+    {{- $_ := set $dataSources "prometheus" $prometheus }}
+  {{- end }}
+{{- end }}
+{{- if $dataSources }}
+data_sources:
+  {{- toYaml $dataSources | nindent 2 }}
+{{- end }}
+{{- end }}
+
+############################################################
+# data dir
+############################################################
+data_dir: /data
+
+{{- end }}

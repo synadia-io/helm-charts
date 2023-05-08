@@ -1,0 +1,435 @@
+################################################################################
+# Global options
+################################################################################
+global:
+  image:
+    # global image pull policy to use for all container images in the chart
+    # can be overridden by individual image pullPolicy
+    pullPolicy:
+    # global registry to use for all container images in the chart
+    # can be overridden by individual image registry
+    registry:
+
+  # global labels will be applied to all resources deployed by the chart
+  labels: {}
+
+################################################################################
+# Control Plane Deployment and associated resources
+################################################################################
+
+############################################################
+# image pull secret
+############################################################
+# when enabled, the registry for images in the control plane deployment
+# will default to imagePullSecret.registry
+imagePullSecret:
+  enabled: true
+  # TODO: transition to registry.synadia.io once ready
+  registry: registry.helix-dev.synadia.io
+  username:
+  password:
+
+  # merge or patch the image pull secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}-regcred"
+  name:
+
+############################################################
+# config
+############################################################
+# due to the potentially sensitive nature of some of the configuration
+# options, the entire configuration will be stored in a Kubernetes Secret
+#
+config:
+  server:
+    # URL where Control Plane server will be accessed
+    url:
+    # port for HTTP server to listen on
+    httpPort: 8080
+    # port for HTTPS server to listen on, TLS must be enabled
+    httpsPort: 8443
+    # TLS options
+    tls:
+      enabled: false
+      # set secretName in order to mount an existing secret to dir
+      secretName:
+      dir: /etc/syn-cp/certs/server
+      cert: tls.crt
+      key: tls.key
+      ca:
+      # merge or patch the tls config
+      merge: {}
+      patch: []
+
+    # merge or patch the server config
+    merge: {}
+    patch: []
+
+  # systems takes a map of System Name : System
+  systems:
+    SystemName:
+      # NATS server URL
+      url:
+      # System User Creds
+      systemUserCreds:
+        # set contents in order to create a secret with the creds file contents
+        contents:
+        # set secretName and key  in order to mount an existing secret to dir
+        secretName:
+        # defaults to /etc/syn-cp/systems/<system-name>/sys-user-creds
+        dir:
+        key: sys-user.creds
+      # Operator Signing Key
+      operatorSigningKey:
+        # set contents in order to create a secret with the nkey file contents
+        contents:
+        # set secretName in order to mount an existing secret to dir
+        secretName:
+        # defaults to to /etc/syn-cp/systems/<system-name>/operator-sk
+        dir:
+        key: operator-sk.nk
+      # TLS options
+      tls:
+        enabled: false
+        # set secretName in order to mount an existing secret to dir
+        secretName:
+        # defaults to /etc/syn-cp/systems/<system-name>/cert
+        dir:
+        cert:
+        key:
+        ca: tls.ca
+        # merge or patch the tls config
+        merge: {}
+        patch: []
+
+      # merge or patch the system config
+      merge: {}
+      patch: []
+
+  kms:
+    # if the key is not configured, a default KMS key will be generated and written to the data PVC
+    key:
+      # set to use a KMS URL
+      url:
+      # set secretName and key in order to mount an existing secret to dir
+      secretName:
+      dir: /etc/syn-cp/kms
+      key: key.enc
+
+    # rotatedKeys is a list of:
+    # - # set to use a KMS URL
+    #   url:
+    #   # set secretName and key in order to mount an existing secret to dir
+    #   secretName:
+    #   # defaults to /etc/syn-cp/kms/rotated-key-<index>
+    #   dir:
+    #   key: key.enc
+    rotatedKeys: []
+
+    # merge or patch the KMS config
+    merge: {}
+    patch: []
+
+  dataSources:
+    postgres:
+      # DSN to external PostgreSQL, TLS settings will be automatically added if supplied
+      dsn:
+      tls:
+        enabled: false
+        # set secretName in order to mount an existing secret to dir
+        secretName:
+        dir: /etc/syn-cp/certs/postgres
+        cert:
+        key:
+        ca: tls.ca
+        
+        # add TLS options to DSN
+        # if cert and key are set, sslcert and sslkey will be added to the dsn 
+        # if ca is set, sslrootcert will be added to the dsn
+        addToDsn: true
+        # sslmode to add to dsn, if addToDsn is true
+        addToDsnSslMode: verify-full
+
+        # merge or patch the tls config
+        merge: {}
+        patch: []
+
+      # merge or patch the postgres config
+      merge: {}
+      patch: []
+
+    prometheus:
+      # URL to external Prometheus
+      url:
+      tls:
+        enabled: false
+        # set secretName in order to mount an existing secret to dir
+        secretName:
+        dir: /etc/syn-cp/certs/prometheus
+        cert:
+        key:
+        ca: tls.ca
+        # merge or patch the tls config
+        merge: {}
+        patch: []
+
+      # merge or patch the prometheus config
+      merge: {}
+      patch: []
+
+  # merge or patch the config
+  merge: {}
+  patch: []
+
+############################################################
+# deployment
+############################################################
+deployment:
+  # singleReplicaMode must be disabled to set replicas >1
+  replicas: 1
+
+  # merge or patch the stateful set
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#deployment-v1-apps
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}"
+  name:
+
+############################################################
+# deployment -> pod template
+############################################################
+podTemplate:
+  # adds a hash of the Config Secret as a pod annotation
+  # this will cause the Deployment to roll when the Config Secret is updated
+  configChecksumAnnotation: true
+
+  # map of topologyKey: topologySpreadConstraint
+  # labelSelector will be added to match Deployment pods
+  #
+  # topologySpreadConstraints:
+  #   kubernetes.io/hostname:
+  #     maxSkew: 1
+  #
+  topologySpreadConstraints: {}
+
+  # merge or patch the pod template
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pod-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# deployment -> pod template -> syn-cp container
+############################################################
+container:
+  image:
+    repository: control-plane
+    tag: v0.2.0-rc.0
+    pullPolicy:
+    # defaults to imagePullSecret.registry if imagePullSecret is enabled
+    # defaults to global.registry if imagePullSecret is disabled
+    registry:
+
+  # map with key as env var name, value can be string or map
+  # example:
+  #
+  #   env:
+  #     MY_VAR: my_value
+  #     MY_SECRET:
+  #       valueFrom:
+  #         secretKeyRef:
+  #           name: secret-name
+  #           key: secret-key
+  env: {}
+
+  # merge or patch the container
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# service
+############################################################
+service:
+  # service port options
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#serviceport-v1-core
+  ports:
+    http:
+      enabled: true
+      port: 80
+    # config.server.tls must also be enabled
+    https:
+      enabled: true
+      port: 443
+
+  # merge or patch the service
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#service-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}"
+  name:
+
+############################################################
+# ingress
+############################################################
+# service must be enabled also
+ingress:
+  enabled: false
+  # must contain at least 1 host otherwise ingress will not be created
+  hosts: []
+  path: /
+  pathType: Prefix
+  # sets to the ingress class name
+  className:
+  # set to an existing secret name to enable TLS on the ingress; applies to all hosts
+  tlsSecretName:
+
+  # merge or patch the ingress
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#ingress-v1-networking-k8s-io
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}"
+  name:
+
+############################################################
+# single replica mode
+############################################################
+singleReplicaMode:
+  # in order to disable singleReplicaMode, the following must be configured
+  # - config.kms
+  # - config.dataSources.postgres
+  # - config.dataSources.prometheus
+  enabled: true
+
+  ############################################################
+  # data pvc
+  ############################################################
+  # will be mounted if config.kms is not enabled
+  dataPvc:
+    # enable/disable creation of the PVC
+    # WARNING: changing this to false after the PVC is created will result in the PVC being deleted
+    enabled: true
+
+    size: 1Gi
+    storageClassName:
+
+    # merge or patch the pvc
+    # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
+    merge: {}
+    patch: []
+    # defaults to "{{ include "scp.fullname" $ }}-data"
+    name:
+
+  ############################################################
+  # postgres pvc
+  ############################################################
+  # will be mounted if config.dataSources.postgres is not enabled
+  postgresPvc:
+    # enable/disable creation of the PVC
+    # WARNING: changing this to false after the PVC is created will result in the PVC being deleted
+    enabled: true
+
+    size: 10Gi
+    storageClassName:
+
+    # merge or patch the pvc
+    # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
+    merge: {}
+    patch: []
+    # defaults to "{{ include "scp.fullname" $ }}-postgres"
+    name:
+
+  ############################################################
+  # prometheus pvc
+  ############################################################
+  # will be enabled if config.dataSources.prometheus is not enabled
+  prometheusPvc:
+    # enable/disable creation of the PVC
+    # WARNING: changing this to false after the PVC is created will result in the PVC being deleted
+    enabled: true
+
+    size: 10Gi
+    storageClassName:
+
+    # merge or patch the pvc
+    # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
+    merge: {}
+    patch: []
+    # defaults to "{{ include "scp.fullname" $ }}-prometheus"
+    name:
+
+############################################################
+# other extension points
+############################################################
+
+# config secret
+configSecret:
+  # merge or patch the config secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}-config"
+  name:
+
+# contents secret
+contentsSecret:
+  # merge or patch the contents secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}-contents"
+  name:
+
+# service account
+serviceAccount:
+  # enable/disable the service account
+  enabled: false
+  
+  # merge or patch the service account
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#serviceaccount-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}"
+  name:
+
+
+################################################################################
+# Extra user-defined resources
+################################################################################
+#
+# add arbitrary user-generated resources
+# example:
+#
+# extraResources:
+# - apiVersion: networking.istio.io/v1beta1
+#   kind: VirtualService
+#   metadata:
+#     name:
+#       $tplYaml: >
+#         {{ include "scp.fullname" $ | quote }}
+#     labels:
+#       $tplYaml: |
+#         {{ include "scp.labels" $ }}
+#   spec:
+#     hosts:
+#     - demo.nats.io
+#     gateways:
+#     - my-gateway
+#     http:
+#     - name: default
+#       match:
+#       - name: root
+#         uri:
+#           prefix: /
+#       route:
+#       - destination:
+#           host:
+#             $tplYaml: >
+#               {{ .Values.service.name | quote }}
+#           port:
+#             number:
+#               $tplYaml: >
+#                 {{ .Values.config.server.httpPort }}
+#
+extraResources: []

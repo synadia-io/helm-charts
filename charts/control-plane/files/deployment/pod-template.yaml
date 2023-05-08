@@ -1,0 +1,82 @@
+metadata:
+  labels:
+    {{- include "scp.labels" $ | nindent 4 }}
+  annotations:
+    {{- if .Values.podTemplate.configChecksumAnnotation }}
+    {{- $configMap := include "scp.loadMergePatch" (merge (dict "file" "config-secret.yaml" "ctx" $) .Values.configSecret) }}
+    checksum/config: {{ sha256sum $configMap }}
+    {{- end }}
+spec:
+  containers:
+  # syn-cp
+  {{- with .Values.container }}
+  - {{ include "scp.loadMergePatch" (merge (dict "file" "deployment/syn-cp-container.yaml" "ctx" $) .) | nindent 4 }}
+  {{- end }}
+
+  # don't need service env vars
+  enableServiceLinks: false
+
+  {{- with .Values.imagePullSecret }}
+  {{- if .enabled }}
+  imagePullSecrets:
+  - name: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
+
+  securityContext:
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
+
+  {{- with .Values.serviceAccount }}
+  {{- if .enabled }}
+  serviceAccountName: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
+
+  {{- with .Values.podTemplate.topologySpreadConstraints }}
+  topologySpreadConstraints:
+  {{- range $k, $v := . }}
+  - {{ merge (dict "topologyKey" $k "labelSelector" (dict "matchLabels" (include "scp.selectorLabels" $ | fromYaml)) "matchLabelKeys" (list "pod-template-hash")) $v | toYaml | nindent 4 }}
+  {{- end }}
+  {{- end}}
+
+  volumes:
+  # config secret
+  - name: config
+    secret:
+      secretName: {{ .Values.configSecret.name }}
+  # PVCs
+  {{- with .Values.singleReplicaMode }}
+  # data is either a PVC or an emptyDir
+  - name: data
+    {{- if and .enabled .dataPvc.enabled }}
+    persistentVolumeClaim:
+      claimName: {{ .dataPvc.name | quote }}
+    {{- else }}
+    emptyDir: {}
+    {{- end }}
+  {{- if and .enabled .postgresPvc.enabled }}
+  # postgres only enabled in singleReplicaMode
+  - name: postgres
+    persistentVolumeClaim:
+      claimName: {{ .postgresPvc.name | quote }}
+  {{- end }}
+  {{- if and .enabled .prometheusPvc.enabled }}
+  # prometheus only enabled in singleReplicaMode
+  - name: prometheus
+    persistentVolumeClaim:
+      claimName: {{ .prometheusPvc.name | quote }}
+  {{- end }}
+  {{- end }}
+  # contents secret
+  {{- if .hasContentsSecret }}
+  - name: contents
+    secret:
+      secretName: {{ .Values.contentsSecret.name }}
+  {{- end }}
+  # external secrets
+  {{- range (include "scp.secretNames" $ | fromJson).secretNames }}
+  - name: {{ .name | quote }}
+    secret:
+      secretName: {{ .secretName | quote }}
+  {{- end }}

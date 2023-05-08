@@ -1,0 +1,29 @@
+name: control-plane-docs
+
+on:
+  push:
+    branches:
+    - main
+    - control-plane
+    paths:
+    - charts/control-plane/README.md
+    - .github/workflows/control-plane-docs-sync.yaml
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Setup repo
+      uses: actions/checkout@v3
+
+    - name: Run GitHub File Sync
+      # use a commit hash here since this requires a PAT
+      # this hash maps to https://github.com/BetaHuhn/repo-file-sync-action/releases/tag/v1.21.0
+      uses: BetaHuhn/repo-file-sync-action@3023dac7ce66c18b119e2012348437eadeaea116
+      with:
+        GH_PAT: ${{ secrets.CONTROL_PLANE_DOCS_SYNC_PAT }}
+        IS_FINE_GRAINED: true
+        CONFIG_PATH: charts/control-plane/docs-sync.yaml
+        GIT_USERNAME: caleblloyd
+        GIT_EMAIL: caleb@synadia.com

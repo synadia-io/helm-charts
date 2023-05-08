@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.deployment.name }}
+  labels:
+    {{- include "scp.labels" $ | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "scp.selectorLabels" $ | nindent 6 }}
+
+  replicas: {{ .Values.deployment.replicas }}
+
+  {{- if .Values.singleReplicaMode.enabled }}
+  strategy:
+    type: Recreate
+  {{- end }}
+
+  template:
+    {{- with .Values.podTemplate }}
+    {{- include "scp.loadMergePatch" (merge (dict "file" "deployment/pod-template.yaml" "ctx" $) .) | nindent 4 }}
+    {{- end }}

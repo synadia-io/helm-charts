@@ -1,0 +1,4 @@
+{{- include "scp.defaultValues" . }}
+{{- with .Values.deployment }}
+{{- include "scp.loadMergePatch" (merge (dict "file" "deployment/deployment.yaml" "ctx" $) .) }}
+{{- end }}

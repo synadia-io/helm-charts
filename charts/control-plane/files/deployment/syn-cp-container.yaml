@@ -1,0 +1,53 @@
+name: syn-cp
+{{ include "scp.image" (merge (pick .Values "global" "imagePullSecret") .Values.container.image) }}
+
+args:
+- server
+- start
+- -c
+- /etc/syn-cp/syn-cp.yaml
+
+{{- with .Values.container.env }}
+env:
+{{- include "scp.env" . }}
+{{- end }}
+
+ports:
+- name: http
+  containerPort: {{ .Values.config.server.httpPort }}
+{{- if .config.server.tls }}
+- name: https
+  containerPort: {{ .Values.config.server.httpsPort }}
+{{- end }}
+
+volumeMounts:
+# config secret
+- name: config
+  mountPath: /etc/syn-cp
+{{- $dataDir := trimSuffix "/" .config.data_dir }}
+# data PVC or emptyDir
+- name: data
+  mountPath: {{ $dataDir | quote }}
+# PVCs
+{{- with .Values.singleReplicaMode }}
+{{- if and .enabled .postgresPvc.enabled }}
+# postgres only enabled in singleReplicaMode
+- name: postgres
+  mountPath: {{ printf "%s/postgres" $dataDir | quote}}
+{{- end }}
+{{- if and .enabled .prometheusPvc.enabled }}
+# prometheus only enabled in singleReplicaMode
+- name: prometheus
+  mountPath: {{ printf "%s/prometheus" $dataDir | quote}}
+{{- end }}
+{{- end }}
+# contents secret
+{{- if .hasContentsSecret }}
+- name: contents
+  mountPath: /etc/syn-cp/contents
+{{- end }}
+# external secrets
+{{- range (include "scp.secretNames" $ | fromJson).secretNames }}
+- name: {{ .name | quote }}
+  mountPath: {{ .dir | quote }}
+{{- end }}

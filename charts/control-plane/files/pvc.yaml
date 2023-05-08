@@ -1,0 +1,17 @@
+{{- with .pvc }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .name | quote }}
+  labels:
+    {{- include "scp.labels" $ | nindent 4 }}
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .size | quote }}
+  {{- with .storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+{{- end }}
