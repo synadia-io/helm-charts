@@ -6,6 +6,7 @@ on:
     - main
     paths:
     - charts/control-plane/README.md
+    - charts/control-plane/docs-sync.yaml
     - .github/workflows/control-plane-docs-sync.yaml
 
 jobs:
