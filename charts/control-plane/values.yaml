@@ -303,10 +303,10 @@ singleReplicaMode:
   enabled: true
 
   ############################################################
-  # data pvc
+  # encryption pvc
   ############################################################
-  # will be mounted if config.kms is not enabled
-  dataPvc:
+  # should be enabled when config.kms.key is not configured
+  encryptionPvc:
     # enable/disable creation of the PVC
     # WARNING: changing this to false after the PVC is created will result in the PVC being deleted
     enabled: true
@@ -318,13 +318,13 @@ singleReplicaMode:
     # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
     merge: {}
     patch: []
-    # defaults to "{{ include "scp.fullname" $ }}-data"
+    # defaults to "{{ include "scp.fullname" $ }}-encryption"
     name:
 
   ############################################################
   # postgres pvc
   ############################################################
-  # will be mounted if config.dataSources.postgres is not enabled
+  # should be enabled when config.dataSources.postgres is not configured
   postgresPvc:
     # enable/disable creation of the PVC
     # WARNING: changing this to false after the PVC is created will result in the PVC being deleted
@@ -343,7 +343,7 @@ singleReplicaMode:
   ############################################################
   # prometheus pvc
   ############################################################
-  # will be enabled if config.dataSources.prometheus is not enabled
+  # should be enabled when config.dataSources.prometheus is not configured
   prometheusPvc:
     # enable/disable creation of the PVC
     # WARNING: changing this to false after the PVC is created will result in the PVC being deleted

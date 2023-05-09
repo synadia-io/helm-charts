@@ -45,27 +45,33 @@ spec:
   - name: config
     secret:
       secretName: {{ .Values.configSecret.name }}
-  # PVCs
-  {{- with .Values.singleReplicaMode }}
-  # data is either a PVC or an emptyDir
+  # data emptyDir
   - name: data
-    {{- if and .enabled .dataPvc.enabled }}
-    persistentVolumeClaim:
-      claimName: {{ .dataPvc.name | quote }}
-    {{- else }}
     emptyDir: {}
-    {{- end }}
-  {{- if and .enabled .postgresPvc.enabled }}
-  # postgres only enabled in singleReplicaMode
+  # Single Replica Mode PVCs
+  {{- with .Values.singleReplicaMode }}
+  {{- if .enabled }}
+  {{- with .encryptionPvc }}
+  {{- if .enabled }}
+  - name: encryption
+    persistentVolumeClaim:
+      claimName: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
+  {{- with .postgresPvc }}
+  {{- if .enabled }}
   - name: postgres
     persistentVolumeClaim:
-      claimName: {{ .postgresPvc.name | quote }}
+      claimName: {{ .name | quote }}
   {{- end }}
-  {{- if and .enabled .prometheusPvc.enabled }}
-  # prometheus only enabled in singleReplicaMode
+  {{- end }}
+  {{- with .prometheusPvc }}
+  {{- if .enabled }}
   - name: prometheus
     persistentVolumeClaim:
-      claimName: {{ .prometheusPvc.name | quote }}
+      claimName: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
   {{- end }}
   {{- end }}
   # contents secret

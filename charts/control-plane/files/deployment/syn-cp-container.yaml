@@ -25,20 +25,30 @@ volumeMounts:
 - name: config
   mountPath: /etc/syn-cp
 {{- $dataDir := trimSuffix "/" .config.data_dir }}
-# data PVC or emptyDir
+# data emptyDir
 - name: data
   mountPath: {{ $dataDir | quote }}
-# PVCs
+# Single Replica Mode PVCs
 {{- with .Values.singleReplicaMode }}
-{{- if and .enabled .postgresPvc.enabled }}
-# postgres only enabled in singleReplicaMode
+{{- if .enabled }}
+{{- with .encryptionPvc }}
+{{- if .enabled }}
+- name: encryption
+  mountPath: {{ printf "%s/encryption" $dataDir | quote}}
+{{- end }}
+{{- end }}
+{{- with .postgresPvc }}
+{{- if .enabled }}
 - name: postgres
   mountPath: {{ printf "%s/postgres" $dataDir | quote}}
 {{- end }}
-{{- if and .enabled .prometheusPvc.enabled }}
-# prometheus only enabled in singleReplicaMode
+{{- end }}
+{{- with .prometheusPvc }}
+{{- if .enabled }}
 - name: prometheus
   mountPath: {{ printf "%s/prometheus" $dataDir | quote}}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 # contents secret

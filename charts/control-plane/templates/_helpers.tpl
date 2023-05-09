@@ -44,7 +44,7 @@ Set default values.
     {{- $_ := set .ingress                         "name" (.ingress.name                         | default $name) }}
     {{- $_ := set .service                         "name" (.service.name                         | default $name) }}
     {{- $_ := set .serviceAccount                  "name" (.serviceAccount.name                  | default $name) }}
-    {{- $_ := set .singleReplicaMode.dataPvc       "name" (.singleReplicaMode.dataPvc.name       | default (printf "%s-data" $name)) }}
+    {{- $_ := set .singleReplicaMode.encryptionPvc "name" (.singleReplicaMode.encryptionPvc.name | default (printf "%s-encryption" $name)) }}
     {{- $_ := set .singleReplicaMode.postgresPvc   "name" (.singleReplicaMode.postgresPvc.name   | default (printf "%s-postgres" $name)) }}
     {{- $_ := set .singleReplicaMode.prometheusPvc "name" (.singleReplicaMode.prometheusPvc.name | default (printf "%s-prometheus" $name)) }}
   {{- end }}
