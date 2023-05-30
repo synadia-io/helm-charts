@@ -4,7 +4,7 @@
 
 ```bash
 # add the synadia repo (only needs to be run once)
-helm repo add synadia https://synadia-io.github.io/helm-charts/
+helm repo add synadia https://synadia-io.github.io/helm-charts
 
 # update the synadia repo index (run to get updated chart versions)
 helm repo update synadia
