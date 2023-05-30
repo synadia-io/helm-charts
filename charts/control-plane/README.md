@@ -4,7 +4,7 @@
 
 ```bash
 # add the synadia repo (only needs to be run once)
-helm repo add synadia https://connecteverything.github.io/helm-charts
+helm repo add synadia https://synadia-io.github.io/helm-charts/
 
 # update the synadia repo index (run to get updated chart versions)
 helm repo update synadia
@@ -16,8 +16,8 @@ helm upgrade --install control-plane synadia/control-plane
 
 **Useful Tools and References:**
 
-- [Config Generation Script](https://github.com/ConnectEverything/control-plane-beta#config-generation) - can do much of the heavy lifting to populate values for your Synadia Control Plane deployment
-- [Chart Values file](https://github.com/ConnectEverything/helm-charts/blob/main/charts/control-plane/values.yaml) - lists all possible configuration options
+- [Config Generation Script](https://github.com/synadia-io/control-plane-beta#config-generation) - can do much of the heavy lifting to populate values for your Synadia Control Plane deployment
+- [Chart Values file](https://github.com/synadia-io/helm-charts/blob/main/charts/control-plane/values.yaml) - lists all possible configuration options
 - Login Details - On first run, the `admin` user's credentials will be printed to the logs here:
   ```bash
   kubectl logs -c syn-cp deployment/control-plane
