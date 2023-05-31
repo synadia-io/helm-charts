@@ -264,7 +264,7 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 				},
 				Type: corev1.SecretTypeDockerConfigJson,
 				StringData: map[string]string{
-					corev1.DockerConfigJsonKey: `{"auths":{"registry.helix-dev.synadia.io":{}}}
+					corev1.DockerConfigJsonKey: `{"auths":{"registry.synadia.io":{}}}
 `,
 				},
 			},
