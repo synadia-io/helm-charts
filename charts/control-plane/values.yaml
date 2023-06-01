@@ -24,8 +24,7 @@ global:
 # will default to imagePullSecret.registry
 imagePullSecret:
   enabled: true
-  # TODO: transition to registry.synadia.io once ready
-  registry: registry.helix-dev.synadia.io
+  registry: registry.synadia.io
   username:
   password:
 
@@ -225,7 +224,7 @@ podTemplate:
 container:
   image:
     repository: control-plane
-    tag: v0.2.0
+    tag: 1.0.0
     pullPolicy:
     # defaults to imagePullSecret.registry if imagePullSecret is enabled
     # defaults to global.registry if imagePullSecret is disabled
