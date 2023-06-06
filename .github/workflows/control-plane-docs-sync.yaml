@@ -22,7 +22,7 @@ jobs:
       run: |
         f="README-sync.md"
         echo '---' > "$f"
-        echo 'title: Control Plane - Helm Chart' >> "$f"
+        echo 'title: Helm Chart - Synadia Control Plane' >> "$f"
         echo 'description: Synadia Control Plane Helm Chart deployment guide' >> "$f"
         echo '---' >> "$f"
         echo '' >> "$f"
