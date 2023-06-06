@@ -1,6 +1,6 @@
 # Synadia Control Plane Helm Chart
 
-**Accessing the Helm Chart**
+## Accessing the Helm Chart
 
 ```bash
 # add the synadia repo (only needs to be run once)
@@ -14,7 +14,7 @@ helm repo update synadia
 helm upgrade --install control-plane synadia/control-plane
 ```
 
-**Useful Tools and References:**
+### Useful Tools and References
 
 - [Config Generation Script](https://github.com/synadia-io/control-plane-beta#config-generation) - can do much of the heavy lifting to populate values for your Synadia Control Plane deployment
 - [Chart Values file](https://github.com/synadia-io/helm-charts/blob/main/charts/control-plane/values.yaml) - lists all possible configuration options
@@ -71,8 +71,6 @@ ingress:
 ```
 
 ### Full Example
-
-### Example
 
 **values.yaml**
 
