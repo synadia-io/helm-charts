@@ -224,7 +224,7 @@ podTemplate:
 container:
   image:
     repository: control-plane
-    tag: 1.0.0
+    tag: 1.0.1
     pullPolicy:
     # defaults to imagePullSecret.registry if imagePullSecret is enabled
     # defaults to global.registry if imagePullSecret is disabled
