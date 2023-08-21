@@ -1,0 +1,14 @@
+apiVersion: v2
+appVersion: 2.9.21
+description: A Helm chart for the Synadia Data Plane
+name: data-plane 
+keywords:
+- data-plane
+- nats
+- messaging
+version: 0.1.0-rc.0
+home: http://github.com/synadia-io/helm-charts
+maintainers:
+- name: Synadia
+  url: https://github.com/synadia-io
+  email: info@synadia.com
