@@ -13,6 +13,14 @@ ports:
 args:
 - --config
 - /etc/nats-config/nats.conf
+{{- if .Values.controlPlane.url }}
+- --url
+- {{ .Values.controlPlane.url }}
+{{- end }}
+{{- if (include "controlPlane.secretName" $) }}
+- --token-file
+- /etc/data-plane/token
+{{- end }}
 
 env:
 - name: POD_NAME
@@ -30,8 +38,10 @@ lifecycle:
     exec:
       # send the lame duck shutdown signal to trigger a graceful shutdown
       command:
-      - nats-server
-      - -sl=ldm=/var/run/nats/nats.pid
+      - synadia-data-plane
+      - signal
+      - -P /var/run/nats/nats.pid
+      - ldm
 
 {{- if .Values.config.monitor.enabled }}
 startupProbe:
@@ -92,4 +102,8 @@ volumeMounts:
 {{- range (include "nats.secretNames" $ | fromJson).secretNames }}
 - name: {{ .name | quote }}
   mountPath: {{ .dir | quote }}
+{{- end }}
+{{- if (include "controlPlane.secretName" $) }}
+- name: token
+  mountPath: /etc/data-plane
 {{- end }}

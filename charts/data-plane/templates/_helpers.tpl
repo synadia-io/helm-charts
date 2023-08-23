@@ -181,6 +181,21 @@ imagePullPolicy: {{ .pullPolicy | default .global.image.pullPolicy }}
 {{- toJson (dict "secretNames" $secrets) }}
 {{- end }}
 
+{{- define "controlPlane.secretName" -}}
+{{- $name := include "nats.fullname" . }}
+{{- $secretName := "" }}
+{{- if .Values.controlPlane.token }}
+  {{- if not .Values.controlPlane.tokenSecret.name }}
+    {{- $secretName = printf "%s-control-plane-token" $name }}
+  {{- else }}
+    {{- $secretName = .Values.controlPlane.tokenSecret.name }}
+  {{- end }}
+{{- else if .Values.controlPlane.tokenSecret.secretName }}
+  {{- $secretName = .Values.controlPlane.tokenSecret.secretName }}
+{{- end }}
+{{- $secretName }}
+{{- end }}
+
 {{- define "nats.tlsCAVolume" -}}
 {{- with .Values.tlsCA }}
 {{- if and .enabled (or .configMapName .secretName) }}

@@ -55,6 +55,11 @@ spec:
     secret:
       secretName: {{ .secretName | quote }}
   {{- end }}
+  {{- if $name := (include "controlPlane.secretName" $) }}
+  - name: token
+    secret:
+      secretName: {{ $name | quote }}
+  {{- end }}
 
   {{- with .Values.podTemplate.topologySpreadConstraints }}
   topologySpreadConstraints:
