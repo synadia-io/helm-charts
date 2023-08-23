@@ -40,6 +40,12 @@ spec:
   {{- end }}
 
   volumes:
+  # control-plane token
+  {{- if $name := (include "controlPlane.secretName" $) }}
+  - name: token
+    secret:
+      secretName: {{ $name | quote }}
+  {{- end }}
   # nats config
   - name: config
     configMap:
@@ -54,11 +60,6 @@ spec:
   - name: {{ .name | quote }}
     secret:
       secretName: {{ .secretName | quote }}
-  {{- end }}
-  {{- if $name := (include "controlPlane.secretName" $) }}
-  - name: token
-    secret:
-      secretName: {{ $name | quote }}
   {{- end }}
 
   {{- with .Values.podTemplate.topologySpreadConstraints }}

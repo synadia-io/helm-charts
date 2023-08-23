@@ -1,4 +1,4 @@
-# Synadia Data Plane
+# NATS Server
 
 ---
 

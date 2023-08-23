@@ -11,8 +11,6 @@ ports:
 {{- end }}
 
 args:
-- --config
-- /etc/nats-config/nats.conf
 {{- if .Values.controlPlane.url }}
 - --url
 - {{ .Values.controlPlane.url }}
@@ -21,6 +19,8 @@ args:
 - --token-file
 - /etc/data-plane/token
 {{- end }}
+- --config
+- /etc/nats-config/nats.conf
 
 env:
 - name: POD_NAME
@@ -74,6 +74,11 @@ livenessProbe:
 {{- end }}
 
 volumeMounts:
+# control plane token
+{{- if (include "controlPlane.secretName" $) }}
+- name: token
+  mountPath: /etc/data-plane
+{{- end }}
 # nats config
 - name: config
   mountPath: /etc/nats-config
@@ -102,8 +107,4 @@ volumeMounts:
 {{- range (include "nats.secretNames" $ | fromJson).secretNames }}
 - name: {{ .name | quote }}
   mountPath: {{ .dir | quote }}
-{{- end }}
-{{- if (include "controlPlane.secretName" $) }}
-- name: token
-  mountPath: /etc/data-plane
 {{- end }}
