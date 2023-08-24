@@ -6,8 +6,8 @@ VALUES_YAML="values.yaml"
 TEMP_FILE="tmp.yaml"
 
 IMAGE="data-plane"
-REGISTRY="registry.synadia.io"
-TAG="latest"
+REGISTRY="registry.helix-dev.synadia.io"
+TAG="branch-main"
 
 SED_I="sed -i"
 if [[ $(uname) == "Darwin" ]]; then

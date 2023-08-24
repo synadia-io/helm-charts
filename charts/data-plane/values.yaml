@@ -326,9 +326,9 @@ config:
 container:
   image:
     repository: data-plane
-    tag: latest
+    tag: branch-main
     pullPolicy:
-    registry: registry.synadia.io
+    registry: registry.helix-dev.synadia.io
 
   # container port options
   # must be enabled in the config section also
