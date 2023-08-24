@@ -1,6 +1,41 @@
-# NATS Server
+# Synadia Data Plane Helm Chart
+
+## Accessing the Helm Chart
+
+```bash
+# add the synadia repo (only needs to be run once)
+helm repo add synadia https://synadia-io.github.io/helm-charts
+
+# update the synadia repo index (run to get updated chart versions)
+helm repo update synadia
+
+# now you can install the synadia/data-plane chart
+# note: you will need to configure image pull secrets for this to work
+helm upgrade --install data-plane synadia/data-plane
+```
 
 ---
+
+## Data Plane Configuration
+
+Standard Configuration
+
+```yaml
+controlPlane:
+  url: https://cp.nats.io
+  # Secret
+  token: agt_foobar
+```
+
+Pre-Populated Kubernetes Secret
+```yaml
+controlPlane:
+  url: https://cp.nats.io
+  tokenSecret:
+    secretName: my-token-secret
+```
+
+## NATS Server Configuration
 
 [NATS](https://nats.io) is a simple, secure and performant communications system for digital systems, services and devices.
 NATS is part of the Cloud Native Computing Foundation ([CNCF](https://cncf.io)).
