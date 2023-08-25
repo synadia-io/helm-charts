@@ -325,7 +325,7 @@ config:
 ############################################################
 container:
   image:
-    repository: data-plane
+    repository: synadia-server
     tag: branch-main
     pullPolicy:
     registry: registry.helix-dev.synadia.io

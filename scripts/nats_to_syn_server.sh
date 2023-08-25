@@ -1,11 +1,11 @@
 #!/bin/bash
 
-## Tweaks upstream NATS chart to suit Synadia Data Plane deployment
+## Tweaks upstream NATS chart to suit Synadia Server deployment
 
 VALUES_YAML="values.yaml"
 TEMP_FILE="tmp.yaml"
 
-IMAGE="data-plane"
+IMAGE="synadia-server"
 REGISTRY="registry.helix-dev.synadia.io"
 TAG="branch-main"
 
@@ -65,7 +65,7 @@ IFS= read -r -d '' SECRET_TMPL << 'EOF'
   {{- end }}
 EOF
 
-## Data Plane Extra Args
+## Synadia Server Extra Args
 IFS= read -r -d '' ARGS << 'EOF'
 {{- if .Values.controlPlane.url }}
 - --url
@@ -73,13 +73,13 @@ IFS= read -r -d '' ARGS << 'EOF'
 {{- end }}
 {{- if (include "controlPlane.secretName" $) }}
 - --token-file
-- /etc/data-plane/token
+- /etc/synadia-server/token
 {{- end }}
 EOF
 
-## Data Plane Lame Duck Signal
+## Synadia Server Lame Duck Signal
 IFS= read -r -d '' LDM << 'EOF'
-      - synadia-data-plane
+      - synadia-server
       - signal
       - -P /var/run/nats/nats.pid
       - ldm
@@ -90,7 +90,7 @@ IFS= read -r -d '' MOUNT << 'EOF'
 # control plane token
 {{- if (include "controlPlane.secretName" $) }}
 - name: token
-  mountPath: /etc/data-plane
+  mountPath: /etc/synadia-server
 {{- end }}
 EOF
 
@@ -178,7 +178,7 @@ fi
 
 ########################################
 ########################################
-## Add Data Plane Extra Args
+## Add Synadia Server Extra Args
 FILE="files/stateful-set/nats-container.yaml"
 MATCH_TEXT="args:"
 MATCH_LINE=$(grep -m 1 -n "${MATCH_TEXT}" "${FILE}" | cut -d ':' -f 1)

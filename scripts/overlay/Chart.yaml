@@ -1,9 +1,9 @@
 apiVersion: v2
 appVersion: 0.1.0-rc.0
-description: A Helm chart for the Synadia Data Plane
-name: data-plane
+description: A Helm chart for Synadia Server
+name: synadia-server
 keywords:
-- data-plane
+- synadia-server
 - nats
 - messaging
 version: 0.1.0-rc.0

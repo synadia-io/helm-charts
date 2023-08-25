@@ -17,7 +17,7 @@ args:
 {{- end }}
 {{- if (include "controlPlane.secretName" $) }}
 - --token-file
-- /etc/data-plane/token
+- /etc/synadia-server/token
 {{- end }}
 - --config
 - /etc/nats-config/nats.conf
@@ -38,7 +38,7 @@ lifecycle:
     exec:
       # send the lame duck shutdown signal to trigger a graceful shutdown
       command:
-      - synadia-data-plane
+      - synadia-server
       - signal
       - -P /var/run/nats/nats.pid
       - ldm
@@ -77,7 +77,7 @@ volumeMounts:
 # control plane token
 {{- if (include "controlPlane.secretName" $) }}
 - name: token
-  mountPath: /etc/data-plane
+  mountPath: /etc/synadia-server
 {{- end }}
 # nats config
 - name: config
