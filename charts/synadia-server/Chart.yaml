@@ -6,7 +6,7 @@ keywords:
 - synadia-server
 - nats
 - messaging
-version: 1.0.0-rc.0
+version: 1.0.0-rc.1
 home: http://github.com/synadia-io/helm-charts
 maintainers:
 - name: Synadia
