@@ -40,9 +40,9 @@ spec:
   {{- end }}
 
   volumes:
-  # control-plane token
+  # synadia-server config file
   {{- if $name := (include "controlPlane.secretName" $) }}
-  - name: token
+  - name: server-config
     secret:
       secretName: {{ $name | quote }}
   {{- end }}
