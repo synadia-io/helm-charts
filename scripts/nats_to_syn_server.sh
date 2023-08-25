@@ -69,10 +69,6 @@ EOF
 
 ## Synadia Server Extra Args
 IFS= read -r -d '' ARGS << 'EOF'
-{{- if .Values.controlPlane.url }}
-- --url
-- {{ .Values.controlPlane.url }}
-{{- end }}
 {{- if (include "controlPlane.secretName" $) }}
 - --synadia-config
 - /etc/synadia-server/server.json
