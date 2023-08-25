@@ -7,7 +7,7 @@ TEMP_FILE="tmp.yaml"
 
 IMAGE="synadia-server"
 REGISTRY="registry.helix-dev.synadia.io"
-TAG="branch-main"
+TAG="1.0.0-rc.0"
 
 SED_I="sed -i"
 if [[ $(uname) == "Darwin" ]]; then
