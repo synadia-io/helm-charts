@@ -59,9 +59,9 @@ EOF
 
 ## Token Secret Template
 IFS= read -r -d '' SECRET_TMPL << 'EOF'
-  # control-plane token
+  # synadia-server config file
   {{- if $name := (include "controlPlane.secretName" $) }}
-  - name: token
+  - name: server-config
     secret:
       secretName: {{ $name | quote }}
   {{- end }}
@@ -74,8 +74,8 @@ IFS= read -r -d '' ARGS << 'EOF'
 - {{ .Values.controlPlane.url }}
 {{- end }}
 {{- if (include "controlPlane.secretName" $) }}
-- --token-file
-- /etc/synadia-server/token
+- --synadia-config
+- /etc/synadia-server/server.json
 {{- end }}
 EOF
 
@@ -91,7 +91,7 @@ EOF
 IFS= read -r -d '' MOUNT << 'EOF'
 # control plane token
 {{- if (include "controlPlane.secretName" $) }}
-- name: token
+- name: server-config
   mountPath: /etc/synadia-server
 {{- end }}
 EOF

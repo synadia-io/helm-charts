@@ -16,8 +16,8 @@ args:
 - {{ .Values.controlPlane.url }}
 {{- end }}
 {{- if (include "controlPlane.secretName" $) }}
-- --token-file
-- /etc/synadia-server/token
+- --synadia-config
+- /etc/synadia-server/server.json
 {{- end }}
 - --config
 - /etc/nats-config/nats.conf
@@ -76,7 +76,7 @@ livenessProbe:
 volumeMounts:
 # control plane token
 {{- if (include "controlPlane.secretName" $) }}
-- name: token
+- name: server-config
   mountPath: /etc/synadia-server
 {{- end }}
 # nats config
