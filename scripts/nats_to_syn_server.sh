@@ -7,7 +7,9 @@ TEMP_FILE="tmp.yaml"
 
 IMAGE="synadia-server"
 REGISTRY="registry.helix-dev.synadia.io"
-TAG="1.0.0-rc.0"
+
+# Versions
+. $(dirname "$0")/VERSIONS
 
 SED_I="sed -i"
 if [[ $(uname) == "Darwin" ]]; then
@@ -217,6 +219,12 @@ fi
 ########################################
 ## Copy Overlay Files
 cp -r $(dirname "$0")/overlay/* .
+
+########################################
+########################################
+## Set Versions
+${SED_I} "s/_CHART_VERSION_/${CHART_VERSION}/" Chart.yaml
+${SED_I} "s/_APP_VERSION_/${APP_VERSION}/" Chart.yaml
 
 ########################################
 ########################################

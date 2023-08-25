@@ -1,4 +1,4 @@
-# Synadia Data Plane Helm Chart
+# Synadia Server Helm Chart
 
 ## Accessing the Helm Chart
 
@@ -9,14 +9,14 @@ helm repo add synadia https://synadia-io.github.io/helm-charts
 # update the synadia repo index (run to get updated chart versions)
 helm repo update synadia
 
-# now you can install the synadia/data-plane chart
+# now you can install the synadia/synadia-server chart
 # note: you will need to configure image pull secrets for this to work
-helm upgrade --install data-plane synadia/data-plane
+helm upgrade --install synadia-server synadia/synadia-server
 ```
 
 ---
 
-## Data Plane Configuration
+## Synadia Server Configuration
 
 Standard Configuration
 
