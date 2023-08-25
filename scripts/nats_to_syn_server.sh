@@ -6,7 +6,7 @@ VALUES_YAML="values.yaml"
 TEMP_FILE="tmp.yaml"
 
 IMAGE="synadia-server"
-REGISTRY="registry.helix-dev.synadia.io"
+REGISTRY="registry.synadia.io"
 
 # Versions
 . $(dirname "$0")/VERSIONS

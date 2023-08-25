@@ -328,7 +328,7 @@ container:
     repository: synadia-server
     tag: 1.0.0-rc.0
     pullPolicy:
-    registry: registry.helix-dev.synadia.io
+    registry: registry.synadia.io
 
   # container port options
   # must be enabled in the config section also
