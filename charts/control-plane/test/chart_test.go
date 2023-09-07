@@ -19,7 +19,6 @@ import (
 type Resources struct {
 	Conf                           Resource[map[string]any]
 	ConfigSecret                   Resource[corev1.Secret]
-	ContentsSecret                 Resource[corev1.Secret]
 	Deployment                     Resource[appsv1.Deployment]
 	ImagePullSecret                Resource[corev1.Secret]
 	Ingress                        Resource[networkingv1.Ingress]
@@ -36,7 +35,6 @@ func (r *Resources) Iter() []MutableResource {
 	return []MutableResource{
 		r.Conf.Mutable(),
 		r.ConfigSecret.Mutable(),
-		r.ContentsSecret.Mutable(),
 		r.Deployment.Mutable(),
 		r.ImagePullSecret.Mutable(),
 		r.Ingress.Mutable(),
@@ -86,9 +84,6 @@ func GenerateResources(fullName string) *Resources {
 		},
 		ConfigSecret: Resource[corev1.Secret]{
 			ID: "Secret/" + fullName + "-config",
-		},
-		ContentsSecret: Resource[corev1.Secret]{
-			ID: "Secret/" + fullName + "-contents",
 		},
 		Deployment: Resource[appsv1.Deployment]{
 			ID: "Deployment/" + fullName,

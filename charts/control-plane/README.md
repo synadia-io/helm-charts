@@ -16,7 +16,6 @@ helm upgrade --install control-plane synadia/control-plane
 
 ### Useful Tools and References
 
-- [Config Generation Script](https://github.com/synadia-io/control-plane-beta#config-generation) - can do much of the heavy lifting to populate values for your Synadia Control Plane deployment
 - [Chart Values file](https://github.com/synadia-io/helm-charts/blob/main/charts/control-plane/values.yaml) - lists all possible configuration options
 - Login Details - On first run, the `admin` user's credentials will be printed to the logs here:
   ```bash
@@ -33,24 +32,6 @@ By default, you must add an Image Pull Secret that allows you to pull the Contro
 imagePullSecret:
   username: my-user
   password: my-password
-```
-
-### Configuring NATS Systems
-
-NATS Systems are JWT-operator enabled NATS Clusters that you want to manage using Control Plane.  The System URL, A System Account User Creds file, and an Operator Signing key are all required.
-
-```yaml
-config:
-  systems:
-    # key is the Name of the System, once it is deployed the Name here should not be changed
-    MySystem:
-      url: nats://demo.nats.io
-      systemUserCreds:
-        contents: |
-          paste system account user creds file contents here
-      operatorSigningKey:
-        contents: |
-          paste operator signing key here
 ```
 
 ### Exposing Control Plane via Ingress
@@ -78,9 +59,6 @@ ingress:
 config:
   server:
     url: https://cp.nats.io
-  systems:
-    MySystem:
-      url: nats://demo.nats.io
 
 ingress:
   enabled: true
@@ -96,16 +74,6 @@ ingress:
 imagePullSecret:
   username: my-user
   password: my-password
-
-config:
-  systems:
-    MySystem:
-      systemUserCreds:
-        contents: |
-          paste system account user creds file contents here
-      operatorSigningKey:
-        contents: |
-          paste operator signing key here
 ```
 
 **Deploy**

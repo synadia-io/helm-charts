@@ -68,19 +68,6 @@ config:
   server:
     url: https://cp.nats.io
     httpPort: 8081
-  systems:
-    TestContents:
-      url: nats://localhost:4222
-      systemUserCreds:
-        contents: creds
-      operatorSigningKey:
-        contents: nk
-    TestSecretName:
-      url: nats://localhost:4222
-      systemUserCreds:
-        secretName: system-creds
-      operatorSigningKey:
-        secretName: system-sk
   kms:
     key:
       secretName: key
@@ -93,18 +80,6 @@ config:
 		"url":       "https://cp.nats.io",
 		"http_addr": ":8081",
 	}
-	expected.Conf.Value["systems"] = map[string]any{
-		"TestContents": map[string]any{
-			"url":                       "nats://localhost:4222",
-			"system_user_creds_file":    "/etc/syn-cp/contents/TestContents.sys-user.creds",
-			"operator_signing_key_file": "/etc/syn-cp/contents/TestContents.operator-sk.nk",
-		},
-		"TestSecretName": map[string]any{
-			"url":                       "nats://localhost:4222",
-			"system_user_creds_file":    "/etc/syn-cp/systems/TestSecretName/sys-user-creds/sys-user.creds",
-			"operator_signing_key_file": "/etc/syn-cp/systems/TestSecretName/operator-sk/operator-sk.nk",
-		},
-	}
 	expected.Conf.Value["kms"] = map[string]any{
 		"key_url": "file:///etc/syn-cp/kms/key.enc",
 		"rotated_key_urls": []any{
@@ -113,56 +88,8 @@ config:
 		},
 	}
 
-	expected.ContentsSecret.HasValue = true
-	expected.ContentsSecret.Value.StringData = map[string]string{
-		"TestContents.sys-user.creds": "creds",
-		"TestContents.operator-sk.nk": "nk",
-	}
-
 	pts := &expected.Deployment.Value.Spec.Template.Spec
-	pts.Volumes = append(pts.Volumes,
-		corev1.Volume{
-			Name: "contents",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: "control-plane-contents",
-				},
-			},
-		},
-		corev1.Volume{
-			Name: "system-TestSecretName-operator-sk",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: "system-sk",
-				},
-			},
-		},
-		corev1.Volume{
-			Name: "system-TestSecretName-sys-user-creds",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: "system-creds",
-				},
-			},
-		},
-	)
-
 	ctr := &pts.Containers[0]
-	ctr.VolumeMounts = append(ctr.VolumeMounts,
-		corev1.VolumeMount{
-			MountPath: "/etc/syn-cp/contents",
-			Name:      "contents",
-		},
-		corev1.VolumeMount{
-			MountPath: "/etc/syn-cp/systems/TestSecretName/operator-sk",
-			Name:      "system-TestSecretName-operator-sk",
-		},
-		corev1.VolumeMount{
-			MountPath: "/etc/syn-cp/systems/TestSecretName/sys-user-creds",
-			Name:      "system-TestSecretName-sys-user-creds",
-		},
-	)
-
 	ctr.Ports[0].ContainerPort = 8081
 
 	RenderAndCheck(t, test, expected)
@@ -179,10 +106,6 @@ config:
   server:
     merge:
       url: cp.nats.io
-  systems:
-    test:
-      merge:
-        url: nats://localhost:4222
   kms:
     merge:
       key_url: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
@@ -201,9 +124,6 @@ config:
   patch: [{op: add, path: /data_dir, value: /mnt/data}]
   server:
     patch: [{op: add, path: /url, value: cp.nats.io}]
-  systems:
-    test:
-      patch: [{op: add, path: /url, value: nats://localhost:4222}]
   kms:
      patch: [{op: add, path: /key_url, value: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=}]
   dataSources:
@@ -226,11 +146,6 @@ singleReplicaMode:
 			expected.Conf.Value["server"] = map[string]any{
 				"url":       "cp.nats.io",
 				"http_addr": ":8080",
-			}
-			expected.Conf.Value["systems"] = map[string]any{
-				"test": map[string]any{
-					"url": "nats://localhost:4222",
-				},
 			}
 			expected.Conf.Value["kms"] = map[string]any{
 				"key_url": "base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=",
@@ -271,12 +186,6 @@ config:
     tls:
       enabled: true
       secretName: server-tls
-  systems:
-    test:
-      url: nats://localhost:4222
-      tls:
-        enabled: true
-        secretName: system-tls
   dataSources:
     postgres:
       dsn: postgres://localhost:5432/localdb
@@ -297,14 +206,6 @@ config:
 		"tls": map[string]any{
 			"cert_file": "/etc/syn-cp/certs/server/tls.crt",
 			"key_file":  "/etc/syn-cp/certs/server/tls.key",
-		},
-	}
-	expected.Conf.Value["systems"] = map[string]any{
-		"test": map[string]any{
-			"url": "nats://localhost:4222",
-			"tls": map[string]any{
-				"ca_file": "/etc/syn-cp/systems/test/cert/tls.ca",
-			},
 		},
 	}
 	expected.Conf.Value["data_sources"] = map[string]any{
@@ -345,14 +246,6 @@ config:
 				},
 			},
 		},
-		corev1.Volume{
-			Name: "system-test-tls",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: "system-tls",
-				},
-			},
-		},
 	)
 
 	ctr := &pts.Containers[0]
@@ -368,10 +261,6 @@ config:
 		corev1.VolumeMount{
 			Name:      "prometheus-tls",
 			MountPath: "/etc/syn-cp/certs/prometheus",
-		},
-		corev1.VolumeMount{
-			Name:      "system-test-tls",
-			MountPath: "/etc/syn-cp/systems/test/cert",
 		},
 	)
 	ctr.Ports = append(ctr.Ports, corev1.ContainerPort{
