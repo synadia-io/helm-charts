@@ -14,17 +14,6 @@ spec:
   {{- $nats = include "nats.loadMergePatch" (merge (dict "file" "stateful-set/nats-container.yaml" "ctx" $) .) | fromYaml }}
   - {{ toYaml $nats | nindent 4 }}
   {{- end }}
-  # reloader
-  {{- with .Values.reloader }}
-  {{- if .enabled }}
-  - {{ include "nats.loadMergePatch" (merge (dict "file" "stateful-set/reloader-container.yaml" "ctx" (merge (dict "natsVolumeMounts" $nats.volumeMounts) $)) .) | nindent 4 }}
-  {{- end }}
-  {{- end }}
-  {{- with .Values.promExporter }}
-  {{- if .enabled }}
-  - {{ include "nats.loadMergePatch" (merge (dict "file" "stateful-set/prom-exporter-container.yaml" "ctx" $) .) | nindent 4 }}
-  {{- end }}
-  {{- end }}
 
   # service discovery uses DNS; don't need service env vars
   enableServiceLinks: false
@@ -35,17 +24,11 @@ spec:
   {{- end }}
   {{- end }}
 
-  {{- if .Values.reloader.enabled }}
-  shareProcessNamespace: true
-  {{- end }}
-
   volumes:
-  # synadia-server config file
-  {{- if $name := (include "controlPlane.secretName" $) }}
-  - name: server-config
+  # opts secret
+  - name: opts
     secret:
-      secretName: {{ $name | quote }}
-  {{- end }}
+      secretName: {{ .Values.optsSecret.name | quote }}
   # nats config
   - name: config
     configMap:

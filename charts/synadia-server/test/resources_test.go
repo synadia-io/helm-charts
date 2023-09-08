@@ -1,6 +1,7 @@
 package test
 
 import (
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +22,9 @@ global:
   labels:
     global: global
 namespaceOverride: foo
+opts:
+  url: cp.nats.io
+  token: agt_foobar
 config:
   jetstream:
     enabled: true
@@ -35,27 +39,6 @@ container:
   image:
     pullPolicy: IfNotPresent
     registry: gcr.io
-  env:
-    GOMEMLIMIT: 1GiB
-    TOKEN:
-      valueFrom:
-        secretKeyRef:
-          name: token
-          key: token
-reloader:
-  env:
-    GOMEMLIMIT: 1GiB
-    TOKEN:
-      valueFrom:
-        secretKeyRef:
-          name: token
-          key: token
-  natsVolumeMountPrefixes:
-  - /etc/
-  - /data
-promExporter:
-  enabled: true
-  port: 7778
   env:
     GOMEMLIMIT: 1GiB
     TOKEN:
@@ -134,50 +117,18 @@ natsBox:
 	expected.StatefulSet.Value.ObjectMeta.Namespace = "foo"
 	expected.StatefulSet.Value.Spec.Template.ObjectMeta.Labels["global"] = "global"
 
-	dd := ddg.Get(t)
 	ctr := expected.StatefulSet.Value.Spec.Template.Spec.Containers
 
 	// nats
 	ctr[0].Env = append(ctr[0].Env, env...)
-	ctr[0].Image = "gcr.io/" + ctr[0].Image
+	image := ctr[0].Image
+	imageParts := strings.Split(image, "/")
+	image = imageParts[len(imageParts)-1]
+	ctr[0].Image = "gcr.io/" + image
 	ctr[0].ImagePullPolicy = "IfNotPresent"
 	ctr[0].VolumeMounts = append(ctr[0].VolumeMounts, corev1.VolumeMount{
 		Name:      test.FullName + "-js",
 		MountPath: "/data",
-	})
-
-	// reloader
-	ctr[1].Env = env
-	ctr[1].Image = "docker.io/" + ctr[1].Image
-	ctr[1].ImagePullPolicy = "Always"
-	ctr[1].VolumeMounts = append(ctr[1].VolumeMounts, corev1.VolumeMount{
-		Name:      test.FullName + "-js",
-		MountPath: "/data",
-	})
-
-	// promExporter
-	ctr = append(ctr, corev1.Container{
-		Args: []string{
-			"-port=7778",
-			"-connz",
-			"-routez",
-			"-subz",
-			"-varz",
-			"-prefix=nats",
-			"-use_internal_server_id",
-			"-jsz=all",
-			"http://localhost:8222/",
-		},
-		Env:             env,
-		Image:           "docker.io/" + dd.PromExporterImage,
-		ImagePullPolicy: "Always",
-		Name:            "prom-exporter",
-		Ports: []corev1.ContainerPort{
-			{
-				Name:          "prom-metrics",
-				ContainerPort: 7778,
-			},
-		},
 	})
 
 	expected.StatefulSet.Value.Spec.Template.Spec.Containers = ctr
@@ -372,6 +323,15 @@ natsBox:
 	expected.ConfigMap.Value.ObjectMeta.Labels["global"] = "global"
 	expected.ConfigMap.Value.ObjectMeta.Namespace = "foo"
 
+	expected.OptsSecret.Value.ObjectMeta.Labels["global"] = "global"
+	expected.OptsSecret.Value.ObjectMeta.Namespace = "foo"
+	expected.OptsSecret.Value.StringData["opts.yaml"] = `token: agt_foobar
+url: cp.nats.io
+`
+
+	expected.PodDisruptionBudget.Value.ObjectMeta.Labels["global"] = "global"
+	expected.PodDisruptionBudget.Value.ObjectMeta.Namespace = "foo"
+
 	RenderAndCheck(t, test, expected)
 }
 
@@ -395,22 +355,6 @@ container:
   merge:
     stdin: true
   patch: [{op: add, path: /tty, value: true}]
-reloader:
-  merge:
-    stdin: true
-  patch: [{op: add, path: /tty, value: true}]
-promExporter:
-  enabled: true
-  merge:
-    stdin: true
-  patch: [{op: add, path: /tty, value: true}]
-  podMonitor:
-    enabled: true
-    merge:
-      metadata:
-        annotations:
-          test: test
-    patch: [{op: add, path: /metadata/labels/test, value: "test"}]
 service:
   enabled: true
   merge:
@@ -437,6 +381,12 @@ headlessService:
         test: test
   patch: [{op: add, path: /metadata/labels/test, value: "test"}]
 configMap:
+  merge:
+    metadata:
+      annotations:
+        test: test
+  patch: [{op: add, path: /metadata/labels/test, value: "test"}]
+optsSecret:
   merge:
     metadata:
       annotations:
@@ -511,34 +461,10 @@ natsBox:
 		}
 	}
 
-	dd := ddg.Get(t)
 	ctr := expected.StatefulSet.Value.Spec.Template.Spec.Containers
 	ctr[0].Stdin = true
 	ctr[0].TTY = true
-	ctr[1].Stdin = true
-	ctr[1].TTY = true
-	ctr = append(ctr, corev1.Container{
-		Args: []string{
-			"-port=7777",
-			"-connz",
-			"-routez",
-			"-subz",
-			"-varz",
-			"-prefix=nats",
-			"-use_internal_server_id",
-			"http://localhost:8222/",
-		},
-		Image: dd.PromExporterImage,
-		Name:  "prom-exporter",
-		Ports: []corev1.ContainerPort{
-			{
-				Name:          "prom-metrics",
-				ContainerPort: 7777,
-			},
-		},
-		Stdin: true,
-		TTY:   true,
-	})
+
 	expected.StatefulSet.Value.Spec.Template.Spec.Containers = ctr
 	expected.StatefulSet.Value.Spec.Template.Spec.ServiceAccountName = test.FullName
 
@@ -557,10 +483,6 @@ natsBox:
 	expected.NatsBoxDeployment.Value.Spec.Template.ObjectMeta.Annotations = annotations()
 	expected.NatsBoxDeployment.Value.Spec.Template.ObjectMeta.Labels["test"] = "test"
 	expected.NatsBoxDeployment.Value.Spec.Template.Spec.ServiceAccountName = test.FullName + "-box"
-
-	expected.PodMonitor.HasValue = true
-	expected.PodMonitor.Value.ObjectMeta.Annotations = annotations()
-	expected.PodMonitor.Value.ObjectMeta.Labels["test"] = "test"
 
 	expected.Ingress.HasValue = true
 	expected.Ingress.Value.ObjectMeta.Annotations = annotations()
@@ -597,6 +519,9 @@ natsBox:
 
 	expected.ConfigMap.Value.ObjectMeta.Annotations = annotations()
 	expected.ConfigMap.Value.ObjectMeta.Labels["test"] = "test"
+
+	expected.OptsSecret.Value.ObjectMeta.Annotations = annotations()
+	expected.OptsSecret.Value.ObjectMeta.Labels["test"] = "test"
 
 	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{
 		{

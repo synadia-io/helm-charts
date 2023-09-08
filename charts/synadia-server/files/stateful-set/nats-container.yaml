@@ -11,10 +11,8 @@ ports:
 {{- end }}
 
 args:
-{{- if (include "controlPlane.secretName" $) }}
-- --synadia-config
-- /etc/synadia-server/server.json
-{{- end }}
+- --opts-file
+- /etc/synadia-server/opts.yaml
 - --config
 - /etc/nats-config/nats.conf
 
@@ -36,7 +34,8 @@ lifecycle:
       command:
       - synadia-server
       - signal
-      - -P /var/run/nats/nats.pid
+      - -P
+      - /var/run/nats/nats.pid
       - ldm
 
 {{- if .Values.config.monitor.enabled }}
@@ -70,11 +69,9 @@ livenessProbe:
 {{- end }}
 
 volumeMounts:
-# control plane token
-{{- if (include "controlPlane.secretName" $) }}
-- name: server-config
+# opts secret
+- name: opts
   mountPath: /etc/synadia-server
-{{- end }}
 # nats config
 - name: config
   mountPath: /etc/nats-config
