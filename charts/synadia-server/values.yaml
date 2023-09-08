@@ -17,7 +17,8 @@ global:
 # Common options
 ################################################################################
 # override name of the chart
-nameOverride:
+# this is set to nats by default for interoperability with the Open Source nats Helm Chart
+nameOverride: nats
 # override full name of the chart+release
 fullnameOverride:
 # override the namespace that resources are installed into
@@ -37,26 +38,20 @@ tlsCA:
   key: ca.crt
 
 ################################################################################
-# Control Plane options
+# Synadia Server Stateful Set and associated resources
 ################################################################################
-controlPlane:
-  # external URL for Synadia Control Plane
-  url:
-  # system registration token
-  token:
-  tokenSecret:
-    # merge or patch the context secret
-    # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core
-    merge: {}
-    patch: []
-    # defaults to "{{ include "nats.fullname" $ }}-control-plane-token"
-    name:
-    # set secretName in order to mount an existing secret to dir
-    secretName:
 
 ################################################################################
-# NATS Stateful Set and associated resources
+# Synadia Server options
 ################################################################################
+# due to the potentially sensitive nature of some of the options, they will be
+# stored in a Kubernetes Secret
+#
+opts:
+  # Synadia Control Plane URL
+  url: ""
+  # Synadia Control Plane Token
+  token: ""
 
 ############################################################
 # NATS config
@@ -326,7 +321,7 @@ config:
 container:
   image:
     repository: synadia-server
-    tag: 1.0.0-rc.0
+    tag: 1.0.0
     pullPolicy:
     registry: registry.synadia.io
 
@@ -359,65 +354,6 @@ container:
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core
   merge: {}
   patch: []
-
-############################################################
-# stateful set -> pod template -> reloader container
-############################################################
-reloader:
-  enabled: false
-  image:
-    repository: natsio/nats-server-config-reloader
-    tag: 0.11.0
-    pullPolicy:
-    registry:
-
-  # env var map, see nats.env for an example
-  env: {}
-
-  # all nats container volume mounts with the following prefixes
-  # will be mounted into the reloader container
-  natsVolumeMountPrefixes:
-  - /etc/
-
-  # merge or patch the container
-  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core
-  merge: {}
-  patch: []
-
-############################################################
-# stateful set -> pod template -> prom-exporter container
-############################################################
-# config.monitor must be enabled
-promExporter:
-  enabled: false
-  image:
-    repository: natsio/prometheus-nats-exporter
-    tag: 0.12.0
-    pullPolicy:
-    registry:
-
-  port: 7777
-  # env var map, see nats.env for an example
-  env: {}
-
-  # merge or patch the container
-  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core
-  merge: {}
-  patch: []
-
-  ############################################################
-  # prometheus pod monitor
-  ############################################################
-  podMonitor:
-    enabled: false
-
-    # merge or patch the pod monitor
-    # https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor
-    merge: {}
-    patch: []
-    # defaults to "{{ include "nats.fullname" $ }}"
-    name:
-
 
 ############################################################
 # service
@@ -523,6 +459,15 @@ serviceAccount:
   merge: {}
   patch: []
   # defaults to "{{ include "nats.fullname" $ }}"
+  name:
+
+# opts secret
+optsSecret:
+  # merge or patch the secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "nats.fullname" $ }}-opts"
   name:
 
 

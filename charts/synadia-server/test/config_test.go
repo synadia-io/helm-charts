@@ -585,12 +585,6 @@ max_outstanding_catchup: 64MB
 `,
 	}
 
-	reloaderArgs := expected.StatefulSet.Value.Spec.Template.Spec.Containers[1].Args
-	reloaderArgs = append(reloaderArgs, "-config", "/etc/nats-config/my-config.conf")
-	reloaderArgs = append(reloaderArgs, "-config", "/etc/nats-config/js.conf")
-	reloaderArgs = append(reloaderArgs, "-config", "/etc/nats-config/my-config-last.conf")
-	expected.StatefulSet.Value.Spec.Template.Spec.Containers[1].Args = reloaderArgs
-
 	vm := expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].VolumeMounts
 	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].VolumeMounts = append(vm, corev1.VolumeMount{
 		MountPath: "/data",

@@ -82,7 +82,6 @@ config:
 
 	volumes := expected.StatefulSet.Value.Spec.Template.Spec.Volumes
 	natsVm := expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].VolumeMounts
-	reloaderVm := expected.StatefulSet.Value.Spec.Template.Spec.Containers[1].VolumeMounts
 	for _, protocol := range []string{"nats", "leafnodes", "websocket", "mqtt", "cluster", "gateway"} {
 		tls := map[string]any{
 			"cert_file": "/etc/nats-certs/" + protocol + "/tls.crt",
@@ -110,27 +109,10 @@ config:
 			MountPath: "/etc/nats-certs/" + protocol,
 			Name:      protocol + "-tls",
 		})
-
-		reloaderVm = append(reloaderVm, corev1.VolumeMount{
-			MountPath: "/etc/nats-certs/" + protocol,
-			Name:      protocol + "-tls",
-		})
 	}
 
 	expected.StatefulSet.Value.Spec.Template.Spec.Volumes = volumes
 	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].VolumeMounts = natsVm
-	expected.StatefulSet.Value.Spec.Template.Spec.Containers[1].VolumeMounts = reloaderVm
-
-	// reloader certs are alphabetized
-	reloaderArgs := expected.StatefulSet.Value.Spec.Template.Spec.Containers[1].Args
-	for _, protocol := range []string{"cluster", "gateway", "leafnodes", "mqtt", "nats", "websocket"} {
-		if protocol == "nats" {
-			reloaderArgs = append(reloaderArgs, "-config", "/etc/my-ca/ca.crt")
-		}
-		reloaderArgs = append(reloaderArgs, "-config", "/etc/nats-certs/"+protocol+"/tls.crt", "-config", "/etc/nats-certs/"+protocol+"/tls.key")
-	}
-
-	expected.StatefulSet.Value.Spec.Template.Spec.Containers[1].Args = reloaderArgs
 
 	expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].Ports = []corev1.ContainerPort{
 		{
@@ -306,14 +288,6 @@ tlsCA:
 			expected.Service.Value.Spec.Ports[0].AppProtocol = &appProtocolTLS
 			expected.HeadlessService.Value.Spec.Ports[0].AppProtocol = &appProtocolTLS
 
-			// reloader certs are alphabetized
-			reloaderArgs := expected.StatefulSet.Value.Spec.Template.Spec.Containers[1].Args
-			reloaderArgs = append(reloaderArgs,
-				"-config", dir+"/"+key,
-				"-config", "/etc/nats-certs/nats/tls.crt",
-				"-config", "/etc/nats-certs/nats/tls.key")
-			expected.StatefulSet.Value.Spec.Template.Spec.Containers[1].Args = reloaderArgs
-
 			tlsCAVol := corev1.Volume{
 				Name: "tls-ca",
 			}
@@ -340,7 +314,6 @@ tlsCA:
 
 			stsVols := expected.StatefulSet.Value.Spec.Template.Spec.Volumes
 			natsVm := expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].VolumeMounts
-			reloaderVm := expected.StatefulSet.Value.Spec.Template.Spec.Containers[1].VolumeMounts
 
 			stsVols = append(stsVols, tlsCAVol, corev1.Volume{
 				Name: "nats-tls",
@@ -356,14 +329,8 @@ tlsCA:
 				Name:      "nats-tls",
 			})
 
-			reloaderVm = append(reloaderVm, tlsCAVm, corev1.VolumeMount{
-				MountPath: "/etc/nats-certs/nats",
-				Name:      "nats-tls",
-			})
-
 			expected.StatefulSet.Value.Spec.Template.Spec.Volumes = stsVols
 			expected.StatefulSet.Value.Spec.Template.Spec.Containers[0].VolumeMounts = natsVm
-			expected.StatefulSet.Value.Spec.Template.Spec.Containers[1].VolumeMounts = reloaderVm
 
 			natsBoxVols := expected.NatsBoxDeployment.Value.Spec.Template.Spec.Volumes
 			natsBoxVms := expected.NatsBoxDeployment.Value.Spec.Template.Spec.Containers[0].VolumeMounts

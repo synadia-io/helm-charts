@@ -1,7 +1,6 @@
 package test
 
 import (
-	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	"sync"
 	"testing"
@@ -15,12 +14,10 @@ import (
 )
 
 type DynamicDefaults struct {
-	VersionLabel      string
-	HelmChartLabel    string
-	NatsImage         string
-	PromExporterImage string
-	ReloaderImage     string
-	NatsBoxImage      string
+	VersionLabel   string
+	HelmChartLabel string
+	NatsImage      string
+	NatsBoxImage   string
 }
 
 type DynamicDefaultsGetter struct {
@@ -47,10 +44,6 @@ func (d *DynamicDefaultsGetter) Get(t *testing.T) DynamicDefaults {
 	}
 
 	test := DefaultTest()
-	test.Values = `
-promExporter:
-  enabled: true
-`
 	r := HelmRender(t, test)
 
 	require.True(t, r.StatefulSet.HasValue)
@@ -62,10 +55,8 @@ promExporter:
 	require.True(t, ok)
 
 	containers := r.StatefulSet.Value.Spec.Template.Spec.Containers
-	require.Len(t, containers, 3)
+	require.Len(t, containers, 1)
 	d.dd.NatsImage = containers[0].Image
-	d.dd.ReloaderImage = containers[1].Image
-	d.dd.PromExporterImage = containers[2].Image
 
 	require.True(t, r.NatsBoxDeployment.HasValue)
 	containers = r.NatsBoxDeployment.Value.Spec.Template.Spec.Containers
@@ -119,7 +110,6 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 	}
 
 	replicas1 := int32(1)
-	trueBool := true
 	falseBool := false
 	exactPath := networkingv1.PathTypeExact
 
@@ -341,6 +331,26 @@ exec sh -ec "$0"
 				},
 			},
 		},
+		OptsSecret: Resource[corev1.Secret]{
+			ID:       dr.OptsSecret.ID,
+			HasValue: true,
+			Value: corev1.Secret{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "Secret",
+					APIVersion: "v1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name:   fullName + "-opts",
+					Labels: natsLabels(),
+				},
+				Type: "Opaque",
+				StringData: map[string]string{
+					"opts.yaml": `token: ""
+url: ""
+`,
+				},
+			},
+		},
 		PodDisruptionBudget: Resource[policyv1.PodDisruptionBudget]{
 			ID:       dr.PodDisruptionBudget.ID,
 			HasValue: true,
@@ -356,30 +366,6 @@ exec sh -ec "$0"
 				Spec: policyv1.PodDisruptionBudgetSpec{
 					MaxUnavailable: &intstr.IntOrString{IntVal: 1},
 					Selector: &v1.LabelSelector{
-						MatchLabels: natsSelectorLabels(),
-					},
-				},
-			},
-		},
-		PodMonitor: Resource[monitoringv1.PodMonitor]{
-			ID:       dr.PodMonitor.ID,
-			HasValue: false,
-			Value: monitoringv1.PodMonitor{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "PodMonitor",
-					APIVersion: "monitoring.coreos.com/v1",
-				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:   fullName,
-					Labels: natsLabels(),
-				},
-				Spec: monitoringv1.PodMonitorSpec{
-					PodMetricsEndpoints: []monitoringv1.PodMetricsEndpoint{
-						{
-							Port: "prom-metrics",
-						},
-					},
-					Selector: v1.LabelSelector{
 						MatchLabels: natsSelectorLabels(),
 					},
 				},
@@ -449,6 +435,8 @@ exec sh -ec "$0"
 							Containers: []corev1.Container{
 								{
 									Args: []string{
+										"--opts-file",
+										"/etc/synadia-server/opts.yaml",
 										"--config",
 										"/etc/nats-config/nats.conf",
 									},
@@ -471,8 +459,11 @@ exec sh -ec "$0"
 										PreStop: &corev1.LifecycleHandler{
 											Exec: &corev1.ExecAction{
 												Command: []string{
-													"nats-server",
-													"-sl=ldm=/var/run/nats/nats.pid",
+													"synadia-server",
+													"signal",
+													"-P",
+													"/var/run/nats/nats.pid",
+													"ldm",
 												},
 											},
 										},
@@ -529,39 +520,30 @@ exec sh -ec "$0"
 									},
 									VolumeMounts: []corev1.VolumeMount{
 										{
+											MountPath: "/etc/synadia-server",
+											Name:      "opts",
+										},
+										{
 											MountPath: "/etc/nats-config",
 											Name:      "config",
 										},
 										{
 											MountPath: "/var/run/nats",
 											Name:      "pid",
-										},
-									},
-								},
-								{
-									Args: []string{
-										"-pid",
-										"/var/run/nats/nats.pid",
-										"-config",
-										"/etc/nats-config/nats.conf",
-									},
-									Image: dd.ReloaderImage,
-									Name:  "reloader",
-									VolumeMounts: []corev1.VolumeMount{
-										{
-											MountPath: "/var/run/nats",
-											Name:      "pid",
-										},
-										{
-											MountPath: "/etc/nats-config",
-											Name:      "config",
 										},
 									},
 								},
 							},
-							EnableServiceLinks:    &falseBool,
-							ShareProcessNamespace: &trueBool,
+							EnableServiceLinks: &falseBool,
 							Volumes: []corev1.Volume{
+								{
+									Name: "opts",
+									VolumeSource: corev1.VolumeSource{
+										Secret: &corev1.SecretVolumeSource{
+											SecretName: "nats-opts",
+										},
+									},
+								},
 								{
 									Name: "config",
 									VolumeSource: corev1.VolumeSource{

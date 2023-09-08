@@ -62,11 +62,11 @@ Set default values.
     {{- $_ := set .natsBox.contextsSecret           "name" (.natsBox.contextsSecret.name           | default (printf "%s-box-contexts" $name)) }}
     {{- $_ := set .natsBox.deployment               "name" (.natsBox.deployment.name               | default (printf "%s-box" $name)) }}
     {{- $_ := set .natsBox.serviceAccount           "name" (.natsBox.serviceAccount.name           | default (printf "%s-box" $name)) }}
+    {{- $_ := set .optsSecret                       "name" (.optsSecret.name                       | default (printf "%s-opts" $name)) }}
     {{- $_ := set .podDisruptionBudget              "name" (.podDisruptionBudget.name              | default $name) }}
     {{- $_ := set .service                          "name" (.service.name                          | default $name) }}
     {{- $_ := set .serviceAccount                   "name" (.serviceAccount.name                   | default $name) }}
     {{- $_ := set .statefulSet                      "name" (.statefulSet.name                      | default $name) }}
-    {{- $_ := set .promExporter.podMonitor          "name" (.promExporter.podMonitor.name          | default $name) }}
   {{- end }}
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
@@ -237,34 +237,6 @@ output: JSON encoded map with 1 key:
 {{- get (include "jsonpatch" (dict "doc" $doc "patch" (.patch | default list)) | fromJson ) "doc" | toYaml -}}
 {{- end }}
 
-
-{{- /*
-nats.reloaderConfig
-input: map with 2 keys:
-- config: interface{} nats config
-- dir: dir config file is in
-output: YAML list of reloader config files
-*/}}
-{{- define "nats.reloaderConfig" -}}
-  {{- $dir := trimSuffix "/" .dir -}}
-  {{- with .config -}}
-  {{- if kindIs "map" . -}}
-    {{- range $k, $v := . -}}
-      {{- if or (eq $k "cert_file") (eq $k "key_file") (eq $k "ca_file") }}
-- -config
-- {{ $v }}
-      {{- else if hasSuffix "$include" $k }}
-- -config
-- {{ clean (printf "%s/%s" $dir $v) }}
-      {{- else }}
-        {{- include "nats.reloaderConfig" (dict "config" $v "dir" $dir) }}
-      {{- end -}}
-    {{- end -}}
-  {{- end -}}
-  {{- end -}}
-{{- end -}}
-
-
 {{- /*
 nats.formatConfig
 input: map[string]interface{}
@@ -279,18 +251,3 @@ output: string with following format rules
     "${1}")
   -}}
 {{- end -}}
-
-{{- define "controlPlane.secretName" -}}
-{{- $name := include "nats.fullname" . }}
-{{- $secretName := "" }}
-{{- if .Values.controlPlane.token }}
-  {{- if not .Values.controlPlane.tokenSecret.name }}
-    {{- $secretName = printf "%s-control-plane-token" $name }}
-  {{- else }}
-    {{- $secretName = .Values.controlPlane.tokenSecret.name }}
-  {{- end }}
-{{- else if .Values.controlPlane.tokenSecret.secretName }}
-  {{- $secretName = .Values.controlPlane.tokenSecret.secretName }}
-{{- end }}
-{{- $secretName }}
-{{- end }}
