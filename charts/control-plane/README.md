@@ -47,7 +47,7 @@ ingress:
   enabled: true
   className: nginx
   hosts:
-  - host: cp.nats.io
+    - host: cp.nats.io
   tlsSecretName: ingress-tls
 ```
 
@@ -64,7 +64,7 @@ ingress:
   enabled: true
   className: nginx
   hosts:
-  - host: cp.nats.io
+    - host: cp.nats.io
   tlsSecretName: ingress-tls
 ```
 
@@ -104,7 +104,7 @@ By default, the Control Plane deployment is a 1-replica Deployment that will cre
 
 Requirements for an HA Deployment:
 
-1. KMS Key URL.  URLs for KMS integrations are documented on the [GoCloud Secrets](https://gocloud.dev/howto/secrets/) website. 
+1. KMS Key URL. URLs for KMS integrations are documented on the [GoCloud Secrets](https://gocloud.dev/howto/secrets/) website.
    This script will generate a random base64 key, which can be used as the KMS Key URL:
    ```bash
    echo "base64key://$(head -c 32 /dev/urandom | base64)"
