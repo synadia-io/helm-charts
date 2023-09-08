@@ -9,21 +9,6 @@ server:
 {{- end }}
 
 ############################################################
-# systems
-############################################################
-{{- $systems := dict }}
-{{- range $systemName, $system := .systems }}
-  {{- $system := include "scp.loadMergePatch" (merge (dict "file" "config/system.yaml" "ctx" (merge (dict "systemName" $systemName "system" $system) $)) $system) | fromYaml }}
-  {{- if $system }}
-    {{- $_ := set $systems $systemName $system }}
-  {{- end }}
-{{- end }}
-{{- if $systems }}
-systems:
-  {{- toYaml $systems | nindent 2 }}
-{{- end }}
-
-############################################################
 # kms
 ############################################################
 {{- with .kms }}

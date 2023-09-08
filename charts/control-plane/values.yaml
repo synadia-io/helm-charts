@@ -66,47 +66,6 @@ config:
     merge: {}
     patch: []
 
-  # systems takes a map of System Name : System
-  systems:
-    SystemName:
-      # NATS server URL
-      url:
-      # System User Creds
-      systemUserCreds:
-        # set contents in order to create a secret with the creds file contents
-        contents:
-        # set secretName and key  in order to mount an existing secret to dir
-        secretName:
-        # defaults to /etc/syn-cp/systems/<system-name>/sys-user-creds
-        dir:
-        key: sys-user.creds
-      # Operator Signing Key
-      operatorSigningKey:
-        # set contents in order to create a secret with the nkey file contents
-        contents:
-        # set secretName in order to mount an existing secret to dir
-        secretName:
-        # defaults to to /etc/syn-cp/systems/<system-name>/operator-sk
-        dir:
-        key: operator-sk.nk
-      # TLS options
-      tls:
-        enabled: false
-        # set secretName in order to mount an existing secret to dir
-        secretName:
-        # defaults to /etc/syn-cp/systems/<system-name>/cert
-        dir:
-        cert:
-        key:
-        ca: tls.ca
-        # merge or patch the tls config
-        merge: {}
-        patch: []
-
-      # merge or patch the system config
-      merge: {}
-      patch: []
-
   kms:
     # if the key is not configured, a default KMS key will be generated and written to the data PVC
     key:
@@ -224,7 +183,7 @@ podTemplate:
 container:
   image:
     repository: control-plane
-    tag: 1.0.1
+    tag: 1.1.0-rc.3
     pullPolicy:
     # defaults to imagePullSecret.registry if imagePullSecret is enabled
     # defaults to global.registry if imagePullSecret is disabled
@@ -369,15 +328,6 @@ configSecret:
   merge: {}
   patch: []
   # defaults to "{{ include "scp.fullname" $ }}-config"
-  name:
-
-# contents secret
-contentsSecret:
-  # merge or patch the contents secret
-  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core
-  merge: {}
-  patch: []
-  # defaults to "{{ include "scp.fullname" $ }}-contents"
   name:
 
 # service account

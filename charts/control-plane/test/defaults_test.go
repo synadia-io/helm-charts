@@ -115,21 +115,6 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 				},
 			},
 		},
-		ContentsSecret: Resource[corev1.Secret]{
-			ID:       dr.ConfigSecret.ID,
-			HasValue: false,
-			Value: corev1.Secret{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "Secret",
-					APIVersion: "v1",
-				},
-				Type: corev1.SecretTypeOpaque,
-				ObjectMeta: v1.ObjectMeta{
-					Name:   fullName + "-contents",
-					Labels: cpLabels(),
-				},
-			},
-		},
 		Deployment: Resource[appsv1.Deployment]{
 			ID:       dr.Deployment.ID,
 			HasValue: true,

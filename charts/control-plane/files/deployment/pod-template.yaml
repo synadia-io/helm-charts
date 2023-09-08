@@ -74,12 +74,6 @@ spec:
   {{- end }}
   {{- end }}
   {{- end }}
-  # contents secret
-  {{- if .hasContentsSecret }}
-  - name: contents
-    secret:
-      secretName: {{ .Values.contentsSecret.name }}
-  {{- end }}
   # external secrets
   {{- range (include "scp.secretNames" $ | fromJson).secretNames }}
   - name: {{ .name | quote }}

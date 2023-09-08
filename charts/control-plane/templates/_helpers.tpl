@@ -38,7 +38,6 @@ Set default values.
   {{- $name := include "scp.fullname" . }}
   {{- with .Values }}
     {{- $_ := set .configSecret                    "name" (.configSecret.name                    | default (printf "%s-config" $name)) }}
-    {{- $_ := set .contentsSecret                  "name" (.contentsSecret.name                  | default (printf "%s-contents" $name)) }}
     {{- $_ := set .deployment                      "name" (.deployment.name                      | default $name) }}
     {{- $_ := set .imagePullSecret                 "name" (.imagePullSecret.name                 | default (printf "%s-regcred" $name)) }}
     {{- $_ := set .ingress                         "name" (.ingress.name                         | default $name) }}
@@ -51,29 +50,6 @@ Set default values.
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
   {{- $_ := set . "Values" $values }}
-
-  {{- $hasContentsSecret := false }}
-  {{- range $systemName, $system := .Values.config.systems }}
-    {{- range $secretKey, $secretVal := dict "systemUserCreds" "sys-user-creds" "operatorSigningKey" "operator-sk" "tls" "cert" }}
-      {{- $secret := get $system $secretKey }}
-      {{- if $secret }}
-        {{- $_ := set $secret "dir" ($secret.dir | default (printf "/etc/syn-cp/systems/%s/%s" $systemName $secretVal)) }}
-        {{- if eq $secretKey "systemUserCreds" -}}
-          {{- $_ := merge $secret (dict "key" "sys-user.creds") }}
-        {{- end -}}
-        {{- if eq $secretKey "operatorSigningKey" -}}
-          {{- $_ := merge $secret (dict "key" "operator-sk.nk") }}
-        {{- end -}}
-        {{- if eq $secretKey "tls" -}}
-          {{- $_ := merge $secret (dict "ca" "tls.ca") }}
-        {{- end -}}
-        {{- if and (ne $secretKey "tls") $secret.contents }}
-          {{- $hasContentsSecret = true }}
-        {{- end }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-  {{- $_ := set $ "hasContentsSecret" $hasContentsSecret }}
 
   {{- range $k, $v := .Values.config.kms.rotatedKeys }}
     {{- $_ := set $v "dir" ($v.dir | default (printf "/etc/syn-cp/kms/rotated-key-%d" $k)) }}
@@ -176,16 +152,6 @@ List of external secretNames
     {{- with .dataSources.prometheus.tls }}
       {{- if and .enabled .secretName }}
         {{- $secrets = append $secrets (merge (dict "name" "prometheus-tls") .) }}
-      {{- end }}
-    {{- end }}
-    {{- range $systemName, $system := .systems }}
-      {{- range $secretKey, $secretVal := dict "systemUserCreds" "sys-user-creds" "operatorSigningKey" "operator-sk" "tls" "tls" }}
-        {{- $secret := get $system $secretKey }}
-        {{- if $secret }}
-          {{- if and $secret.secretName (or (ne $secretKey "tls") ($secret.enabled)) }}
-            {{- $secrets = append $secrets (merge (dict "name" (printf "system-%s-%s" $systemName $secretVal)) $secret) }}
-          {{- end }}
-        {{- end }}
       {{- end }}
     {{- end }}
   {{- end }}

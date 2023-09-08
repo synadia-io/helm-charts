@@ -133,20 +133,7 @@ func TestResourcesMergePatch(t *testing.T) {
 	t.Parallel()
 	values := map[string]string{
 		"merge": `
-config:
-  systems:
-    TestContents:
-      url: nats://localhost:4222
-      systemUserCreds:
-        contents: creds
-      operatorSigningKey:
-        contents: nk
 configSecret:
-  merge:
-    metadata:
-      labels:
-        test: test
-contentsSecret:
   merge:
     metadata:
       labels:
@@ -198,17 +185,7 @@ singleReplicaMode:
           test: test
 `,
 		"patch": `
-config:
-  systems:
-    TestContents:
-      url: nats://localhost:4222
-      systemUserCreds:
-        contents: creds
-      operatorSigningKey:
-        contents: nk
 configSecret:
-  patch: [{op: add, path: /metadata/labels/test, value: test}]
-contentsSecret:
   patch: [{op: add, path: /metadata/labels/test, value: test}]
 imagePullSecret:
   patch: [{op: add, path: /metadata/labels/test, value: test}]
@@ -241,7 +218,6 @@ singleReplicaMode:
 			expected := DefaultResources(t, test)
 			meta := []*v1.ObjectMeta{
 				&expected.ConfigSecret.Value.ObjectMeta,
-				&expected.ContentsSecret.Value.ObjectMeta,
 				&expected.Deployment.Value.ObjectMeta,
 				&expected.Deployment.Value.Spec.Template.ObjectMeta,
 				&expected.ImagePullSecret.Value.ObjectMeta,
@@ -254,41 +230,12 @@ singleReplicaMode:
 			for _, m := range meta {
 				m.Labels["test"] = "test"
 			}
-			expected.Conf.Value["systems"] = map[string]any{
-				"TestContents": map[string]any{
-					"url":                       "nats://localhost:4222",
-					"system_user_creds_file":    "/etc/syn-cp/contents/TestContents.sys-user.creds",
-					"operator_signing_key_file": "/etc/syn-cp/contents/TestContents.operator-sk.nk",
-				},
-			}
-
-			expected.ContentsSecret.HasValue = true
-			expected.ContentsSecret.Value.StringData = map[string]string{
-				"TestContents.sys-user.creds": "creds",
-				"TestContents.operator-sk.nk": "nk",
-			}
 
 			pts := &expected.Deployment.Value.Spec.Template.Spec
 			pts.ServiceAccountName = "control-plane"
-			pts.Volumes = append(pts.Volumes,
-				corev1.Volume{
-					Name: "contents",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName: "control-plane-contents",
-						},
-					},
-				},
-			)
 
 			ctr := &pts.Containers[0]
 			ctr.Stdin = true
-			ctr.VolumeMounts = append(ctr.VolumeMounts,
-				corev1.VolumeMount{
-					MountPath: "/etc/syn-cp/contents",
-					Name:      "contents",
-				},
-			)
 
 			expected.ServiceAccount.HasValue = true
 

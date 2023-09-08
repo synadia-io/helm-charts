@@ -51,11 +51,6 @@ volumeMounts:
 {{- end }}
 {{- end }}
 {{- end }}
-# contents secret
-{{- if .hasContentsSecret }}
-- name: contents
-  mountPath: /etc/syn-cp/contents
-{{- end }}
 # external secrets
 {{- range (include "scp.secretNames" $ | fromJson).secretNames }}
 - name: {{ .name | quote }}
