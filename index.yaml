@@ -46,4 +46,23 @@ entries:
     urls:
     - https://github.com/ConnectEverything/helm-charts/releases/download/control-plane-0.2.0/control-plane-0.2.0.tgz
     version: 0.2.0
-generated: "2023-08-25T19:26:00.224143706Z"
+  synadia-server:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2023-09-08T03:25:16.413053302Z"
+    description: A Helm chart for Synadia Server
+    digest: 76000de73fc63901c500efca131376c019da371eb122e2d62a15e82c8846bb7a
+    home: http://github.com/synadia-io/helm-charts
+    keywords:
+    - synadia-server
+    - nats
+    - messaging
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: synadia-server
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
+    version: 1.0.0
+generated: "2023-09-08T03:25:16.413136303Z"
