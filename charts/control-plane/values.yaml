@@ -183,7 +183,7 @@ podTemplate:
 container:
   image:
     repository: control-plane
-    tag: 1.1.1
+    tag: 1.1.2
     pullPolicy:
     # defaults to imagePullSecret.registry if imagePullSecret is enabled
     # defaults to global.registry if imagePullSecret is disabled
