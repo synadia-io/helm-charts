@@ -107,7 +107,7 @@ Requirements for an HA Deployment:
 1. KMS Key URL. URLs for KMS integrations are documented on the [GoCloud Secrets](https://gocloud.dev/howto/secrets/) website.
    This script will generate a random base64 key, which can be used as the KMS Key URL:
    ```bash
-   echo "base64key://$(head -c 32 /dev/urandom | base64)"
+   echo "base64key://$(head -c 32 /dev/urandom | basenc --base64url)"
    ```
 2. External PostgreSQL Database
 3. External Prometheus Server
