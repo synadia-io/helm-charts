@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - synadia-server-1.0.x
 
 jobs:
   release:
