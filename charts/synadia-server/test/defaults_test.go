@@ -1,9 +1,11 @@
 package test
 
 import (
-	policyv1 "k8s.io/api/policy/v1"
 	"sync"
 	"testing"
+
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	policyv1 "k8s.io/api/policy/v1"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -14,10 +16,11 @@ import (
 )
 
 type DynamicDefaults struct {
-	VersionLabel   string
-	HelmChartLabel string
-	NatsImage      string
-	NatsBoxImage   string
+	VersionLabel      string
+	HelmChartLabel    string
+	NatsImage         string
+	PromExporterImage string
+	NatsBoxImage      string
 }
 
 type DynamicDefaultsGetter struct {
@@ -44,6 +47,10 @@ func (d *DynamicDefaultsGetter) Get(t *testing.T) DynamicDefaults {
 	}
 
 	test := DefaultTest()
+	test.Values = `
+promExporter:
+  enabled: true
+`
 	r := HelmRender(t, test)
 
 	require.True(t, r.StatefulSet.HasValue)
@@ -55,8 +62,9 @@ func (d *DynamicDefaultsGetter) Get(t *testing.T) DynamicDefaults {
 	require.True(t, ok)
 
 	containers := r.StatefulSet.Value.Spec.Template.Spec.Containers
-	require.Len(t, containers, 1)
+	require.Len(t, containers, 2)
 	d.dd.NatsImage = containers[0].Image
+	d.dd.PromExporterImage = containers[1].Image
 
 	require.True(t, r.NatsBoxDeployment.HasValue)
 	containers = r.NatsBoxDeployment.Value.Spec.Template.Spec.Containers
@@ -366,6 +374,30 @@ url: ""
 				Spec: policyv1.PodDisruptionBudgetSpec{
 					MaxUnavailable: &intstr.IntOrString{IntVal: 1},
 					Selector: &v1.LabelSelector{
+						MatchLabels: natsSelectorLabels(),
+					},
+				},
+			},
+		},
+		PodMonitor: Resource[monitoringv1.PodMonitor]{
+			ID:       dr.PodMonitor.ID,
+			HasValue: false,
+			Value: monitoringv1.PodMonitor{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "PodMonitor",
+					APIVersion: "monitoring.coreos.com/v1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name:   fullName,
+					Labels: natsLabels(),
+				},
+				Spec: monitoringv1.PodMonitorSpec{
+					PodMetricsEndpoints: []monitoringv1.PodMetricsEndpoint{
+						{
+							Port: "prom-metrics",
+						},
+					},
+					Selector: v1.LabelSelector{
 						MatchLabels: natsSelectorLabels(),
 					},
 				},
