@@ -23,39 +23,41 @@ file.
 Everything in the NATS Config or Kubernetes Resources can be overridden by `merge` and `patch`, which is supported for
 the following values:
 
-| key                              | type                                                                                                                   | enabled by default                      |
-|----------------------------------|------------------------------------------------------------------------------------------------------------------------|-----------------------------------------|
-| `config`                         | [NATS Config](https://docs.nats.io/running-a-nats-service/configuration)                                               | yes                                     |
-| `config.cluster`                 | [NATS Cluster](https://docs.nats.io/running-a-nats-service/configuration/clustering/cluster_config)                    | no                                      |
-| `config.cluster.tls`             | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                | no                                      |
-| `config.jetstream`               | [NATS JetStream](https://docs.nats.io/running-a-nats-service/configuration#jetstream)                                  | no                                      |
-| `config.jetstream.fileStore.pvc` | [k8s PVC](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core)          | yes, when `config.jetstream` is enabled |
-| `config.nats.tls`                | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                | no                                      |
-| `config.leafnodes`               | [NATS LeafNodes](https://docs.nats.io/running-a-nats-service/configuration/leafnodes/leafnodes_conf)                   | no                                      |
-| `config.leafnodes.tls`           | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                | no                                      |
-| `config.websocket`               | [NATS WebSocket](https://docs.nats.io/running-a-nats-service/configuration/websocket/websocket_conf)                   | no                                      |
-| `config.websocket.tls`           | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                | no                                      |
-| `config.websocket.ingress`       | [k8s Ingress](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#ingress-v1-networking-k8s-io)       | no                                      |
-| `config.mqtt`                    | [NATS MQTT](https://docs.nats.io/running-a-nats-service/configuration/mqtt/mqtt_config)                                | no                                      |
-| `config.mqtt.tls`                | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                | no                                      |
-| `config.gateway`                 | [NATS Gateway](https://docs.nats.io/running-a-nats-service/configuration/gateways/gateway#gateway-configuration-block) | no                                      |
-| `config.gateway.tls`             | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                | no                                      |
-| `config.resolver`                | [NATS Resolver](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/jwt/resolver)       | no                                      |
-| `config.resolver.pvc`            | [k8s PVC](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core)          | yes, when `config.resolver` is enabled  |
-| `container`                      | nats [k8s Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core)           | yes                                     |
-| `service`                        | [k8s Service](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#service-v1-core)                    | yes                                     |
-| `statefulSet`                    | [k8s StatefulSet](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#statefulset-v1-apps)            | yes                                     |
-| `podTemplate`                    | [k8s PodTemplate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pod-v1-core)                    | yes                                     |
-| `headlessService`                | [k8s Service](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#service-v1-core)                    | yes                                     |
-| `configMap`                      | [k8s ConfiegMap](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#configmap-v1-core)               | yes                                     |
-| `optsSecret`                     | [k8s Secret](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core)                      | yes                                     |
-| `natsBox.contexts.default`       | [NATS Context](https://docs.nats.io/using-nats/nats-tools/nats_cli#nats-contexts)                                      | yes                                     |
-| `natsBox.contexts.[name]`        | [NATS Context](https://docs.nats.io/using-nats/nats-tools/nats_cli#nats-contexts)                                      | no                                      |
-| `natsBox.container`              | nats-box [k8s Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core)       | yes                                     |
-| `natsBox.deployment`             | [k8s Deployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#deployment-v1-apps)              | yes                                     |
-| `natsBox.podTemplate`            | [k8s PodTemplate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pod-v1-core)                    | yes                                     |
-| `natsBox.contextsSecret`         | [k8s Secret](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core)                      | yes                                     |
-| `natsBox.contentsSecret`         | [k8s Secret](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core)                      | yes                                     |
+| key                              | type                                                                                                                        | enabled by default                      |
+|----------------------------------|-----------------------------------------------------------------------------------------------------------------------------|-----------------------------------------|
+| `config`                         | [NATS Config](https://docs.nats.io/running-a-nats-service/configuration)                                                    | yes                                     |
+| `config.cluster`                 | [NATS Cluster](https://docs.nats.io/running-a-nats-service/configuration/clustering/cluster_config)                         | no                                      |
+| `config.cluster.tls`             | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                     | no                                      |
+| `config.jetstream`               | [NATS JetStream](https://docs.nats.io/running-a-nats-service/configuration#jetstream)                                       | no                                      |
+| `config.jetstream.fileStore.pvc` | [k8s PVC](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core)               | yes, when `config.jetstream` is enabled |
+| `config.nats.tls`                | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                     | no                                      |
+| `config.leafnodes`               | [NATS LeafNodes](https://docs.nats.io/running-a-nats-service/configuration/leafnodes/leafnodes_conf)                        | no                                      |
+| `config.leafnodes.tls`           | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                     | no                                      |
+| `config.websocket`               | [NATS WebSocket](https://docs.nats.io/running-a-nats-service/configuration/websocket/websocket_conf)                        | no                                      |
+| `config.websocket.tls`           | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                     | no                                      |
+| `config.websocket.ingress`       | [k8s Ingress](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#ingress-v1-networking-k8s-io)            | no                                      |
+| `config.mqtt`                    | [NATS MQTT](https://docs.nats.io/running-a-nats-service/configuration/mqtt/mqtt_config)                                     | no                                      |
+| `config.mqtt.tls`                | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                     | no                                      |
+| `config.gateway`                 | [NATS Gateway](https://docs.nats.io/running-a-nats-service/configuration/gateways/gateway#gateway-configuration-block)      | no                                      |
+| `config.gateway.tls`             | [NATS TLS](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/tls)                                     | no                                      |
+| `config.resolver`                | [NATS Resolver](https://docs.nats.io/running-a-nats-service/configuration/securing_nats/auth_intro/jwt/resolver)            | no                                      |
+| `config.resolver.pvc`            | [k8s PVC](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core)               | yes, when `config.resolver` is enabled  |
+| `container`                      | nats [k8s Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core)                | yes                                     |
+| `promExporter`                   | prometheus exporter [k8s Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core) | no                                      |
+| `promExporter.podMonitor`        | [prometheus PodMonitor](https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor)             | no                                      |
+| `service`                        | [k8s Service](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#service-v1-core)                         | yes                                     |
+| `statefulSet`                    | [k8s StatefulSet](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#statefulset-v1-apps)                 | yes                                     |
+| `podTemplate`                    | [k8s PodTemplate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pod-v1-core)                         | yes                                     |
+| `headlessService`                | [k8s Service](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#service-v1-core)                         | yes                                     |
+| `configMap`                      | [k8s ConfiegMap](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#configmap-v1-core)                    | yes                                     |
+| `optsSecret`                     | [k8s Secret](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core)                           | yes                                     |
+| `natsBox.contexts.default`       | [NATS Context](https://docs.nats.io/using-nats/nats-tools/nats_cli#nats-contexts)                                           | yes                                     |
+| `natsBox.contexts.[name]`        | [NATS Context](https://docs.nats.io/using-nats/nats-tools/nats_cli#nats-contexts)                                           | no                                      |
+| `natsBox.container`              | nats-box [k8s Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core)            | yes                                     |
+| `natsBox.deployment`             | [k8s Deployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#deployment-v1-apps)                   | yes                                     |
+| `natsBox.podTemplate`            | [k8s PodTemplate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pod-v1-core)                         | yes                                     |
+| `natsBox.contextsSecret`         | [k8s Secret](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core)                           | yes                                     |
+| `natsBox.contentsSecret`         | [k8s Secret](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secret-v1-core)                           | yes                                     |
 
 ### Merge
 

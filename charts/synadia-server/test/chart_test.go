@@ -10,6 +10,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/helm"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/nats-io/nats-server/v2/conf"
+	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -29,6 +30,7 @@ type Resources struct {
 	NatsBoxServiceAccount Resource[corev1.ServiceAccount]
 	OptsSecret            Resource[corev1.Secret]
 	PodDisruptionBudget   Resource[policyv1.PodDisruptionBudget]
+	PodMonitor            Resource[monitoringv1.PodMonitor]
 	Service               Resource[corev1.Service]
 	ServiceAccount        Resource[corev1.ServiceAccount]
 	StatefulSet           Resource[appsv1.StatefulSet]
@@ -51,6 +53,7 @@ func (r *Resources) Iter() []MutableResource {
 		r.Service.Mutable(),
 		r.ServiceAccount.Mutable(),
 		r.StatefulSet.Mutable(),
+		r.PodMonitor.Mutable(),
 		r.ExtraConfigMap.Mutable(),
 		r.ExtraService.Mutable(),
 	}
@@ -116,6 +119,9 @@ func GenerateResources(fullName string) *Resources {
 		},
 		PodDisruptionBudget: Resource[policyv1.PodDisruptionBudget]{
 			ID: "PodDisruptionBudget/" + fullName,
+		},
+		PodMonitor: Resource[monitoringv1.PodMonitor]{
+			ID: "PodMonitor/" + fullName,
 		},
 		Service: Resource[corev1.Service]{
 			ID: "Service/" + fullName,
@@ -247,7 +253,7 @@ func RenderAndCheck(t *testing.T, test *Test, expected *Resources) {
 	for i := range expectedResources {
 		expectedResource := expectedResources[i]
 		actualResource := actualResources[i]
-		if a.Equal(expectedResource.HasValueP, actualResource.HasValueP) && *actualResource.HasValueP {
+		if a.Equal(*expectedResource.HasValueP, *actualResource.HasValueP, "resource: %s", expectedResource.ID) && *actualResource.HasValueP {
 			a.Equal(expectedResource.ValueP, actualResource.ValueP)
 		}
 	}

@@ -18,6 +18,8 @@ func TestResourceOptions(t *testing.T) {
 global:
   image:
     pullPolicy: Always
+    pullSecretNames:
+    - testPullSecret
     registry: docker.io
   labels:
     global: global
@@ -39,6 +41,16 @@ container:
   image:
     pullPolicy: IfNotPresent
     registry: gcr.io
+  env:
+    GOMEMLIMIT: 1GiB
+    TOKEN:
+      valueFrom:
+        secretKeyRef:
+          name: token
+          key: token
+promExporter:
+  enabled: true
+  port: 7778
   env:
     GOMEMLIMIT: 1GiB
     TOKEN:
@@ -116,7 +128,13 @@ natsBox:
 	expected.StatefulSet.Value.ObjectMeta.Labels["global"] = "global"
 	expected.StatefulSet.Value.ObjectMeta.Namespace = "foo"
 	expected.StatefulSet.Value.Spec.Template.ObjectMeta.Labels["global"] = "global"
+	expected.StatefulSet.Value.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
+		{
+			Name: "testPullSecret",
+		},
+	}
 
+	dd := ddg.Get(t)
 	ctr := expected.StatefulSet.Value.Spec.Template.Spec.Containers
 
 	// nats
@@ -131,6 +149,31 @@ natsBox:
 		MountPath: "/data",
 	})
 
+	// promExporter
+	ctr = append(ctr, corev1.Container{
+		Args: []string{
+			"-port=7778",
+			"-connz",
+			"-routez",
+			"-subz",
+			"-varz",
+			"-prefix=nats",
+			"-use_internal_server_id",
+			"-jsz=all",
+			"http://localhost:8222/",
+		},
+		Env:             env,
+		Image:           "docker.io/" + dd.PromExporterImage,
+		ImagePullPolicy: "Always",
+		Name:            "prom-exporter",
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "prom-metrics",
+				ContainerPort: 7778,
+			},
+		},
+	})
+
 	expected.StatefulSet.Value.Spec.Template.Spec.Containers = ctr
 	expected.StatefulSet.Value.Spec.Template.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{
 		{
@@ -143,6 +186,12 @@ natsBox:
 	expected.NatsBoxDeployment.Value.ObjectMeta.Labels["global"] = "global"
 	expected.NatsBoxDeployment.Value.ObjectMeta.Namespace = "foo"
 	expected.NatsBoxDeployment.Value.Spec.Template.ObjectMeta.Labels["global"] = "global"
+	expected.NatsBoxDeployment.Value.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
+		{
+			Name: "testPullSecret",
+		},
+	}
+
 	nbCtr := expected.NatsBoxDeployment.Value.Spec.Template.Spec.Containers[0]
 	// nats-box
 	nbCtr.Env = env
@@ -355,6 +404,18 @@ container:
   merge:
     stdin: true
   patch: [{op: add, path: /tty, value: true}]
+promExporter:
+  enabled: true
+  merge:
+    stdin: true
+  patch: [{op: add, path: /tty, value: true}]
+  podMonitor:
+    enabled: true
+    merge:
+      metadata:
+        annotations:
+          test: test
+    patch: [{op: add, path: /metadata/labels/test, value: "test"}]
 service:
   enabled: true
   merge:
@@ -461,10 +522,32 @@ natsBox:
 		}
 	}
 
+	dd := ddg.Get(t)
 	ctr := expected.StatefulSet.Value.Spec.Template.Spec.Containers
 	ctr[0].Stdin = true
 	ctr[0].TTY = true
-
+	ctr = append(ctr, corev1.Container{
+		Args: []string{
+			"-port=7777",
+			"-connz",
+			"-routez",
+			"-subz",
+			"-varz",
+			"-prefix=nats",
+			"-use_internal_server_id",
+			"http://localhost:8222/",
+		},
+		Image: dd.PromExporterImage,
+		Name:  "prom-exporter",
+		Ports: []corev1.ContainerPort{
+			{
+				Name:          "prom-metrics",
+				ContainerPort: 7777,
+			},
+		},
+		Stdin: true,
+		TTY:   true,
+	})
 	expected.StatefulSet.Value.Spec.Template.Spec.Containers = ctr
 	expected.StatefulSet.Value.Spec.Template.Spec.ServiceAccountName = test.FullName
 
@@ -483,6 +566,10 @@ natsBox:
 	expected.NatsBoxDeployment.Value.Spec.Template.ObjectMeta.Annotations = annotations()
 	expected.NatsBoxDeployment.Value.Spec.Template.ObjectMeta.Labels["test"] = "test"
 	expected.NatsBoxDeployment.Value.Spec.Template.Spec.ServiceAccountName = test.FullName + "-box"
+
+	expected.PodMonitor.HasValue = true
+	expected.PodMonitor.Value.ObjectMeta.Annotations = annotations()
+	expected.PodMonitor.Value.ObjectMeta.Labels["test"] = "test"
 
 	expected.Ingress.HasValue = true
 	expected.Ingress.Value.ObjectMeta.Annotations = annotations()

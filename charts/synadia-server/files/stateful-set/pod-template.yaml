@@ -14,9 +14,22 @@ spec:
   {{- $nats = include "nats.loadMergePatch" (merge (dict "file" "stateful-set/nats-container.yaml" "ctx" $) .) | fromYaml }}
   - {{ toYaml $nats | nindent 4 }}
   {{- end }}
+  # promExporter
+  {{- with .Values.promExporter }}
+  {{- if .enabled }}
+  - {{ include "nats.loadMergePatch" (merge (dict "file" "stateful-set/prom-exporter-container.yaml" "ctx" $) .) | nindent 4 }}
+  {{- end }}
+  {{- end }}
 
   # service discovery uses DNS; don't need service env vars
   enableServiceLinks: false
+  
+  {{- with .Values.global.image.pullSecretNames }}
+  imagePullSecrets:
+  {{- range . }}
+  - name: {{ . | quote }}
+  {{- end }}
+  {{- end }}
 
   {{- with .Values.serviceAccount }}
   {{- if .enabled }}

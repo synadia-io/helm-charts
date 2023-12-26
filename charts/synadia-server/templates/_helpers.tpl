@@ -67,6 +67,7 @@ Set default values.
     {{- $_ := set .service                          "name" (.service.name                          | default $name) }}
     {{- $_ := set .serviceAccount                   "name" (.serviceAccount.name                   | default $name) }}
     {{- $_ := set .statefulSet                      "name" (.statefulSet.name                      | default $name) }}
+    {{- $_ := set .promExporter.podMonitor          "name" (.promExporter.podMonitor.name          | default $name) }}
   {{- end }}
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}

@@ -6,6 +6,10 @@ global:
     # global image pull policy to use for all container images in the chart
     # can be overridden by individual image pullPolicy
     pullPolicy:
+    # global list of secret names to use as image pull secrets for all pod specs in the chart
+    # secrets must exist in the same namespace
+    # https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+    pullSecretNames: []
     # global registry to use for all container images in the chart
     # can be overridden by individual image registry
     registry:
@@ -356,6 +360,41 @@ container:
   patch: []
 
 ############################################################
+# stateful set -> pod template -> prom-exporter container
+############################################################
+# config.monitor must be enabled
+promExporter:
+  enabled: false
+  image:
+    repository: natsio/prometheus-nats-exporter
+    tag: 0.13.0
+    pullPolicy:
+    registry:
+
+  port: 7777
+  # env var map, see nats.env for an example
+  env: {}
+
+  # merge or patch the container
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core
+  merge: {}
+  patch: []
+
+  ############################################################
+  # prometheus pod monitor
+  ############################################################
+  podMonitor:
+    enabled: false
+
+    # merge or patch the pod monitor
+    # https://prometheus-operator.dev/docs/operator/api/#monitoring.coreos.com/v1.PodMonitor
+    merge: {}
+    patch: []
+    # defaults to "{{ include "nats.fullname" $ }}"
+    name:
+
+
+############################################################
 # service
 ############################################################
 service:
@@ -523,7 +562,7 @@ natsBox:
   container:
     image:
       repository: natsio/nats-box
-      tag: 0.13.9
+      tag: 0.14.1
       pullPolicy:
       registry:
 
