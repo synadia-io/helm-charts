@@ -325,7 +325,7 @@ config:
 container:
   image:
     repository: synadia-server
-    tag: 1.1.5
+    tag: 1.1.6
     pullPolicy:
     registry: registry.synadia.io
 
