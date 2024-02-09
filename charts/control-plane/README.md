@@ -47,7 +47,7 @@ ingress:
   enabled: true
   className: nginx
   hosts:
-    - host: cp.nats.io
+    - cp.nats.io
   tlsSecretName: ingress-tls
 ```
 
