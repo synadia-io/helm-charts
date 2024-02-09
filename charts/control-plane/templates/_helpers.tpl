@@ -109,7 +109,11 @@ app.kubernetes.io/component: control-plane
 Print the image
 */}}
 {{- define "scp.image" }}
-{{- $image := printf "%s:%s" .repository .tag }}
+{{- $tag := .tag }}
+{{- if and .slim .postgres.dsn }}
+{{- $tag = printf "%s-slim" $tag }}
+{{- end -}}
+{{- $image := printf "%s:%s" .repository $tag }}
 {{- if or .registry .imagePullSecret.enabled .global.image.registry }}
 {{- $image = printf "%s/%s" (.registry | default (ternary .imagePullSecret.registry .global.image.registry .imagePullSecret.enabled)) $image }}
 {{- end -}}

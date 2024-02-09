@@ -1,5 +1,5 @@
 name: syn-cp
-{{ include "scp.image" (merge (pick .Values "global" "imagePullSecret") .Values.container.image) }}
+{{ include "scp.image" (merge (pick .Values "global" "imagePullSecret") .Values.config.dataSources .Values.container.image) }}
 
 args:
 - server
@@ -18,6 +18,22 @@ ports:
 {{- if .config.server.tls }}
 - name: https
   containerPort: {{ .Values.config.server.httpsPort }}
+{{- end }}
+
+{{- with .Values.container }}
+startupProbe:
+  initialDelaySeconds: {{ .startupProbe.initialDelaySeconds }}
+  periodSeconds: {{ .startupProbe.periodSeconds }}
+  failureThreshold: {{ .startupProbe.failureThreshold }}
+  httpGet:
+    path: /healthz
+    port: http
+livenessProbe:
+  periodSeconds: {{ .livenessProbe.periodSeconds }}
+  failureThreshold: {{ .livenessProbe.failureThreshold }}
+  httpGet:
+    path: /healthz
+    port: http
 {{- end }}
 
 volumeMounts:
