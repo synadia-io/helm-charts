@@ -1,4 +1,4 @@
-module github.com/nats-io/k8s/helm/charts/nats
+module github.com/nats-io/k8s/helm/charts/nats/test
 
 go 1.21
 
