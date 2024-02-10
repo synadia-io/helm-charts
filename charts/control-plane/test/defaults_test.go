@@ -156,6 +156,27 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 											ContainerPort: 8080,
 										},
 									},
+									StartupProbe: &corev1.Probe{
+										InitialDelaySeconds: 5,
+										PeriodSeconds:       3,
+										FailureThreshold:    20,
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/healthz",
+												Port: intstr.FromString("http"),
+											},
+										},
+									},
+									LivenessProbe: &corev1.Probe{
+										PeriodSeconds:    10,
+										FailureThreshold: 3,
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/healthz",
+												Port: intstr.FromString("http"),
+											},
+										},
+									},
 									VolumeMounts: []corev1.VolumeMount{
 										{
 											MountPath: "/etc/syn-cp",
@@ -347,7 +368,7 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
 							"storage": resource1Gi,
 						},
@@ -371,7 +392,7 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
 							"storage": resource10Gi,
 						},
@@ -395,7 +416,7 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 					AccessModes: []corev1.PersistentVolumeAccessMode{
 						"ReadWriteOnce",
 					},
-					Resources: corev1.ResourceRequirements{
+					Resources: corev1.VolumeResourceRequirements{
 						Requests: corev1.ResourceList{
 							"storage": resource10Gi,
 						},

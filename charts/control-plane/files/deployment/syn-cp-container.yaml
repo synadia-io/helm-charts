@@ -20,6 +20,21 @@ ports:
   containerPort: {{ .Values.config.server.httpsPort }}
 {{- end }}
 
+startupProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 3
+  failureThreshold: 20
+  httpGet:
+    path: /healthz
+    port: http
+
+livenessProbe:
+  periodSeconds: 10
+  failureThreshold: 3
+  httpGet:
+    path: /healthz
+    port: http
+
 volumeMounts:
 # config secret
 - name: config
