@@ -184,23 +184,12 @@ container:
   image:
     repository: control-plane
     tag: 1.3.0
-    # use slim image, requires use of external PostgreSQL
+    # use slim image, requires config.dataSources.postgres to be configured
     slim: false
     pullPolicy:
     # defaults to imagePullSecret.registry if imagePullSecret is enabled
     # defaults to global.registry if imagePullSecret is disabled
     registry:
-
-  # startupProbe defaults
-  startupProbe:
-    initialDelaySeconds: 5
-    periodSeconds: 3
-    failureThreshold: 20
-
-  # livenessProbe defaults
-  livenessProbe:
-    periodSeconds: 10
-    failureThreshold: 3
 
   # map with key as env var name, value can be string or map
   # example:

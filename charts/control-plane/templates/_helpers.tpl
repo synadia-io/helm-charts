@@ -69,11 +69,17 @@ Set default values.
     {{- if or (not .config.kms) (not .config.kms.key_url) }}
       {{- fail "config.kms.key must configured singleReplicaMode is disabled" }}
     {{- end }}
-    {{- if or (not .config.data_sources.postgres) (not .config.data_sources.postgres.dsn) }}
+    {{- if or (not .config.data_sources) (not .config.data_sources.postgres) (not .config.data_sources.postgres.dsn) }}
       {{- fail "config.dataSources.postgres must be configured when singleReplicaMode is disabled" }}
     {{- end }}
-    {{- if or (not .config.data_sources.prometheus) (not .config.data_sources.prometheus.url) }}
+    {{- if or (not .config.data_sources) (not .config.data_sources.prometheus) (not .config.data_sources.prometheus.url) }}
       {{- fail "config.dataSources.prometheus must be configured when singleReplicaMode is disabled" }}
+    {{- end }}
+  {{- end }}
+
+  {{- if .Values.container.image.slim }}
+    {{- if or (not .config.data_sources) (not .config.data_sources.postgres) (not .config.data_sources.postgres.dsn) }}
+      {{- fail "config.dataSources.postgres must be configured when container.image.slim=true" }}
     {{- end }}
   {{- end }}
 
@@ -110,8 +116,8 @@ Print the image
 */}}
 {{- define "scp.image" }}
 {{- $tag := .tag }}
-{{- if and .slim .postgres.dsn }}
-{{- $tag = printf "%s-slim" $tag }}
+{{- if .slim }}
+{{- $tag = ternary "slim" (printf "%s-slim" $tag) (eq $tag "latest") }}
 {{- end -}}
 {{- $image := printf "%s:%s" .repository $tag }}
 {{- if or .registry .imagePullSecret.enabled .global.image.registry }}

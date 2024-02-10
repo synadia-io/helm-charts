@@ -19,11 +19,12 @@ config:
       url: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
   dataSources:
     postgres:
-      enabled: true
       dsn: postgres://localhost:5432/localdb
     prometheus:
-      enabled: true
       url: https://localhost:9090
+container:
+  image:
+    slim: true
 deployment:
   replicas:
     2
@@ -51,6 +52,7 @@ singleReplicaMode:
 	pts.Volumes = append(pts.Volumes[:2], pts.Volumes[5:]...)
 
 	ctr := &pts.Containers[0]
+	ctr.Image = ctr.Image + "-slim"
 	ctr.VolumeMounts = append(ctr.VolumeMounts[:2], ctr.VolumeMounts[5:]...)
 
 	expected.SingleReplicaModeEncryptionPvc.HasValue = false
