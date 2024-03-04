@@ -138,6 +138,24 @@ entries:
     version: 0.2.0
   synadia-server:
   - apiVersion: v2
+    appVersion: 1.1.8
+    created: "2024-03-04T18:31:14.94865144Z"
+    description: A Helm chart for Synadia Server
+    digest: 944a364fa5d54ff3ac7972142f3ddf186ba324aa619782db4ad25aa3129741c2
+    home: http://github.com/synadia-io/helm-charts
+    keywords:
+    - synadia-server
+    - nats
+    - messaging
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: synadia-server
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.1.8/synadia-server-1.1.8.tgz
+    version: 1.1.8
+  - apiVersion: v2
     appVersion: 1.1.7
     created: "2024-02-07T22:49:53.46263969Z"
     description: A Helm chart for Synadia Server
@@ -371,4 +389,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2024-02-10T00:31:49.390111562Z"
+generated: "2024-03-04T18:31:14.948744193Z"
