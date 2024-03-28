@@ -1,0 +1,4 @@
+{{- include "spl.defaultValues" . }}
+{{- with .Values.deployment }}
+{{- include "spl.loadMergePatch" (merge (dict "file" "deployment/deployment.yaml" "ctx" $) .) }}
+{{- end }}

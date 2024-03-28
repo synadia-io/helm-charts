@@ -1,0 +1,37 @@
+metadata:
+  labels:
+    {{- include "spl.labels" $ | nindent 4 }}
+  annotations:
+spec:
+  containers:
+  # private-link
+  {{- with .Values.container }}
+  - {{ include "spl.loadMergePatch" (merge (dict "file" "deployment/private-link-container.yaml" "ctx" $) .) | nindent 4 }}
+  {{- end }}
+
+  # don't need service env vars
+  enableServiceLinks: false
+
+  {{- with .Values.imagePullSecret }}
+  {{- if .enabled }}
+  imagePullSecrets:
+  - name: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
+
+  securityContext:
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
+
+  {{- with .Values.serviceAccount }}
+  {{- if .enabled }}
+  serviceAccountName: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
+
+  {{- with .Values.podTemplate.topologySpreadConstraints }}
+  topologySpreadConstraints:
+  {{- range $k, $v := . }}
+  - {{ merge (dict "topologyKey" $k "labelSelector" (dict "matchLabels" (include "spl.selectorLabels" $ | fromYaml)) "matchLabelKeys" (list "pod-template-hash")) $v | toYaml | nindent 4 }}
+  {{- end }}
+  {{- end}}

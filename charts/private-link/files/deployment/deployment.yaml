@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.deployment.name }}
+  labels:
+    {{- include "spl.labels" $ | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "spl.selectorLabels" $ | nindent 6 }}
+
+  replicas: {{ .Values.deployment.replicas }}
+
+  template:
+    {{- with .Values.podTemplate }}
+    {{- include "spl.loadMergePatch" (merge (dict "file" "deployment/pod-template.yaml" "ctx" $) .) | nindent 4 }}
+    {{- end }}

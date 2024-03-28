@@ -1,0 +1,32 @@
+name: private-link
+{{ include "spl.image" (merge (pick .Values "global" "imagePullSecret") .Values.container.image) }}
+
+args:
+- --token={{ .Values.config.token }}
+- --platform-url={{ .Values.config.platformURL }}
+- --nats-url={{ .Values.config.natsURL }}
+{{- with .Values.config.tls }}
+{{- if .secretName }}
+{{- if and .cert .key }}
+- --tlscert={{ .cert }}
+- --tlskey={{ .key }}
+{{- end }}
+{{- if .ca }}
+- --tlsca={{ .ca }}
+{{- end }}
+{{- end }}
+{{- if .insecure }}
+- --insecure
+{{- end }}
+{{- end }}
+
+{{- with .Values.container.env }}
+env:
+{{- include "spl.env" . }}
+{{- end }}
+
+volumeMounts:
+{{- range (include "spl.secretNames" $ | fromJson).secretNames }}
+- name: {{ .name | quote }}
+  mountPath: {{ .dir | quote }}
+{{- end }}

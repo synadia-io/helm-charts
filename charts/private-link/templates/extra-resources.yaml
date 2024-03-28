@@ -1,0 +1,5 @@
+{{- include "spl.defaultValues" . }}
+{{- range .Values.extraResources }}
+---
+{{ . | toYaml }}
+{{- end }}

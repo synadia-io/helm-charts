@@ -1,0 +1,185 @@
+################################################################################
+# Global options
+################################################################################
+global:
+  image:
+    # global image pull policy to use for all container images in the chart
+    # can be overridden by individual image pullPolicy
+    pullPolicy:
+    # global registry to use for all container images in the chart
+    # can be overridden by individual image registry
+    registry:
+
+  # global labels will be applied to all resources deployed by the chart
+  labels: {}
+
+################################################################################
+# Private Link Deployment and associated resources
+################################################################################
+
+############################################################
+# image pull secret
+############################################################
+# when enabled, the registry for images in the private link deployment
+# will default to imagePullSecret.registry
+imagePullSecret:
+  enabled: true
+  registry: registry.synadia.io
+  username:
+  password:
+
+  # merge or patch the image pull secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "spl.fullname" $ }}-regcred"
+  name:
+
+############################################################
+# config
+############################################################
+# due to the potentially sensitive nature of some of the configuration
+# options, the entire configuration will be stored in a Kubernetes Secret
+#
+config:
+  # URL for Synadia Control Plane
+  # defaults to Synadia Cloud
+  platformURL:
+  # URL for NATS Server
+  natsURL:
+  # Synadia Cloud or Control Plane Token
+  token:
+  # TLS for connection to NATS Server
+  tls:
+    # set secretName in order to mount an existing secret to dir
+    secretName:
+    dir: /etc/private-link/certs
+    cert: tls.crt
+    key: tls.key
+    ca:
+    # Skip certificate validation
+    insecure: false
+    # merge or patch the tls config
+    merge: {}
+    patch: []
+
+  # merge or patch the config
+  merge: {}
+  patch: []
+
+############################################################
+# deployment
+############################################################
+deployment:
+  replicas: 1
+
+  # merge or patch the stateful set
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#deployment-v1-apps
+  merge: {}
+  patch: []
+  # defaults to "{{ include "spl.fullname" $ }}"
+  name:
+
+############################################################
+# deployment -> pod template
+############################################################
+podTemplate:
+  # map of topologyKey: topologySpreadConstraint
+  # labelSelector will be added to match Deployment pods
+  #
+  # topologySpreadConstraints:
+  #   kubernetes.io/hostname:
+  #     maxSkew: 1
+  #
+  topologySpreadConstraints: {}
+
+  # merge or patch the pod template
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pod-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# deployment -> pod template -> private-link container
+############################################################
+container:
+  image:
+    repository: private-link
+    tag: 1.0.0
+    # use slim image, requires config.dataSources.postgres to be configured
+    pullPolicy:
+    # defaults to imagePullSecret.registry if imagePullSecret is enabled
+    # defaults to global.registry if imagePullSecret is disabled
+    registry:
+
+  # map with key as env var name, value can be string or map
+  # example:
+  #
+  #   env:
+  #     MY_VAR: my_value
+  #     MY_SECRET:
+  #       valueFrom:
+  #         secretKeyRef:
+  #           name: secret-name
+  #           key: secret-key
+  env: {}
+
+  # merge or patch the container
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# other extension points
+############################################################
+
+# service account
+serviceAccount:
+  # enable/disable the service account
+  enabled: false
+
+  # merge or patch the service account
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#serviceaccount-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "spl.fullname" $ }}"
+  name:
+
+################################################################################
+# Extra user-defined resources
+################################################################################
+#
+# add arbitrary user-generated resources
+# example:
+#
+# extraResources:
+# - apiVersion: networking.istio.io/v1beta1
+#   kind: VirtualService
+#   metadata:
+#     name:
+#       $tplYaml: >
+#         {{ include "spl.fullname" $ | quote }}
+#     labels:
+#       $tplYaml: |
+#         {{ include "spl.labels" $ }}
+#   spec:
+#     hosts:
+#     - demo.nats.io
+#     gateways:
+#     - my-gateway
+#     http:
+#     - name: default
+#       match:
+#       - name: root
+#         uri:
+#           prefix: /
+#       route:
+#       - destination:
+#           host:
+#             $tplYaml: >
+#               {{ .Values.service.name | quote }}
+#           port:
+#             number:
+#               $tplYaml: >
+#                 {{ .Values.config.server.httpPort }}
+#
+extraResources: []
