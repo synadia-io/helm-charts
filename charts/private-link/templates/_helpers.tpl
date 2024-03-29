@@ -54,7 +54,9 @@ Set default values.
   {{- $name := include "spl.fullname" . }}
   {{- include "spl.requiredValues" . }}
   {{- with .Values }}
-    {{- $_ := set .config "platformURL" (.config.platformURL | default "https://cloud.synadia.com") }}
+    {{- $_ := set .deployment      "name" (.deployment.name | default $name) }}
+    {{- $_ := set .serviceAccount  "name" (.serviceAccount.name | default $name) }}
+    {{- $_ := set .imagePullSecret "name" (.imagePullSecret.name | default (printf "%s-regcred" $name)) }}
   {{- end }}
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}

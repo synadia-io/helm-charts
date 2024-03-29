@@ -3,8 +3,10 @@ name: private-link
 
 args:
 - --token={{ .Values.config.token }}
-- --platform-url={{ .Values.config.platformURL }}
 - --nats-url={{ .Values.config.natsURL }}
+{{- if .Values.config.platformURL }}
+- --platform-url={{ .Values.config.platformURL }}
+{{- end }}
 {{- with .Values.config.tls }}
 {{- if .secretName }}
 {{- if and .cert .key }}
