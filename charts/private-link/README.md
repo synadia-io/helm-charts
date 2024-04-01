@@ -20,17 +20,7 @@ helm upgrade --install private-link synadia/private-link
 
 ## Common Configuration
 
-### Image Pull Secret
-
-By default, you must add an Image Pull Secret that allows you to pull the Private Link image:
-
-```yaml
-imagePullSecret:
-  username: my-user
-  password: my-password
-```
-
-### Full Example
+### Example
 
 **values.yaml**
 
@@ -39,14 +29,6 @@ config:
   platformURL: https://cloud.synadia.com
   natsURL: nats://nats.nats.svc.cluster.local:4222
   token: agt_my_token
-```
-
-**values-secrets.yaml**
-
-```yaml
-imagePullSecret:
-  username: my-user
-  password: my-password
 ```
 
 **Deploy**

@@ -71,7 +71,6 @@ Set required values.
 */}}
 {{- define "spl.requiredValues" }}
   {{- with .Values }}
-    {{- $_ := (.config.natsURL | required "config.platformURL is required")}}
     {{- $_ := (.config.token | required "config.token is required")}}
     {{- if and .config.tls.cert (not .config.tls.key) }}
       {{- fail "config.tls.key is required if cert is defined" }}

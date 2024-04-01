@@ -74,7 +74,7 @@ deployment:
   replicas: 1
 
   # merge or patch the stateful set
-  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#deployment-v1-apps
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#deployment-v1-apps
   merge: {}
   patch: []
   # defaults to "{{ include "spl.fullname" $ }}"
@@ -94,7 +94,7 @@ podTemplate:
   topologySpreadConstraints: {}
 
   # merge or patch the pod template
-  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pod-v1-core
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
   merge: {}
   patch: []
 
@@ -105,7 +105,6 @@ container:
   image:
     repository: private-link
     tag: 1.0.0
-    # use slim image, requires config.dataSources.postgres to be configured
     pullPolicy:
     # defaults to imagePullSecret.registry if imagePullSecret is enabled
     # defaults to global.registry if imagePullSecret is disabled
@@ -124,7 +123,7 @@ container:
   env: {}
 
   # merge or patch the container
-  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#container-v1-core
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#container-v1-core
   merge: {}
   patch: []
 
@@ -138,7 +137,7 @@ serviceAccount:
   enabled: false
 
   # merge or patch the service account
-  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#serviceaccount-v1-core
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#serviceaccount-v1-core
   merge: {}
   patch: []
   # defaults to "{{ include "spl.fullname" $ }}"
@@ -147,39 +146,26 @@ serviceAccount:
 ################################################################################
 # Extra user-defined resources
 ################################################################################
-#
-# add arbitrary user-generated resources
-# example:
-#
 # extraResources:
-# - apiVersion: networking.istio.io/v1beta1
-#   kind: VirtualService
+# - apiVersion: v1
+#   kind: Pod
 #   metadata:
 #     name:
 #       $tplYaml: >
-#         {{ include "spl.fullname" $ | quote }}
+#         {{ include "spl.fullname" $ }}-nats-box
 #     labels:
 #       $tplYaml: |
 #         {{ include "spl.labels" $ }}
 #   spec:
-#     hosts:
-#     - demo.nats.io
-#     gateways:
-#     - my-gateway
-#     http:
-#     - name: default
-#       match:
-#       - name: root
-#         uri:
-#           prefix: /
-#       route:
-#       - destination:
-#           host:
-#             $tplYaml: >
-#               {{ .Values.service.name | quote }}
-#           port:
-#             number:
-#               $tplYaml: >
-#                 {{ .Values.config.server.httpPort }}
-#
+#     containers:
+#     - name: nats-box
+#       image: natsio/nats-box:latest
+#       command:
+#       - sh
+#       - -ec
+#       - |
+#         exec sh -ec "$0"
+#       args:
+#       - "trap true INT TERM; sleep infinity & wait"
+
 extraResources: []
