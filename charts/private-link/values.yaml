@@ -8,7 +8,7 @@ global:
     pullPolicy:
     # global registry to use for all container images in the chart
     # can be overridden by individual image registry
-    registry:
+    registry: registry.synadia.io
 
   # global labels will be applied to all resources deployed by the chart
   labels: {}
@@ -21,10 +21,10 @@ global:
 # image pull secret
 ############################################################
 # when enabled, the registry for images in the private link deployment
-# will default to imagePullSecret.registry
+# will default to global.image.registry
 imagePullSecret:
-  enabled: true
-  registry: registry.synadia.io
+  enabled: false
+  registry:
   username:
   password:
 
@@ -104,7 +104,7 @@ podTemplate:
 container:
   image:
     repository: private-link
-    tag: 1.0.0
+    tag: 0.1.0
     pullPolicy:
     # defaults to imagePullSecret.registry if imagePullSecret is enabled
     # defaults to global.registry if imagePullSecret is disabled

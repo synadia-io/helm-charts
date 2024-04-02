@@ -102,7 +102,7 @@ spl.selector labels
 {{- define "spl.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "spl.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/component: nats
+app.kubernetes.io/component: private-link
 {{- end }}
 
 {{/*
@@ -110,8 +110,8 @@ Print the image
 */}}
 {{- define "spl.image" }}
 {{- $image := printf "%s:%s" .repository .tag }}
-{{- if or .registry .global.image.registry }}
-{{- $image = printf "%s/%s" (.registry | default .global.image.registry) $image }}
+{{- if or .registry .imagePullSecret.enabled .global.image.registry }}
+{{- $image = printf "%s/%s" (.registry | default (ternary .imagePullSecret.registry .global.image.registry .imagePullSecret.enabled)) $image }}
 {{- end -}}
 image: {{ $image }}
 {{- if or .pullPolicy .global.image.pullPolicy }}
