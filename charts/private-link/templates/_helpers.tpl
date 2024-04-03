@@ -54,8 +54,9 @@ Set default values.
   {{- $name := include "spl.fullname" . }}
   {{- include "spl.requiredValues" . }}
   {{- with .Values }}
-    {{- $_ := set .deployment      "name" (.deployment.name | default $name) }}
-    {{- $_ := set .serviceAccount  "name" (.serviceAccount.name | default $name) }}
+    {{- $_ := set .deployment          "name" (.deployment.name | default $name) }}
+    {{- $_ := set .serviceAccount      "name" (.serviceAccount.name | default $name) }}
+    {{- $_ := set .podDisruptionBudget "name" (.podDisruptionBudget.name | default $name) }}
   {{- end }}
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
