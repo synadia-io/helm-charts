@@ -12,14 +12,29 @@ func TestMTLS(t *testing.T) {
   platformURL: https://my.control-plane.server
   natsURL: nats://my.nats.server
   token: agt_my_token
-  tlsClient:
-    enabled: true
-    secretName: my-cert-secret
+  tls:
+    clientCert:
+      enabled: true
+      secretName: my-cert-secret
 `
 
 	expected := DefaultResources(t, test)
+
+	expected.Deployment.Value.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
+		{
+			Name: "SPL_TOKEN",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "private-link-token",
+					},
+					Key: "token",
+				},
+			},
+		},
+	}
+
 	expected.Deployment.Value.Spec.Template.Spec.Containers[0].Args = []string{
-		"--token=agt_my_token",
 		"--nats-url=nats://my.nats.server",
 		"--platform-url=https://my.control-plane.server",
 		"--tlscert=/etc/private-link/certs/tls.crt",
@@ -53,17 +68,32 @@ func TestMTLSWithCA(t *testing.T) {
   platformURL: https://my.control-plane.server
   natsURL: nats://my.nats.server
   token: agt_my_token
-  tlsClient:
-    enabled: true
-    secretName: my-cert-secret
-  tlsCA:
-    enabled: true
-    secretName: my-ca-secret
+  tls:
+    clientCert:
+      enabled: true
+      secretName: my-cert-secret
+    caCerts:
+      enabled: true
+      secretName: my-ca-secret
 `
 
 	expected := DefaultResources(t, test)
+
+	expected.Deployment.Value.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
+		{
+			Name: "SPL_TOKEN",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "private-link-token",
+					},
+					Key: "token",
+				},
+			},
+		},
+	}
+
 	expected.Deployment.Value.Spec.Template.Spec.Containers[0].Args = []string{
-		"--token=agt_my_token",
 		"--nats-url=nats://my.nats.server",
 		"--platform-url=https://my.control-plane.server",
 		"--tlscert=/etc/private-link/certs/tls.crt",
@@ -107,12 +137,13 @@ func TestMTLSWithCA(t *testing.T) {
   platformURL: https://my.control-plane.server
   natsURL: nats://my.nats.server
   token: agt_my_token
-  tlsClient:
-    enabled: true
-    secretName: my-cert-secret
-  tlsCA:
-    enabled: true
-    configMapName: my-ca-configMap
+  tls:
+    clientCert:
+      enabled: true
+      secretName: my-cert-secret
+    caCerts:
+      enabled: true
+      configMapName: my-ca-configMap
 `
 
 	expected.Deployment.Value.Spec.Template.Spec.Volumes = []corev1.Volume{
@@ -156,15 +187,30 @@ func TestMTLSInsecure(t *testing.T) {
   platformURL: https://my.control-plane.server
   natsURL: nats://my.other.nats.server
   token: agt_my_other_token
-  tlsClient:
-    enabled: true
-    secretName: my-cert-secret
-  tlsInsecure: true
+  tls:
+    clientCert:
+      enabled: true
+      secretName: my-cert-secret
+    insecureSkipVerify: true
 `
 
 	expected := DefaultResources(t, test)
+
+	expected.Deployment.Value.Spec.Template.Spec.Containers[0].Env = []corev1.EnvVar{
+		{
+			Name: "SPL_TOKEN",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "private-link-token",
+					},
+					Key: "token",
+				},
+			},
+		},
+	}
+
 	expected.Deployment.Value.Spec.Template.Spec.Containers[0].Args = []string{
-		"--token=agt_my_other_token",
 		"--nats-url=nats://my.other.nats.server",
 		"--platform-url=https://my.control-plane.server",
 		"--tlscert=/etc/private-link/certs/tls.crt",

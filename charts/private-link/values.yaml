@@ -30,9 +30,6 @@ namespaceOverride:
 ############################################################
 # config
 ############################################################
-# due to the potentially sensitive nature of some of the configuration
-# options, the entire configuration will be stored in a Kubernetes Secret
-#
 config:
   # URL for Synadia Control Plane
   # defaults to Synadia Cloud
@@ -41,30 +38,28 @@ config:
   natsURL:
   # Synadia Cloud or Control Plane Token
   token:
-  # Mutual TLS for client connection to NATS Server
-  tlsClient:
-    enabled: false
-    # set secretName in order to mount an existing secret to dir
-    secretName:
-    dir: /etc/private-link/certs
-    cert: tls.crt
-    key: tls.key
-    # merge or patch the tls config
-    merge: {}
-    patch: []
   # Certificate Authority for Validation of Server Certificate
-  tlsCA:
-    enabled: false
-    # set configMapName in order to mount an existing configMap to dir
-    configMapName:
-    # set secretName in order to mount an existing secretName to dir
-    secretName:
-    # directory to mount the configMap or secret to
-    dir: /etc/private-link/ca-cert
-    # key in the configMap or secret that contains the CA Certificate or Bundle
-    key: ca.crt
-  # Skip certificate validation
-  tlsInsecure: false
+  tls:
+    # Mutual TLS for client connection to NATS Server
+    clientCert:
+      enabled: false
+      # set secretName in order to mount an existing secret to dir
+      secretName:
+      dir: /etc/private-link/certs
+      cert: tls.crt
+      key: tls.key
+    caCerts:
+      enabled: false
+      # set configMapName in order to mount an existing configMap to dir
+      configMapName:
+      # set secretName in order to mount an existing secretName to dir
+      secretName:
+      # directory to mount the configMap or secret to
+      dir: /etc/private-link/ca-cert
+      # key in the configMap or secret that contains the CA Certificate or Bundle
+      key: ca.crt
+    # Skip certificate validation
+    insecureSkipVerify: false
 
 ############################################################
 # deployment
@@ -139,6 +134,15 @@ serviceAccount:
   merge: {}
   patch: []
   # defaults to "{{ include "spl.fullname" $ }}"
+  name:
+
+# token secret
+tokenSecret:
+  # merge or patch the context secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "spl.fullname" $ }}-token"
   name:
 
 # pod disruption budget

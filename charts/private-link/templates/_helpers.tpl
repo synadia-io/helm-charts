@@ -54,8 +54,9 @@ Set default values.
   {{- $name := include "spl.fullname" . }}
   {{- include "spl.requiredValues" . }}
   {{- with .Values }}
-    {{- $_ := set .deployment          "name" (.deployment.name | default $name) }}
-    {{- $_ := set .serviceAccount      "name" (.serviceAccount.name | default $name) }}
+    {{- $_ := set .tokenSecret         "name" (.tokenSecret.name         | default (printf "%s-token" $name)) }}
+    {{- $_ := set .deployment          "name" (.deployment.name          | default $name) }}
+    {{- $_ := set .serviceAccount      "name" (.serviceAccount.name      | default $name) }}
     {{- $_ := set .podDisruptionBudget "name" (.podDisruptionBudget.name | default $name) }}
   {{- end }}
 
@@ -72,11 +73,11 @@ Set required values.
 {{- define "spl.requiredValues" }}
   {{- with .Values }}
     {{- $_ := (.config.token | required "config.token is required")}}
-    {{- if and .config.tlsClient.cert (not .config.tlsClient.key) }}
-      {{- fail "config.tlsClient.key is required if cert is defined" }}
+    {{- if and .config.tls.clientCert.cert (not .config.tls.clientCert.key) }}
+      {{- fail "config.tls.clientCert.key is required if cert is defined" }}
     {{- end }}
-    {{- if and .config.tlsClient.key (not .config.tlsClient.cert) }}
-      {{- fail "config.tlsClient.cert is required if key is defined" }}
+    {{- if and .config.tls.clientCert.key (not .config.tls.clientCert.cert) }}
+      {{- fail "config.tls.clientCert.cert is required if key is defined" }}
     {{- end }}
   {{- end }}
 {{- end }}
@@ -140,7 +141,7 @@ List of external secretNames
 */}}
 {{- define "spl.secretNames" -}}
 {{- $secrets := list }}
-  {{- with .Values.config.tlsClient }}
+  {{- with .Values.config.tls.clientCert }}
     {{- if and .enabled .secretName }}
       {{- $secrets = append $secrets (merge (dict "name" "tls-client") .) }}
     {{- end }}
@@ -149,7 +150,7 @@ List of external secretNames
 {{- end }}
 
 {{- define "spl.tlsCAVolume" -}}
-{{- with .Values.config.tlsCA }}
+{{- with .Values.config.tls.caCerts }}
 {{- if and .enabled (or .configMapName .secretName) }}
 - name: tls-ca
 {{- if .configMapName }}
@@ -164,7 +165,7 @@ List of external secretNames
 {{- end }}
 
 {{- define "spl.tlsCAVolumeMount" -}}
-{{- with .Values.config.tlsCA }}
+{{- with .Values.config.tls.caCerts }}
 {{- if and .enabled (or .configMapName .secretName) }}
 - name: tls-ca
   mountPath: {{ .dir | quote }}
