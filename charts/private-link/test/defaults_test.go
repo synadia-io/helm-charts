@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 type DynamicDefaults struct {
@@ -77,10 +79,8 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 		}
 	}
 
-	replicas1 := int32(1)
+	replicas2 := int32(2)
 	falseBool := false
-	fsGroup := int64(1000)
-	fsGroupChangePolicy := corev1.FSGroupChangeOnRootMismatch
 
 	return &Resources{
 		Deployment: Resource[appsv1.Deployment]{
@@ -96,7 +96,7 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 					Labels: plLabels(),
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &replicas1,
+					Replicas: &replicas2,
 					Selector: &v1.LabelSelector{
 						MatchLabels: plSelectorLabels(),
 					},
@@ -116,31 +116,28 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 								},
 							},
 							EnableServiceLinks: &falseBool,
-							SecurityContext: &corev1.PodSecurityContext{
-								FSGroup:             &fsGroup,
-								FSGroupChangePolicy: &fsGroupChangePolicy,
-							},
 						},
 					},
 				},
 			},
 		},
-		ImagePullSecret: Resource[corev1.Secret]{
-			ID:       dr.ImagePullSecret.ID,
-			HasValue: false,
-			Value: corev1.Secret{
+		PodDisruptionBudget: Resource[policyv1.PodDisruptionBudget]{
+			ID:       dr.PodDisruptionBudget.ID,
+			HasValue: true,
+			Value: policyv1.PodDisruptionBudget{
 				TypeMeta: v1.TypeMeta{
-					Kind:       "Secret",
-					APIVersion: "v1",
+					Kind:       "PodDisruptionBudget",
+					APIVersion: "policy/v1",
 				},
 				ObjectMeta: v1.ObjectMeta{
-					Name:   fullName + "-regcred",
+					Name:   fullName,
 					Labels: plLabels(),
 				},
-				Type: corev1.SecretTypeDockerConfigJson,
-				StringData: map[string]string{
-					corev1.DockerConfigJsonKey: `{"auths":{"registry.synadia.io":{}}}
-`,
+				Spec: policyv1.PodDisruptionBudgetSpec{
+					MaxUnavailable: &intstr.IntOrString{IntVal: 1},
+					Selector: &v1.LabelSelector{
+						MatchLabels: plSelectorLabels(),
+					},
 				},
 			},
 		},

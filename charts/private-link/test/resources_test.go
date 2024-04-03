@@ -20,8 +20,6 @@ global:
     registry: docker.io
   labels:
     global: global
-imagePullSecret:
-  enabled: false
 
 # These are required options
 config:
@@ -38,14 +36,11 @@ config:
 	}
 
 	pts := &expected.Deployment.Value.Spec.Template.Spec
-	pts.ImagePullSecrets = nil
 
 	ctr := &pts.Containers[0]
 	imageSplit := strings.SplitN(ctr.Image, "/", 2)
 	ctr.Image = "docker.io/" + imageSplit[1]
 	ctr.ImagePullPolicy = corev1.PullAlways
-
-	expected.ImagePullSecret.HasValue = false
 
 	RenderAndCheck(t, test, expected)
 }
@@ -54,11 +49,9 @@ func TestResourceOptions(t *testing.T) {
 	t.Parallel()
 	test := DefaultTest()
 	test.Values = `
-imagePullSecret:
-  enabled: true
-  registry: docker.io
-  username: a
-  password: b
+global:
+  image:
+    registry: docker.io
 container:
   image:
     pullPolicy: Always
@@ -115,15 +108,6 @@ config:
 		},
 	}
 
-	expected.ImagePullSecret.HasValue = true
-	expected.Deployment.Value.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
-		{
-			Name: "private-link-regcred",
-		},
-	}
-	expected.ImagePullSecret.Value.StringData[corev1.DockerConfigJsonKey] = `{"auths":{"docker.io":{"auth":"YTpi","password":"b","username":"a"}}}
-`
-
 	RenderAndCheck(t, test, expected)
 }
 
@@ -131,16 +115,6 @@ func TestResourcesMergePatch(t *testing.T) {
 	t.Parallel()
 	values := map[string]string{
 		"merge": `
-configSecret:
-  merge:
-    metadata:
-      labels:
-        test: test
-imagePullSecret:
-  merge:
-    metadata:
-      labels:
-        test: test
 deployment:
   merge:
     metadata:
@@ -154,61 +128,33 @@ podTemplate:
 container:
   merge:
     stdin: true
-service:
-  merge:
-    metadata:
-      labels:
-        test: test
 serviceAccount:
   enabled: true
   merge:
     metadata:
       labels:
         test: test
-singleReplicaMode:
-  encryptionPvc:
-    merge:
-      metadata:
-        labels:
-          test: test
-  postgresPvc:
-    merge:
-      metadata:
-        labels:
-          test: test
-  prometheusPvc:
-    merge:
-      metadata:
-        labels:
-          test: test
 # These are required options
 config:
   token: agt_my_token
   natsURL: nats://connect.ngs.global
 `,
 		"patch": `
-configSecret:
-  patch: [{op: add, path: /metadata/labels/test, value: test}]
-imagePullSecret:
-  patch: [{op: add, path: /metadata/labels/test, value: test}]
 deployment:
   patch: [{op: add, path: /metadata/labels/test, value: test}]
 podTemplate:
   patch: [{op: add, path: /metadata/labels/test, value: test}]
 container:
   patch: [{op: add, path: /stdin, value: true}]
-service:
-  patch: [{op: add, path: /metadata/labels/test, value: test}]
+podDisruptionBudget:
+  merge:
+    metadata:
+      annotations:
+        test: test
+  patch: [{op: add, path: /metadata/labels/test, value: "test"}]
 serviceAccount:
   enabled: true
   patch: [{op: add, path: /metadata/labels/test, value: test}]
-singleReplicaMode:
-  encryptionPvc:
-    patch: [{op: add, path: /metadata/labels/test, value: test}]
-  postgresPvc:
-    patch: [{op: add, path: /metadata/labels/test, value: test}]
-  prometheusPvc:
-    patch: [{op: add, path: /metadata/labels/test, value: test}]
 # These are required options
 config:
   token: agt_my_token

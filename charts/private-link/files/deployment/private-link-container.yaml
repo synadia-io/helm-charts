@@ -1,5 +1,5 @@
 name: private-link
-{{ include "spl.image" (merge (pick .Values "global" "imagePullSecret") .Values.container.image) }}
+{{ include "spl.image" (merge (pick .Values "global") .Values.container.image) }}
 
 args:
 - --token={{ .Values.config.token }}
@@ -7,19 +7,19 @@ args:
 {{- if .Values.config.platformURL }}
 - --platform-url={{ .Values.config.platformURL }}
 {{- end }}
-{{- with .Values.config.tls }}
-{{- if .secretName }}
-{{- if and .cert .key }}
-- --tlscert={{ .cert }}
-- --tlskey={{ .key }}
-{{- end }}
-{{- if .ca }}
-- --tlsca={{ .ca }}
+{{- with .Values.config.tlsClient }}
+{{- if and .secretName (and .cert .key) }}
+- --tlscert={{ .dir }}/{{ .cert }}
+- --tlskey={{ .dir }}/{{ .key }}
 {{- end }}
 {{- end }}
-{{- if .insecure }}
+{{- with .Values.config.tlsCA }}
+{{- if and .enabled (or .configMapName .secretName) }}
+- --tlsca={{ .dir }}/{{ .key }}
+{{- end }}
+{{- end }}
+{{- if .Values.config.tlsInsecure }}
 - --insecure
-{{- end }}
 {{- end }}
 
 {{- with .Values.container.env }}
@@ -28,6 +28,9 @@ env:
 {{- end }}
 
 volumeMounts:
+# tlsCA
+{{- include "spl.tlsCAVolumeMount" $ }}
+# secrets
 {{- range (include "spl.secretNames" $ | fromJson).secretNames }}
 - name: {{ .name | quote }}
   mountPath: {{ .dir | quote }}

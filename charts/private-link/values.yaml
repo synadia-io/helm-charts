@@ -14,26 +14,18 @@ global:
   labels: {}
 
 ################################################################################
+# Common options
+################################################################################
+# override name of the chart
+nameOverride:
+# override full name of the chart+release
+fullnameOverride:
+# override the namespace that resources are installed into
+namespaceOverride:
+
+################################################################################
 # Private Link Deployment and associated resources
 ################################################################################
-
-############################################################
-# image pull secret
-############################################################
-# when enabled, the registry for images in the private link deployment
-# will default to global.image.registry
-imagePullSecret:
-  enabled: false
-  registry:
-  username:
-  password:
-
-  # merge or patch the image pull secret
-  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secret-v1-core
-  merge: {}
-  patch: []
-  # defaults to "{{ include "spl.fullname" $ }}-regcred"
-  name:
 
 ############################################################
 # config
@@ -49,29 +41,36 @@ config:
   natsURL:
   # Synadia Cloud or Control Plane Token
   token:
-  # TLS for connection to NATS Server
-  tls:
+  # Mutual TLS for client connection to NATS Server
+  tlsClient:
+    enabled: false
     # set secretName in order to mount an existing secret to dir
     secretName:
     dir: /etc/private-link/certs
     cert: tls.crt
     key: tls.key
-    ca:
-    # Skip certificate validation
-    insecure: false
     # merge or patch the tls config
     merge: {}
     patch: []
-
-  # merge or patch the config
-  merge: {}
-  patch: []
+  # Certificate Authority for Validation of Server Certificate
+  tlsCA:
+    enabled: false
+    # set configMapName in order to mount an existing configMap to dir
+    configMapName:
+    # set secretName in order to mount an existing secretName to dir
+    secretName:
+    # directory to mount the configMap or secret to
+    dir: /etc/private-link/ca-cert
+    # key in the configMap or secret that contains the CA Certificate or Bundle
+    key: ca.crt
+  # Skip certificate validation
+  tlsInsecure: false
 
 ############################################################
 # deployment
 ############################################################
 deployment:
-  replicas: 1
+  replicas: 2
 
   # merge or patch the stateful set
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#deployment-v1-apps
@@ -104,10 +103,9 @@ podTemplate:
 container:
   image:
     repository: private-link
-    tag: 0.1.0
+    tag: 0.1.0-rc.0
     pullPolicy:
-    # defaults to imagePullSecret.registry if imagePullSecret is enabled
-    # defaults to global.registry if imagePullSecret is disabled
+    # defaults to global.registry
     registry:
 
   # map with key as env var name, value can be string or map
@@ -138,6 +136,16 @@ serviceAccount:
 
   # merge or patch the service account
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#serviceaccount-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "spl.fullname" $ }}"
+  name:
+
+# pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  # merge or patch the pod disruption budget
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#poddisruptionbudget-v1-policy
   merge: {}
   patch: []
   # defaults to "{{ include "spl.fullname" $ }}"

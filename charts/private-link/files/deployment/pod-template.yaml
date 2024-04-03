@@ -12,21 +12,20 @@ spec:
   # don't need service env vars
   enableServiceLinks: false
 
-  {{- with .Values.imagePullSecret }}
-  {{- if .enabled }}
-  imagePullSecrets:
-  - name: {{ .name | quote }}
-  {{- end }}
-  {{- end }}
-
-  securityContext:
-    fsGroup: 1000
-    fsGroupChangePolicy: OnRootMismatch
-
   {{- with .Values.serviceAccount }}
   {{- if .enabled }}
   serviceAccountName: {{ .name | quote }}
   {{- end }}
+  {{- end }}
+
+  volumes:
+   # tlsCA
+  {{- include "spl.tlsCAVolume" $ | nindent 2 }}
+  # secrets
+  {{- range (include "spl.secretNames" $ | fromJson).secretNames }}
+  - name: {{ .name | quote }}
+    secret:
+      secretName: {{ .secretName | quote }}
   {{- end }}
 
   {{- with .Values.podTemplate.topologySpreadConstraints }}

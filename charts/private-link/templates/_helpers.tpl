@@ -56,7 +56,6 @@ Set default values.
   {{- with .Values }}
     {{- $_ := set .deployment      "name" (.deployment.name | default $name) }}
     {{- $_ := set .serviceAccount  "name" (.serviceAccount.name | default $name) }}
-    {{- $_ := set .imagePullSecret "name" (.imagePullSecret.name | default (printf "%s-regcred" $name)) }}
   {{- end }}
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
@@ -72,11 +71,11 @@ Set required values.
 {{- define "spl.requiredValues" }}
   {{- with .Values }}
     {{- $_ := (.config.token | required "config.token is required")}}
-    {{- if and .config.tls.cert (not .config.tls.key) }}
-      {{- fail "config.tls.key is required if cert is defined" }}
+    {{- if and .config.tlsClient.cert (not .config.tlsClient.key) }}
+      {{- fail "config.tlsClient.key is required if cert is defined" }}
     {{- end }}
-    {{- if and .config.tls.key (not .config.tls.cert) }}
-      {{- fail "config.tls.cert is required if key is defined" }}
+    {{- if and .config.tlsClient.key (not .config.tlsClient.cert) }}
+      {{- fail "config.tlsClient.cert is required if key is defined" }}
     {{- end }}
   {{- end }}
 {{- end }}
@@ -110,8 +109,8 @@ Print the image
 */}}
 {{- define "spl.image" }}
 {{- $image := printf "%s:%s" .repository .tag }}
-{{- if or .registry .imagePullSecret.enabled .global.image.registry }}
-{{- $image = printf "%s/%s" (.registry | default (ternary .imagePullSecret.registry .global.image.registry .imagePullSecret.enabled)) $image }}
+{{- if or .registry .global.image.registry }}
+{{- $image = printf "%s/%s" (.registry | default .global.image.registry) $image }}
 {{- end -}}
 image: {{ $image }}
 {{- if or .pullPolicy .global.image.pullPolicy }}
@@ -140,12 +139,36 @@ List of external secretNames
 */}}
 {{- define "spl.secretNames" -}}
 {{- $secrets := list }}
-  {{- with .Values.config.tls }}
+  {{- with .Values.config.tlsClient }}
     {{- if and .enabled .secretName }}
-      {{- $secrets = append $secrets (merge (dict "name" "tls") .) }}
+      {{- $secrets = append $secrets (merge (dict "name" "tls-client") .) }}
     {{- end }}
   {{- end }}
 {{- toJson (dict "secretNames" $secrets) }}
+{{- end }}
+
+{{- define "spl.tlsCAVolume" -}}
+{{- with .Values.config.tlsCA }}
+{{- if and .enabled (or .configMapName .secretName) }}
+- name: tls-ca
+{{- if .configMapName }}
+  configMap:
+    name: {{ .configMapName | quote }}
+{{- else if .secretName }}
+  secret:
+    secretName: {{ .secretName | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- define "spl.tlsCAVolumeMount" -}}
+{{- with .Values.config.tlsCA }}
+{{- if and .enabled (or .configMapName .secretName) }}
+- name: tls-ca
+  mountPath: {{ .dir | quote }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 {{- /*

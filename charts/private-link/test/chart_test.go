@@ -13,20 +13,20 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 )
 
 type Resources struct {
-	Deployment      Resource[appsv1.Deployment]
-	ImagePullSecret Resource[corev1.Secret]
-	ServiceAccount  Resource[corev1.ServiceAccount]
-	ExtraConfigMap  Resource[corev1.ConfigMap]
-	ExtraService    Resource[corev1.Service]
+	Deployment          Resource[appsv1.Deployment]
+	PodDisruptionBudget Resource[policyv1.PodDisruptionBudget]
+	ServiceAccount      Resource[corev1.ServiceAccount]
+	ExtraConfigMap      Resource[corev1.ConfigMap]
+	ExtraService        Resource[corev1.Service]
 }
 
 func (r *Resources) Iter() []MutableResource {
 	return []MutableResource{
 		r.Deployment.Mutable(),
-		r.ImagePullSecret.Mutable(),
 		r.ServiceAccount.Mutable(),
 		r.ExtraConfigMap.Mutable(),
 		r.ExtraService.Mutable(),
@@ -67,8 +67,8 @@ func GenerateResources(fullName string) *Resources {
 		Deployment: Resource[appsv1.Deployment]{
 			ID: "Deployment/" + fullName,
 		},
-		ImagePullSecret: Resource[corev1.Secret]{
-			ID: "Secret/" + fullName + "-regcred",
+		PodDisruptionBudget: Resource[policyv1.PodDisruptionBudget]{
+			ID: "PodDisruptionBudget/" + fullName,
 		},
 		ServiceAccount: Resource[corev1.ServiceAccount]{
 			ID: "ServiceAccount/" + fullName,
