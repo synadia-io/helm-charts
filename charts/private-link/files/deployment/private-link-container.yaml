@@ -1,0 +1,41 @@
+name: private-link
+{{ include "spl.image" (merge (pick .Values "global") .Values.container.image) }}
+
+args:
+- --nats-url={{ .Values.config.natsURL }}
+{{- if .Values.config.platformURL }}
+- --platform-url={{ .Values.config.platformURL }}
+{{- end }}
+{{- with .Values.config.tls.clientCert }}
+{{- if and .secretName (and .cert .key) }}
+- --tlscert={{ .dir }}/{{ .cert }}
+- --tlskey={{ .dir }}/{{ .key }}
+{{- end }}
+{{- end }}
+{{- with .Values.config.tls.caCerts }}
+{{- if and .enabled (or .configMapName .secretName) }}
+- --tlsca={{ .dir }}/{{ .key }}
+{{- end }}
+{{- end }}
+{{- if .Values.config.tls.insecureSkipVerify }}
+- --insecure
+{{- end }}
+
+env:
+- name: SPL_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.tokenSecret.name }}
+      key: "token"
+{{- with .Values.container.env }}
+{{- include "spl.env" . }}
+{{- end }}
+
+volumeMounts:
+# tlsCA
+{{- include "spl.tlsCAVolumeMount" $ }}
+# secrets
+{{- range (include "spl.secretNames" $ | fromJson).secretNames }}
+- name: {{ .name | quote }}
+  mountPath: {{ .dir | quote }}
+{{- end }}

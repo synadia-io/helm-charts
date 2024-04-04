@@ -1,0 +1,36 @@
+metadata:
+  labels:
+    {{- include "spl.labels" $ | nindent 4 }}
+  annotations:
+spec:
+  containers:
+  # private-link
+  {{- with .Values.container }}
+  - {{ include "spl.loadMergePatch" (merge (dict "file" "deployment/private-link-container.yaml" "ctx" $) .) | nindent 4 }}
+  {{- end }}
+
+  # don't need service env vars
+  enableServiceLinks: false
+
+  {{- with .Values.serviceAccount }}
+  {{- if .enabled }}
+  serviceAccountName: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
+
+  volumes:
+   # tlsCA
+  {{- include "spl.tlsCAVolume" $ | nindent 2 }}
+  # secrets
+  {{- range (include "spl.secretNames" $ | fromJson).secretNames }}
+  - name: {{ .name | quote }}
+    secret:
+      secretName: {{ .secretName | quote }}
+  {{- end }}
+
+  {{- with .Values.podTemplate.topologySpreadConstraints }}
+  topologySpreadConstraints:
+  {{- range $k, $v := . }}
+  - {{ merge (dict "topologyKey" $k "labelSelector" (dict "matchLabels" (include "spl.selectorLabels" $ | fromYaml)) "matchLabelKeys" (list "pod-template-hash")) $v | toYaml | nindent 4 }}
+  {{- end }}
+  {{- end}}
