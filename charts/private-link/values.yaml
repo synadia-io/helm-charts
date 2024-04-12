@@ -98,7 +98,7 @@ podTemplate:
 container:
   image:
     repository: private-link
-    tag: 0.1.0-rc.0
+    tag: 1.0.0
     pullPolicy:
     # defaults to global.registry
     registry:
