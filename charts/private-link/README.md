@@ -10,7 +10,6 @@ helm repo add synadia https://synadia-io.github.io/helm-charts
 helm repo update synadia
 
 # now you can install the synadia/private-link chart
-# note: you will need to configure image pull secrets for this to work
 helm upgrade --install private-link synadia/private-link
 ```
 
@@ -20,24 +19,55 @@ helm upgrade --install private-link synadia/private-link
 
 ## Common Configuration
 
-### Example
-
-**values.yaml**
+### Basic Example
 
 ```yaml
 config:
-  platformURL: https://cloud.synadia.com
+  platformURL: https://cp.nats.io
   natsURL: nats://nats.nats.svc.cluster.local:4222
   token: agt_my_token
 ```
 
-**Deploy**
+### Deploy on 3 separate hosts
 
-```bash
-helm upgrade \
-  --install \
-  -f values.yaml \
-  -f values-secrets.yaml \
-  private-link \
-  synadia/private-link
+```yaml
+config:
+  platformURL: https://cp.nats.io
+  natsURL: nats://nats.nats.svc.cluster.local:4222
+  token: agt_my_token
+
+deployment:
+  replicas: 3
+
+podTemplate:
+  topologySpreadConstraints:
+    kubernetes.io/hostname:
+      maxSkew: 1
+      whenUnsatisfiable: DoNotSchedule
+```
+
+### Mutual TLS
+
+```yaml
+config:
+  platformURL: https://cp.nats.io
+  natsURL: nats://nats.nats.svc.cluster.local:4222
+  token: agt_my_token
+  tls:
+    caCerts:
+      enabled: true
+      # example uses ConfigMap, but Secret is also supported with `secretName`
+      configMapName: ca-certs
+      # key in the ConfigMap or Secret that holds the PEM-encoded x509 CA Certificate list
+      # defaults to `ca.crt`
+      key: my-ca.crt
+    clientCert:
+      enabled: true
+      secretName: private-link-tls
+      # key in the Secret that holds the PEM-encoded x509 Client Certificate
+      # defaults to tls.crt
+      cert: my-tls.crt
+      # key in the Secret that holds the PEM-encoded x509 Private Key
+      # defaults to tls.key
+      key: my-tls.key
 ```
