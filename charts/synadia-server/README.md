@@ -1,3 +1,8 @@
+> [!WARNING]  
+> Control Plane 1.4.0 introduces native support for `nats-server`, and `synadia-server` is now deprecated in favor of `nats-server`.  [View the FAQ](https://docs.synadia.com/platform/faq#synadia-server-deprecation) for more information.
+
+---
+
 # Synadia Server Helm Chart
 
 ## Accessing the Helm Chart

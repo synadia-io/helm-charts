@@ -1,12 +1,12 @@
 apiVersion: v2
-appVersion: 1.1.9
+appVersion: 1.1.10
 description: A Helm chart for Synadia Server
 name: synadia-server
 keywords:
 - synadia-server
 - nats
 - messaging
-version: 1.1.9
+version: 1.1.10
 home: http://github.com/synadia-io/helm-charts
 maintainers:
 - name: Synadia
