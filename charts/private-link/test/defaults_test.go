@@ -110,8 +110,20 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 									Image: dd.PrivateLinkImage,
 									Name:  "private-link",
 									Args: []string{
-										"--token=agt_my_token",
 										"--nats-url=nats://connect.ngs.global",
+									},
+									Env: []corev1.EnvVar{
+										{
+											Name: "SPL_TOKEN",
+											ValueFrom: &corev1.EnvVarSource{
+												SecretKeyRef: &corev1.SecretKeySelector{
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "private-link-token",
+													},
+													Key: "token",
+												},
+											},
+										},
 									},
 								},
 							},

@@ -57,11 +57,11 @@ container:
     pullPolicy: Always
   env:
     GOMEMLIMIT: 1GiB
-    TOKEN:
+    FOO:
       valueFrom:
         secretKeyRef:
-          name: token
-          key: token
+          name: foo
+          key: bar 
 podTemplate:
   configChecksumAnnotation: false
   topologySpreadConstraints:
@@ -92,19 +92,30 @@ config:
 	ctr.ImagePullPolicy = corev1.PullAlways
 	ctr.Env = []corev1.EnvVar{
 		{
-			Name:  "GOMEMLIMIT",
-			Value: "1GiB",
-		},
-		{
-			Name: "TOKEN",
+			Name: "SPL_TOKEN",
 			ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "token",
+						Name: "private-link-token",
 					},
 					Key: "token",
 				},
 			},
+		},
+		{
+			Name: "FOO",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "foo",
+					},
+					Key: "bar",
+				},
+			},
+		},
+		{
+			Name:  "GOMEMLIMIT",
+			Value: "1GiB",
 		},
 	}
 
