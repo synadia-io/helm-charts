@@ -1,10 +1,10 @@
-name: synadia-server
+name: private-link
 
 on:
   pull_request:
     paths:
-    - charts/synadia-server/**
-    - .github/workflows/synadia-server.yaml
+    - charts/private-link/**
+    - .github/workflows/private-link.yaml
 
 jobs:
   test:
@@ -20,8 +20,8 @@ jobs:
         go-version: '1.23'
         check-latest: true
         cache: true
-        cache-dependency-path: charts/synadia-server/test/go.sum
+        cache-dependency-path: charts/private-link/test/go.sum
 
     - name: Test
-      working-directory: charts/synadia-server/test
+      working-directory: charts/private-link/test
       run: go test
