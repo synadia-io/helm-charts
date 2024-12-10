@@ -2,6 +2,21 @@ apiVersion: v1
 entries:
   control-plane:
   - apiVersion: v2
+    appVersion: 1.5.0
+    created: "2024-12-10T23:03:27.839913297Z"
+    description: Synadia Control Plane
+    digest: e238bca8884232184142d77fc74808325d75de87dada818b723c889e74b3c7fd
+    home: https://www.synadia.com/
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: control-plane
+    type: application
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/control-plane-1.5.0/control-plane-1.5.0.tgz
+    version: 1.5.0
+  - apiVersion: v2
     appVersion: 1.4.4
     created: "2024-08-29T16:13:27.495572411Z"
     description: Synadia Control Plane
@@ -227,6 +242,20 @@ entries:
     - https://github.com/ConnectEverything/helm-charts/releases/download/control-plane-0.2.0/control-plane-0.2.0.tgz
     version: 0.2.0
   private-link:
+  - apiVersion: v2
+    appVersion: 1.1.1
+    created: "2024-12-10T23:03:28.029714242Z"
+    description: Synadia Private Link
+    digest: 6d39a7def384e675787024251d8aeee82c7599f0c7025852e513d7e806389737
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: private-link
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/private-link-1.1.1/private-link-1.1.1.tgz
+    version: 1.1.1
   - apiVersion: v2
     appVersion: 1.1.0
     created: "2024-09-26T21:18:54.941929963Z"
@@ -572,4 +601,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2024-09-26T21:18:54.942016645Z"
+generated: "2024-12-10T23:03:28.222097888Z"
