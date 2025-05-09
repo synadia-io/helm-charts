@@ -3,8 +3,8 @@ name: control-plane
 description: Synadia Control Plane
 home: https://www.synadia.com/
 type: application
-version: 1.5.4
-appVersion: 1.5.4
+version: 1.5.5
+appVersion: 1.5.5
 maintainers:
 - name: Synadia
   url: https://github.com/synadia-io
