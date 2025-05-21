@@ -105,7 +105,7 @@ podTemplate:
 container:
   image:
     repository: http-gateway
-    tag: latest
+    tag: 0.1.19
     pullPolicy:
     # defaults to global.registry
     registry:
