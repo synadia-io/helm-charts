@@ -316,6 +316,21 @@ entries:
     urls:
     - https://github.com/ConnectEverything/helm-charts/releases/download/control-plane-0.2.0/control-plane-0.2.0.tgz
     version: 0.2.0
+  http-gateway:
+  - apiVersion: v2
+    appVersion: 0.1.19
+    created: "2025-05-21T19:43:38.140529493Z"
+    description: NATS HTTP Gateway
+    digest: 8dc225f0a69033cc74b15f9b3f1156610b81e8b2ad96ff12cca30da871b5aac2
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: http-gateway
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/http-gateway-0.1.0/http-gateway-0.1.0.tgz
+    version: 0.1.0
   private-link:
   - apiVersion: v2
     appVersion: 1.2.0
@@ -690,4 +705,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2025-05-09T18:00:26.786512809Z"
+generated: "2025-05-21T19:43:38.140645641Z"
