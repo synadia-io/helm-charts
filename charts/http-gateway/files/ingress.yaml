@@ -1,0 +1,37 @@
+{{- with .Values.ingress }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "nhg.labels" $ | nindent 4 }}
+spec:
+  {{- with .className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  rules:
+  {{- $path := .path }}
+  {{- $pathType := .pathType }}
+  {{- range .hosts }}
+  - host: {{ . | quote }}
+    http:
+      paths:
+      - path: {{ $path | quote }}
+        pathType: {{ $pathType | quote }}
+        backend:
+          service:
+            name: {{ $.Values.service.name }}
+            port:
+              {{- if $.Values.config.tls.enabled }}
+              name: https
+              {{- else }}
+              name: http
+              {{- end }}
+  {{- end }}
+  {{- if .tlsSecretName }}
+  tls:
+  - secretName: {{ .tlsSecretName | quote }}
+    hosts:
+    {{- toYaml .hosts | nindent 4 }}
+  {{- end }}
+{{- end }}

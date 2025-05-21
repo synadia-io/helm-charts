@@ -1,0 +1,234 @@
+################################################################################
+# Global options
+################################################################################
+global:
+  image:
+    # global image pull policy to use for all container images in the chart
+    # can be overridden by individual image pullPolicy
+    pullPolicy:
+    # global registry to use for all container images in the chart
+    # can be overridden by individual image registry
+    registry: registry.synadia.io
+
+  # global labels will be applied to all resources deployed by the chart
+  labels: {}
+
+################################################################################
+# Common options
+################################################################################
+# override name of the chart
+nameOverride:
+# override full name of the chart+release
+fullnameOverride:
+# override the namespace that resources are installed into
+namespaceOverride:
+
+################################################################################
+# HTTP Gateway Deployment and associated resources
+################################################################################
+
+############################################################
+# config
+############################################################
+config:
+  # NATS URL
+  url:
+  # port for HTTP server to listen on
+  httpPort: 80
+  # port for HTTPS server to listen on, TLS must be enabled
+  httpsPort: 443
+  # KV Bucket for NATS HTTP Gateway Tokens
+  tokensBucket:
+  # NATS Client Credentials
+  creds:
+    # set secretName in order to mount an existing secretName to dir
+    secretName:
+    # directory to mount the configMap or secret to
+    dir: /etc/http-gateway/creds
+    # key in the secret that contains the credentials file
+    key: nats.creds
+  tls:
+    enabled: false
+    # TLS for HTTP Server
+    cert:
+      enabled: false
+      # set secretName in order to mount an existing secret to dir
+      secretName:
+      dir: /etc/http-gateway/certs
+      cert: tls.crt
+      key: tls.key
+    caCerts:
+      enabled: false
+      # set configMapName in order to mount an existing configMap to dir
+      configMapName:
+      # set secretName in order to mount an existing secretName to dir
+      secretName:
+      # directory to mount the configMap or secret to
+      dir: /etc/http-gateway/ca-cert
+      # key in the configMap or secret that contains the CA Certificate or Bundle
+      key: ca.crt
+
+############################################################
+# deployment
+############################################################
+deployment:
+  replicas: 1
+
+  # merge or patch the stateful set
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#deployment-v1-apps
+  merge: {}
+  patch: []
+  # defaults to "{{ include "nhg.fullname" $ }}"
+  name:
+
+############################################################
+# deployment -> pod template
+############################################################
+podTemplate:
+  # map of topologyKey: topologySpreadConstraint
+  # labelSelector will be added to match Deployment pods
+  #
+  # topologySpreadConstraints:
+  #   kubernetes.io/hostname:
+  #     maxSkew: 1
+  #
+  topologySpreadConstraints: {}
+
+  # merge or patch the pod template
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# deployment -> pod template -> http-gateway container
+############################################################
+container:
+  image:
+    repository: http-gateway
+    tag: 0.1.19
+    pullPolicy:
+    # defaults to global.registry
+    registry:
+
+  # map with key as env var name, value can be string or map
+  # example:
+  #
+  #   env:
+  #     MY_VAR: my_value
+  #     MY_SECRET:
+  #       valueFrom:
+  #         secretKeyRef:
+  #           name: secret-name
+  #           key: secret-key
+  env: {}
+
+  # merge or patch the container
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#container-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# service
+############################################################
+service:
+  # service port options
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#serviceport-v1-core
+  ports:
+    http:
+      enabled: true
+      port: 80
+    # config.tls must also be enabled
+    https:
+      enabled: false
+      port: 443
+
+  # merge or patch the service
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#service-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "nhg.fullname" $ }}"
+  name:
+
+############################################################
+# ingress
+############################################################
+# service must be enabled also
+ingress:
+  enabled: false
+  # must contain at least 1 host otherwise ingress will not be created
+  hosts: []
+  path: /
+  pathType: Prefix
+  # sets to the ingress class name
+  className:
+  # set to an existing secret name to enable TLS on the ingress; applies to all hosts
+  tlsSecretName:
+
+  # merge or patch the ingress
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#ingress-v1-networking-k8s-io
+  merge: {}
+  patch: []
+  # defaults to "{{ include "nhg.fullname" $ }}"
+  name:
+
+############################################################
+# other extension points
+############################################################
+
+# service account
+serviceAccount:
+  # enable/disable the service account
+  enabled: true
+
+  # merge or patch the service account
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#serviceaccount-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "nhg.fullname" $ }}"
+  name:
+
+# token secret
+tokenSecret:
+  # merge or patch the context secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "nhg.fullname" $ }}-token"
+  name:
+
+# pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  # merge or patch the pod disruption budget
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#poddisruptionbudget-v1-policy
+  merge: {}
+  patch: []
+  # defaults to "{{ include "nhg.fullname" $ }}"
+  name:
+
+################################################################################
+# Extra user-defined resources
+################################################################################
+# extraResources:
+# - apiVersion: v1
+#   kind: Pod
+#   metadata:
+#     name:
+#       $tplYaml: >
+#         {{ include "nhg.fullname" $ }}-nats-box
+#     labels:
+#       $tplYaml: |
+#         {{ include "nhg.labels" $ }}
+#   spec:
+#     containers:
+#     - name: nats-box
+#       image: natsio/nats-box:latest
+#       command:
+#       - sh
+#       - -ec
+#       - |
+#         exec sh -ec "$0"
+#       args:
+#       - "trap true INT TERM; sleep infinity & wait"
+
+extraResources: []

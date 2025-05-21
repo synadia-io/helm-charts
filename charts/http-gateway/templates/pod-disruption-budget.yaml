@@ -1,0 +1,6 @@
+{{- include "nhg.defaultValues" . }}
+{{- with .Values.podDisruptionBudget }}
+{{- if .enabled }}
+{{- include "nhg.loadMergePatch" (merge (dict "file" "pod-disruption-budget.yaml" "ctx" $) .) }}
+{{- end }}
+{{- end }}
