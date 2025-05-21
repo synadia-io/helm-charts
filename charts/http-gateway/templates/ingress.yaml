@@ -1,0 +1,6 @@
+{{- include "nhg.defaultValues" . }}
+{{- with .Values.ingress }}
+{{- if and .enabled .hosts }}
+{{- include "nhg.loadMergePatch" (merge (dict "file" "ingress.yaml" "ctx" $) .) }}
+{{- end }}
+{{- end }}

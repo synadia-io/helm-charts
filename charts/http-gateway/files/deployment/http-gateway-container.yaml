@@ -1,0 +1,37 @@
+name: http-gateway
+{{ include "nhg.image" (merge (pick .Values "global") .Values.container.image) }}
+
+args:
+- run
+- --tokens-bucket={{ .Values.config.tokensBucket }}
+{{- with .Values.config.creds }}
+- --provider-creds={{ .dir }}/{{ .key }}
+{{- end }}
+{{- with .Values.config.tls.clientCert }}
+{{- if and .secretName (and .cert .key) }}
+- --certificate={{ .dir }}/{{ .cert }}
+- --key={{ .dir }}/{{ .key }}
+{{- end }}
+{{- end }}
+- {{ .Values.config.url }}
+
+{{- with .Values.container.env }}
+{{- include "nhg.env" . }}
+{{- end }}
+
+ports:
+- name: http
+  containerPort: {{ .Values.config.httpPort }}
+{{- if .Values.config.tls.enabled }}
+- name: https
+  containerPort: {{ .Values.config.httpsPort }}
+{{- end }}
+
+volumeMounts:
+# tlsCA
+{{- include "nhg.tlsCAVolumeMount" $ }}
+# secrets
+{{- range (include "nhg.secretNames" $ | fromJson).secretNames }}
+- name: {{ .name | quote }}
+  mountPath: {{ .dir | quote }}
+{{- end }}

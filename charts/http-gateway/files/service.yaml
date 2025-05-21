@@ -1,0 +1,22 @@
+{{- with .Values.service }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+  labels:
+    {{- include "nhg.labels" $ | nindent 4 }}
+spec:
+  selector:
+    {{- include "nhg.selectorLabels" $ | nindent 4 }}
+  ports:
+  {{- with .ports.http }}
+  {{- if .enabled }}
+  - {{ merge (dict "name" "http" "targetPort" "http") (omit . "enabled") | toYaml | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  {{- with .ports.https }}
+  {{- if .enabled }}
+  - {{ merge (dict "name" "https" "targetPort" "https") (omit . "enabled") | toYaml | nindent 4 }}
+  {{- end }}
+  {{- end }}
+{{- end }}
