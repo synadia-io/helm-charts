@@ -2,7 +2,7 @@ apiVersion: v2
 appVersion: 1.2.0
 description: Synadia Private Link
 name: private-link
-version: 1.2.0
+version: 1.2.1
 home: http://github.com/synadia-io/helm-charts
 maintainers:
 - name: Synadia

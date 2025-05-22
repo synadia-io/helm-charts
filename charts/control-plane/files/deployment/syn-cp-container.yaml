@@ -15,7 +15,7 @@ env:
 ports:
 - name: http
   containerPort: {{ .Values.config.server.httpPort }}
-{{- if .config.server.tls }}
+{{- if .config.server.tls.enabled }}
 - name: https
   containerPort: {{ .Values.config.server.httpsPort }}
 {{- end }}
