@@ -29,13 +29,23 @@ jobs:
         echo '# Helm Chart' >> "$f"
         tail -n +2 "README.md" >> "$f"
 
+
+    - name: Create GitHub App Token
+      id: token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ secrets.SYNADIA_ARTIFACT_PUSHER_APP_ID }}
+        private-key: ${{ secrets.SYNADIA_ARTIFACT_PUSHER_PRIVATE_KEY }}
+        owner: ConnectEverything
+        repositories: synadia-docs
+
     - name: Run GitHub File Sync
-      # use a commit hash here since this requires a PAT
+      # use a commit hash here since this requires a token
       # this hash maps to https://github.com/BetaHuhn/repo-file-sync-action/releases/tag/v1.21.0
       uses: BetaHuhn/repo-file-sync-action@3023dac7ce66c18b119e2012348437eadeaea116
       with:
-        GH_PAT: ${{ secrets.CONTROL_PLANE_DOCS_SYNC_PAT }}
+        GH_PAT: ${{ steps.token.outputs.token }}
         IS_FINE_GRAINED: true
         CONFIG_PATH: charts/control-plane/docs-sync.yaml
-        GIT_USERNAME: caleblloyd
-        GIT_EMAIL: caleb@synadia.com
+        GIT_USERNAME: Synadia Artifact Pusher
+        GIT_EMAIL: support@synadia.com
