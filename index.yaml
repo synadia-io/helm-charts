@@ -1,5 +1,20 @@
 apiVersion: v1
 entries:
+  connect-node:
+  - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2025-06-18T23:44:11.140252532Z"
+    description: Synadia Connect Node
+    digest: 860272a850ab23155c7a7a3f5466bffa7be44582de6657432677db5da9a5ae31
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: connect-node
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/connect-node-0.1.0/connect-node-0.1.0.tgz
+    version: 0.1.0
   control-plane:
   - apiVersion: v2
     appVersion: 1.5.6
@@ -345,6 +360,21 @@ entries:
     name: http-gateway
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/http-gateway-0.1.0/http-gateway-0.1.0.tgz
+    version: 0.1.0
+  nex-ce:
+  - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2025-06-18T23:44:11.395644258Z"
+    description: Synadia Nex CE
+    digest: 6c18f13d6435af4d99cfd727fef7971a61ac9040c5887eb3c9e6e5c38df26d1f
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: nex-ce
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/nex-ce-0.1.0/nex-ce-0.1.0.tgz
     version: 0.1.0
   private-link:
   - apiVersion: v2
@@ -720,4 +750,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2025-06-13T23:07:44.296030239Z"
+generated: "2025-06-18T23:44:11.395769693Z"
