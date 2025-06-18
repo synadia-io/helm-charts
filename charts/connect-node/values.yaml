@@ -1,0 +1,190 @@
+################################################################################
+# Global options
+################################################################################
+global:
+  image:
+    # global image pull policy to use for all container images in the chart
+    # can be overridden by individual image pullPolicy
+    pullPolicy:
+    # global list of secret names to use as image pull secrets for all pod specs in the chart
+    # secrets must exist in the same namespace
+    # https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+    pullSecretNames: []
+    # global registry to use for all container images in the chart
+    # can be overridden by individual image registry
+    registry: registry.synadia.io
+
+  # global labels will be applied to all resources deployed by the chart
+  labels: {}
+
+################################################################################
+# Common options
+################################################################################
+# override name of the chart
+nameOverride:
+# override full name of the chart+release
+fullnameOverride:
+# override the namespace that resources are installed into
+namespaceOverride:
+
+################################################################################
+# Connect Node Deployment and associated resources
+################################################################################
+
+############################################################
+# config
+############################################################
+config:
+  # NATS Server URL
+  url:
+  # Connect Node NATS Credentials
+  creds:
+    # set secretName in order to mount an existing secret to dir
+    secretName:
+    # directory to mount the secret to
+    dir: /etc/connect-node/creds
+    # key in the secret that contains the credentials file
+    key: nats.creds
+  # Runtime repository URL
+  runtime: https://github.com/synadia-io/connect-runtime-wombat.git
+  # Storage backend
+  store: jetstream
+  # Executor type
+  executor: nex
+  # Nex workload type
+  nexWorkloadType: connector
+  # Certificate Authority for Validation of Server Certificate
+  tls:
+    # Mutual TLS for client connection to NATS Server
+    clientCert:
+      enabled: false
+      # set secretName in order to mount an existing secret to dir
+      secretName:
+      dir: /etc/connect-node/certs
+      cert: tls.crt
+      key: tls.key
+    caCerts:
+      enabled: false
+      # set configMapName in order to mount an existing configMap to dir
+      configMapName:
+      # set secretName in order to mount an existing secretName to dir
+      secretName:
+      # directory to mount the configMap or secret to
+      dir: /etc/connect-node/ca-cert
+      # key in the configMap or secret that contains the CA Certificate or Bundle
+      key: ca.crt
+    # Skip certificate validation
+    insecureSkipVerify: false
+
+############################################################
+# deployment
+############################################################
+deployment:
+  replicas: 1
+
+  # merge or patch the stateful set
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#deployment-v1-apps
+  merge: {}
+  patch: []
+  # defaults to "{{ include "cn.fullname" $ }}"
+  name:
+
+############################################################
+# deployment -> pod template
+############################################################
+podTemplate:
+  # map of topologyKey: topologySpreadConstraint
+  # labelSelector will be added to match Deployment pods
+  #
+  # topologySpreadConstraints:
+  #   kubernetes.io/hostname:
+  #     maxSkew: 1
+  #
+  topologySpreadConstraints: {}
+
+  # merge or patch the pod template
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# deployment -> pod template -> connect-node container
+############################################################
+container:
+  image:
+    repository: connect-node
+    tag: latest
+    pullPolicy:
+    # defaults to global.registry
+    registry:
+
+  # map with key as env var name, value can be string or map
+  # example:
+  #
+  #   env:
+  #     MY_VAR: my_value
+  #     MY_SECRET:
+  #       valueFrom:
+  #         secretKeyRef:
+  #           name: secret-name
+  #           key: secret-key
+  env: {}
+
+  # merge or patch the container
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#container-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# other extension points
+############################################################
+
+# service account
+serviceAccount:
+  # enable/disable the service account
+  enabled: true
+
+  # merge or patch the service account
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#serviceaccount-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "cn.fullname" $ }}"
+  name:
+
+
+# pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  # merge or patch the pod disruption budget
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#poddisruptionbudget-v1-policy
+  merge: {}
+  patch: []
+  # defaults to "{{ include "cn.fullname" $ }}"
+  name:
+
+################################################################################
+# Extra user-defined resources
+################################################################################
+# extraResources:
+# - apiVersion: v1
+#   kind: Pod
+#   metadata:
+#     name:
+#       $tplYaml: >
+#         {{ include "cn.fullname" $ }}-nats-box
+#     labels:
+#       $tplYaml: |
+#         {{ include "cn.labels" $ }}
+#   spec:
+#     containers:
+#     - name: nats-box
+#       image: natsio/nats-box:latest
+#       command:
+#       - sh
+#       - -ec
+#       - |
+#         exec sh -ec "$0"
+#       args:
+#       - "trap true INT TERM; sleep infinity & wait"
+
+extraResources: []

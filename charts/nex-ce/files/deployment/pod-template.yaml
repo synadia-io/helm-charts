@@ -1,12 +1,12 @@
 metadata:
   labels:
-    {{- include "nhg.labels" $ | nindent 4 }}
+    {{- include "nce.labels" $ | nindent 4 }}
   annotations:
 spec:
   containers:
-  # http-gateway
+  # nex-ce
   {{- with .Values.container }}
-  - {{ include "nhg.loadMergePatch" (merge (dict "file" "deployment/http-gateway-container.yaml" "ctx" $) .) | nindent 4 }}
+  - {{ include "nce.loadMergePatch" (merge (dict "file" "deployment/nex-ce-container.yaml" "ctx" $) .) | nindent 4 }}
   {{- end }}
 
   # don't need service env vars
@@ -27,17 +27,21 @@ spec:
 
   volumes:
    # tlsCA
-  {{- include "nhg.tlsCAVolume" $ | nindent 2 }}
+  {{- include "nce.tlsCAVolume" $ | nindent 2 }}
   # secrets
-  {{- range (include "nhg.secretNames" $ | fromJson).secretNames }}
+  {{- range (include "nce.secretNames" $ | fromJson).secretNames }}
   - name: {{ .name | quote }}
     secret:
       secretName: {{ .secretName | quote }}
   {{- end }}
+  # configSecret
+  - name: config
+    secret:
+      secretName: {{ .Values.configSecret.name | default (printf "%s-config" (include "nce.fullname" $)) | quote }}
 
   {{- with .Values.podTemplate.topologySpreadConstraints }}
   topologySpreadConstraints:
   {{- range $k, $v := . }}
-  - {{ merge (dict "topologyKey" $k "labelSelector" (dict "matchLabels" (include "nhg.selectorLabels" $ | fromYaml)) "matchLabelKeys" (list "pod-template-hash")) $v | toYaml | nindent 4 }}
+  - {{ merge (dict "topologyKey" $k "labelSelector" (dict "matchLabels" (include "nce.selectorLabels" $ | fromYaml)) "matchLabelKeys" (list "pod-template-hash")) $v | toYaml | nindent 4 }}
   {{- end }}
   {{- end}}
