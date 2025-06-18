@@ -1,0 +1,35 @@
+name: connect-node
+{{ include "cn.image" (merge (pick .Values "global") .Values.container.image) }}
+
+args:
+- run
+- -s
+- {{ .Values.config.url | quote }}
+{{- with .Values.config.creds }}
+{{- if .secretName }}
+- --creds
+- {{ .dir }}/{{ .key }}
+{{- end }}
+{{- end }}
+- --runtime
+- {{ .Values.config.runtime | quote }}
+- --store
+- {{ .Values.config.store | quote }}
+- --executor
+- {{ .Values.config.executor | quote }}
+- --nex-workload-type
+- {{ .Values.config.nexWorkloadType | quote }}
+
+env:
+{{- with .Values.container.env }}
+{{- include "cn.env" . }}
+{{- end }}
+
+volumeMounts:
+# tlsCA
+{{- include "cn.tlsCAVolumeMount" $ }}
+# secrets
+{{- range (include "cn.secretNames" $ | fromJson).secretNames }}
+- name: {{ .name | quote }}
+  mountPath: {{ .dir | quote }}
+{{- end }}

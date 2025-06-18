@@ -1,0 +1,4 @@
+{{- include "cn.defaultValues" . }}
+{{- with .Values.deployment }}
+{{- include "cn.loadMergePatch" (merge (dict "file" "deployment/deployment.yaml" "ctx" $) .) }}
+{{- end }}

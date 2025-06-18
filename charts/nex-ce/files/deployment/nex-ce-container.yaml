@@ -1,0 +1,23 @@
+name: nex-ce
+{{ include "nce.image" (merge (pick .Values "global") .Values.container.image) }}
+
+args:
+- /app/config.json
+
+env:
+{{- with .Values.container.env }}
+{{- include "nce.env" . }}
+{{- end }}
+
+volumeMounts:
+# tlsCA
+{{- include "nce.tlsCAVolumeMount" $ }}
+# secrets
+{{- range (include "nce.secretNames" $ | fromJson).secretNames }}
+- name: {{ .name | quote }}
+  mountPath: {{ .dir | quote }}
+{{- end }}
+# configSecret
+- name: config
+  mountPath: /app/config.json
+  subPath: config.json

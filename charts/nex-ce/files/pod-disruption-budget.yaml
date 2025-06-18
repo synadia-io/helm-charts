@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  {{- include "nce.metadataNamespace" $ | nindent 2 }}
+  name: {{ .Values.podDisruptionBudget.name }}
+  labels:
+    {{- include "nce.labels" $ | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "nce.selectorLabels" $ | nindent 6 }}
