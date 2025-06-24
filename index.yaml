@@ -475,6 +475,21 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/private-link-0.1.0-rc.0/private-link-0.1.0-rc.0.tgz
     version: 0.1.0-rc.0
+  synadia-deploy:
+  - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2025-06-24T17:40:58.72688493Z"
+    description: Synadia Deploy
+    digest: 24a41e8e8217e3be6456b2f50b1209145e2cce7804723b47a53fbf8b76f87cf4
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: synadia-deploy
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/synadia-deploy-0.1.0/synadia-deploy-0.1.0.tgz
+    version: 0.1.0
   synadia-server:
   - apiVersion: v2
     appVersion: 1.1.10
@@ -764,4 +779,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2025-06-19T02:53:02.831944388Z"
+generated: "2025-06-24T17:40:58.727014903Z"
