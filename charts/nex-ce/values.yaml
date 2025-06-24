@@ -116,7 +116,7 @@ podTemplate:
 container:
   image:
     repository: nexce
-    tag: latest
+    tag: 0.1.6-rc.6
     pullPolicy:
     # defaults to global.registry
     registry:
