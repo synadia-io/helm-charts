@@ -1,0 +1,6 @@
+{{- include "sd.defaultValues" . }}
+{{- with .Values.podDisruptionBudget }}
+{{- if .enabled }}
+{{- include "sd.loadMergePatch" (merge (dict "file" "pod-disruption-budget.yaml" "ctx" $) .) }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,4 @@
+{{- include "sd.defaultValues" . }}
+{{- with .Values.deployment }}
+{{- include "sd.loadMergePatch" (merge (dict "file" "deployment/deployment.yaml" "ctx" $) .) }}
+{{- end }}
