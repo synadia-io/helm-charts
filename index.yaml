@@ -505,6 +505,20 @@ entries:
     version: 0.1.0-rc.0
   synadia-deploy:
   - apiVersion: v2
+    appVersion: 0.1.0-rc.0
+    created: "2025-06-25T13:28:58.980708829Z"
+    description: Synadia Deploy
+    digest: d21e41bbf9b1e7ef5fd46d43e7e63bfae152551bb45f65e798c74c9b4c4bec01
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: synadia-deploy
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/synadia-deploy-0.1.1/synadia-deploy-0.1.1.tgz
+    version: 0.1.1
+  - apiVersion: v2
     appVersion: 0.1.0
     created: "2025-06-24T17:40:58.72688493Z"
     description: Synadia Deploy
@@ -807,4 +821,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2025-06-24T20:33:17.165385327Z"
+generated: "2025-06-25T13:28:58.980813475Z"
