@@ -1,8 +1,8 @@
 apiVersion: v2
-appVersion: 0.1.0-rc.0
+appVersion: 0.1.0-rc.1
 description: Synadia Deploy
 name: synadia-deploy
-version: 0.1.1
+version: 0.1.2
 home: http://github.com/synadia-io/helm-charts
 maintainers:
 - name: Synadia
