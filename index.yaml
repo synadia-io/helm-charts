@@ -391,6 +391,20 @@ entries:
     version: 0.1.0
   nex-ce:
   - apiVersion: v2
+    appVersion: 0.1.6
+    created: "2025-06-30T19:00:55.280298162Z"
+    description: Synadia Nex CE
+    digest: 8681ce59a16781e1bac1f642a2e461c4b92358f7a358455787550c353ed8897d
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: nex-ce
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/nex-ce-0.1.2/nex-ce-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
     appVersion: 0.1.6-rc.6
     created: "2025-06-24T20:33:17.165226971Z"
     description: Synadia Nex CE
@@ -504,6 +518,20 @@ entries:
     - https://github.com/synadia-io/helm-charts/releases/download/private-link-0.1.0-rc.0/private-link-0.1.0-rc.0.tgz
     version: 0.1.0-rc.0
   synadia-deploy:
+  - apiVersion: v2
+    appVersion: 0.1.0-rc.1
+    created: "2025-06-30T19:00:55.498139581Z"
+    description: Synadia Deploy
+    digest: 215b5eea58865c15405f9b436c5b5f46e790fdb3bb952f31ae448037e2a5d28d
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: synadia-deploy
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/synadia-deploy-0.1.2/synadia-deploy-0.1.2.tgz
+    version: 0.1.2
   - apiVersion: v2
     appVersion: 0.1.0-rc.0
     created: "2025-06-25T13:28:58.980708829Z"
@@ -821,4 +849,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2025-06-25T13:28:58.980813475Z"
+generated: "2025-06-30T19:00:55.49825731Z"
