@@ -3,6 +3,20 @@ entries:
   connect-node:
   - apiVersion: v2
     appVersion: 1.0.4-rc3
+    created: "2025-07-02T23:13:44.020685006Z"
+    description: Synadia Connect Node
+    digest: 5ba6e448eeb22fa005b21da7481f3c2e13fd0353310d402baca2eecadcfc84a4
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: connect-node
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/connect-node-0.1.2/connect-node-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
+    appVersion: 1.0.4-rc3
     created: "2025-06-24T20:33:17.009239709Z"
     description: Synadia Connect Node
     digest: d68d507c3f5205d72639b5c6da462d0b481467fcf3163655d019f80b46bdb7ef
@@ -363,6 +377,20 @@ entries:
   http-gateway:
   - apiVersion: v2
     appVersion: 0.1.20
+    created: "2025-07-02T23:13:44.225964371Z"
+    description: NATS HTTP Gateway
+    digest: 691cd9b74c8daaa190a0fb6c9b170145be34f06124a47c2a9e33d81e90e8c065
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: http-gateway
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/http-gateway-0.1.2/http-gateway-0.1.2.tgz
+    version: 0.1.2
+  - apiVersion: v2
+    appVersion: 0.1.20
     created: "2025-06-19T02:53:02.831826889Z"
     description: NATS HTTP Gateway
     digest: c338907a03ad749da806b1ac3ff434a7cec2bab9d55c012e0203acd080a034ac
@@ -390,6 +418,20 @@ entries:
     - https://github.com/synadia-io/helm-charts/releases/download/http-gateway-0.1.0/http-gateway-0.1.0.tgz
     version: 0.1.0
   nex-ce:
+  - apiVersion: v2
+    appVersion: 0.1.7-rc.2
+    created: "2025-07-02T23:13:44.421487652Z"
+    description: Synadia Nex CE
+    digest: c3a28f6b1b6726102f5f419b39345ee81ae02dcd39f9037a2b0efb7ab9138499
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: nex-ce
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/nex-ce-0.1.3/nex-ce-0.1.3.tgz
+    version: 0.1.3
   - apiVersion: v2
     appVersion: 0.1.6
     created: "2025-06-30T19:00:55.280298162Z"
@@ -518,6 +560,20 @@ entries:
     - https://github.com/synadia-io/helm-charts/releases/download/private-link-0.1.0-rc.0/private-link-0.1.0-rc.0.tgz
     version: 0.1.0-rc.0
   synadia-deploy:
+  - apiVersion: v2
+    appVersion: 0.1.0-rc.2
+    created: "2025-07-02T23:13:44.860715557Z"
+    description: Synadia Deploy
+    digest: 97a819c3a47c12dca9ae321cb495b60d46b81a593b0a6b4168f812a235e2d5a0
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: synadia-deploy
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/synadia-deploy-0.1.3/synadia-deploy-0.1.3.tgz
+    version: 0.1.3
   - apiVersion: v2
     appVersion: 0.1.0-rc.1
     created: "2025-06-30T19:00:55.498139581Z"
@@ -849,4 +905,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2025-06-30T19:00:55.49825731Z"
+generated: "2025-07-02T23:13:44.860865247Z"
