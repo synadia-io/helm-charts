@@ -98,7 +98,7 @@ podTemplate:
 container:
   image:
     repository: synadia-deploy
-    tag: 0.1.0-rc.1
+    tag: 0.1.0-rc.2
     pullPolicy:
     # defaults to global.registry
     registry:
@@ -133,8 +133,7 @@ serviceAccount:
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#serviceaccount-v1-core
   merge: {}
   patch: []
-  # defaults to "{{ include "sd.fullname" $ }}"
-  name:
+  name: synadia-deploy
 
 # token secret
 tokenSecret:

@@ -80,7 +80,9 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 	}
 
 	replicas2 := int32(2)
+	trueBool := true
 	falseBool := false
+	runAsUser := int64(1000)
 
 	return &Resources{
 		Deployment: Resource[appsv1.Deployment]{
@@ -105,10 +107,23 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 							Labels: plLabels(),
 						},
 						Spec: corev1.PodSpec{
+							SecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &trueBool,
+								SeccompProfile: &corev1.SeccompProfile{
+									Type: corev1.SeccompProfileTypeRuntimeDefault,
+								},
+							},
 							Containers: []corev1.Container{
 								{
 									Image: dd.PrivateLinkImage,
 									Name:  "private-link",
+									SecurityContext: &corev1.SecurityContext{
+										RunAsUser:                &runAsUser,
+										AllowPrivilegeEscalation: &falseBool,
+										Capabilities: &corev1.Capabilities{
+											Drop: []corev1.Capability{"ALL"},
+										},
+									},
 									Args: []string{
 										"--nats-url=nats://connect.ngs.global",
 									},

@@ -56,7 +56,6 @@ Set default values.
   {{- with .Values }}
     {{- $_ := set .tokenSecret         "name" (.tokenSecret.name         | default (printf "%s-token" $name)) }}
     {{- $_ := set .deployment          "name" (.deployment.name          | default $name) }}
-    {{- $_ := set .serviceAccount      "name" (.serviceAccount.name      | default $name) }}
     {{- $_ := set .podDisruptionBudget "name" (.podDisruptionBudget.name | default $name) }}
   {{- end }}
 
