@@ -1,6 +1,13 @@
 name: private-link
 {{ include "spl.image" (merge (pick .Values "global") .Values.container.image) }}
 
+securityContext:
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
 args:
 - --nats-url={{ .Values.config.natsURL }}
 {{- if .Values.config.platformURL }}

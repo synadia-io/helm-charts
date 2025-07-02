@@ -1,6 +1,13 @@
 name: synadia-deploy
 {{ include "sd.image" (merge (pick .Values "global") .Values.container.image) }}
 
+securityContext:
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
 args:
 {{- if .Values.config.platformURL }}
 - --platform-url={{ .Values.config.platformURL }}
@@ -21,6 +28,10 @@ args:
 {{- end }}
 
 env:
+- name: POD_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.name
 - name: SYNADIA_DEPLOY_TOKEN
   valueFrom:
     secretKeyRef:

@@ -1,6 +1,12 @@
 name: http-gateway
 {{ include "nhg.image" (merge (pick .Values "global") .Values.container.image) }}
 
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
 args:
 - run
 - --tokens-bucket={{ .Values.config.tokensBucket }}

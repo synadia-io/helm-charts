@@ -1,6 +1,13 @@
 name: connect-node
 {{ include "cn.image" (merge (pick .Values "global") .Values.container.image) }}
 
+securityContext:
+  runAsUser: 10001
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
 args:
 - run
 - -s

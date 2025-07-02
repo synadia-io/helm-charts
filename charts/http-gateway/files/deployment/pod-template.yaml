@@ -2,7 +2,12 @@ metadata:
   labels:
     {{- include "nhg.labels" $ | nindent 4 }}
   annotations:
+
 spec:
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+
   containers:
   # http-gateway
   {{- with .Values.container }}

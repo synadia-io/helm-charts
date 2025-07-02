@@ -2,7 +2,12 @@ metadata:
   labels:
     {{- include "nce.labels" $ | nindent 4 }}
   annotations:
+
 spec:
+  securityContext:
+    seccompProfile:
+      type: RuntimeDefault
+
   containers:
   # nex-ce
   {{- with .Values.container }}

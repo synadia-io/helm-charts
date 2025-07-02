@@ -1,6 +1,12 @@
 name: nex-ce
 {{ include "nce.image" (merge (pick .Values "global") .Values.container.image) }}
 
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
 args:
 - /app/config.json
 

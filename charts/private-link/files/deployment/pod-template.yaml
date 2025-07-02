@@ -2,7 +2,13 @@ metadata:
   labels:
     {{- include "spl.labels" $ | nindent 4 }}
   annotations:
+
 spec:
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
   containers:
   # private-link
   {{- with .Values.container }}
