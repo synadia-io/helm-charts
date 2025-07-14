@@ -3,7 +3,7 @@ name: control-plane
 description: Synadia Control Plane
 home: https://www.synadia.com/
 type: application
-version: 1.5.6
+version: 1.5.7
 appVersion: 1.5.6
 maintainers:
 - name: Synadia
