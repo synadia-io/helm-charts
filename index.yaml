@@ -45,6 +45,21 @@ entries:
     version: 0.1.0
   control-plane:
   - apiVersion: v2
+    appVersion: 1.7.1
+    created: "2025-09-11T05:01:30.138467875Z"
+    description: Synadia Control Plane
+    digest: 4ee6543c7f303f54e42a9140083a884a6a7862dfafe8d19e274307122b7a1859
+    home: https://www.synadia.com/
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: control-plane
+    type: application
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/control-plane-1.7.1/control-plane-1.7.1.tgz
+    version: 1.7.1
+  - apiVersion: v2
     appVersion: 1.7.0
     created: "2025-09-05T23:04:31.096771283Z"
     description: Synadia Control Plane
@@ -1007,4 +1022,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2025-09-05T23:04:31.097050795Z"
+generated: "2025-09-11T05:01:30.138798929Z"
