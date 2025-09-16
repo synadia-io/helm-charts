@@ -451,6 +451,20 @@ entries:
     version: 0.2.0
   http-gateway:
   - apiVersion: v2
+    appVersion: 0.1.21
+    created: "2025-09-16T21:47:21.80062463Z"
+    description: NATS HTTP Gateway
+    digest: 3b814808238d4f7ebe4c862b2b69ecee94451618721f1ae4fe3cc8eb2f7c835a
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: http-gateway
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/http-gateway-0.1.3/http-gateway-0.1.3.tgz
+    version: 0.1.3
+  - apiVersion: v2
     appVersion: 0.1.20
     created: "2025-07-02T23:13:44.225964371Z"
     description: NATS HTTP Gateway
@@ -1022,4 +1036,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2025-09-11T05:01:30.138798929Z"
+generated: "2025-09-16T21:47:21.800791752Z"
