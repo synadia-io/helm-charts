@@ -9,17 +9,25 @@ securityContext:
 
 args:
 - run
-- --tokens-bucket={{ .Values.config.tokensBucket }}
-{{- with .Values.config.creds }}
-- --provider-creds={{ .dir }}/{{ .key }}
-{{- end }}
-{{- with .Values.config.tls.clientCert }}
-{{- if and .secretName (and .cert .key) }}
+{{- with .Values.config }}
+- --tokens-bucket={{ .tokensBucket }}
+- --provider-creds={{ .creds.dir }}/{{ .creds.key }}
+{{- with .tls.cert }}
+{{- if and (and .enabled .secretName) (and .cert .key) }}
 - --certificate={{ .dir }}/{{ .cert }}
 - --key={{ .dir }}/{{ .key }}
 {{- end }}
 {{- end }}
-- {{ .Values.config.url }}
+{{- if .advertise }}
+- --advertise={{ .advertise }}
+{{- end }}
+{{- if .tls.enabled }}
+- --user-port={{ .httpsPort }}
+{{- else }}
+- --user-port={{ .httpPort }}
+{{- end }}
+- {{ .url }}
+{{- end }}
 
 {{- with .Values.container.env }}
 {{- include "nhg.env" . }}

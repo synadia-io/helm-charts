@@ -37,6 +37,8 @@ namespaceOverride:
 config:
   # NATS URL
   url:
+  # HTTP Gateway Advertise Address
+  advertise:
   # port for HTTP server to listen on
   httpPort: 80
   # port for HTTPS server to listen on, TLS must be enabled
@@ -109,7 +111,7 @@ podTemplate:
 container:
   image:
     repository: http-gateway
-    tag: 0.1.20
+    tag: 0.1.21
     pullPolicy:
     # defaults to global.registry
     registry:
