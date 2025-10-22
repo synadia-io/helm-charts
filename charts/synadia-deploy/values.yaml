@@ -98,7 +98,7 @@ podTemplate:
 container:
   image:
     repository: synadia-deploy
-    tag: 0.1.0-rc.3
+    tag: 0.1.0
     pullPolicy:
     # defaults to global.registry
     registry:
