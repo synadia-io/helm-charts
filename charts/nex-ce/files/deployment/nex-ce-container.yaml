@@ -8,6 +8,7 @@ securityContext:
     - ALL
 
 args:
+- --config
 - /app/config.json
 
 env:
