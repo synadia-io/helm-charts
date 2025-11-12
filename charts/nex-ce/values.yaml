@@ -51,7 +51,7 @@ config:
     signingKey:
     signingKeyAccount:
   allowRemoteRegister: false
-  logLevel: "INFO"
+  logLevel: "info"
   workloadsNamespace:
   connectorsNamespace:
   # URL for NATS Server
@@ -116,7 +116,7 @@ podTemplate:
 container:
   image:
     repository: nexce
-    tag: 0.1.7-rc.2
+    tag: 0.1.8
     pullPolicy:
     # defaults to global.registry
     registry:
