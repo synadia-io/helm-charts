@@ -51,7 +51,7 @@ config:
     signingKey:
     signingKeyAccount:
   allowRemoteRegister: false
-  logLevel: "INFO"
+  logLevel: "info"
   workloadsNamespace:
   connectorsNamespace:
   # URL for NATS Server
