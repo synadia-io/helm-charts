@@ -26,6 +26,9 @@ args:
 {{- if .Values.config.tls.insecureSkipVerify }}
 - --insecure
 {{- end }}
+{{- if .Values.config.healthPort }}
+- --health-port={{ .Values.config.healthPort }}
+{{- end }}
 
 env:
 - name: POD_NAME
@@ -40,6 +43,38 @@ env:
 {{- with .Values.container.env }}
 {{- include "sd.env" . }}
 {{- end }}
+
+ports:
+- name: health
+  containerPort: {{ .Values.config.healthPort | default 8080 }}
+  protocol: TCP
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: health
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: health
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: health
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 5
+  failureThreshold: 60
 
 volumeMounts:
 # tlsCA
