@@ -38,6 +38,9 @@ config:
   natsURL:
   # Synadia Cloud or Control Plane Token
   token:
+  # Port for health check endpoints (/healthz, /readyz)
+  # Used by Kubernetes liveness, readiness, and startup probes
+  healthPort: 8080
   # Certificate Authority for Validation of Server Certificate
   tls:
     # Mutual TLS for client connection to NATS Server
@@ -98,7 +101,7 @@ podTemplate:
 container:
   image:
     repository: synadia-deploy
-    tag: 0.1.0
+    tag: 0.1.1
     pullPolicy:
     # defaults to global.registry
     registry:
