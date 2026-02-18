@@ -13,6 +13,8 @@ env:
 {{- end }}
 
 ports:
+- name: cluster
+  containerPort: 6222
 - name: http
   containerPort: {{ .Values.config.server.httpPort }}
 {{- if .config.server.tls }}
