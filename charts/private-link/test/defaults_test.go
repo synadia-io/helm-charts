@@ -124,6 +124,49 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 											Drop: []corev1.Capability{"ALL"},
 										},
 									},
+									Ports: []corev1.ContainerPort{
+										{
+											Name:          "health",
+											ContainerPort: 8080,
+											Protocol:      corev1.ProtocolTCP,
+										},
+									},
+									LivenessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/healthz",
+												Port: intstr.FromString("health"),
+											},
+										},
+										InitialDelaySeconds: 5,
+										PeriodSeconds:       10,
+										TimeoutSeconds:      5,
+										FailureThreshold:    3,
+									},
+									ReadinessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/readyz",
+												Port: intstr.FromString("health"),
+											},
+										},
+										InitialDelaySeconds: 5,
+										PeriodSeconds:       10,
+										TimeoutSeconds:      5,
+										FailureThreshold:    3,
+									},
+									StartupProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/healthz",
+												Port: intstr.FromString("health"),
+											},
+										},
+										InitialDelaySeconds: 5,
+										PeriodSeconds:       5,
+										TimeoutSeconds:      5,
+										FailureThreshold:    60,
+									},
 									Args: []string{
 										"--nats-url=nats://connect.ngs.global",
 									},
