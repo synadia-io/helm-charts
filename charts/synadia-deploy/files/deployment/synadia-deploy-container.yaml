@@ -29,6 +29,11 @@ args:
 {{- if .Values.config.healthPort }}
 - --health-port={{ .Values.config.healthPort }}
 {{- end }}
+{{- if .Values.config.labels }}
+{{- range $k, $v := .Values.config.labels }}
+- --labels={{ $k }}={{ $v }}
+{{- end }}
+{{- end }}
 
 env:
 - name: POD_NAME

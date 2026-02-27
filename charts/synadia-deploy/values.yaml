@@ -41,6 +41,14 @@ config:
   # Port for health check endpoints (/healthz, /readyz)
   # Used by Kubernetes liveness, readiness, and startup probes
   healthPort: 8080
+  # Custom labels for agent identification
+  # These labels are reported when the agent's version info is queried
+  # example:
+  #   labels:
+  #     environment: production
+  #     cluster: us-east-1
+  #     team: platform
+  labels: {}
   # Certificate Authority for Validation of Server Certificate
   tls:
     # Mutual TLS for client connection to NATS Server
@@ -101,7 +109,7 @@ podTemplate:
 container:
   image:
     repository: synadia-deploy
-    tag: 0.1.1
+    tag: 0.1.2
     pullPolicy:
     # defaults to global.registry
     registry:
