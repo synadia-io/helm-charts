@@ -1,0 +1,62 @@
+name: synack
+{{ include "synack.image" (merge (pick .Values "global") .Values.container.image) }}
+
+securityContext:
+  runAsUser: 65532
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
+command:
+- /synack
+
+args:
+- --control-plane-base-url={{ .Values.config.controlPlaneBaseURL }}
+- --health-probe-bind-address=:8081
+{{- if .Values.config.tokenFile.enabled }}
+- --token-file={{ clean .Values.config.tokenFile.mountPath }}/{{ .Values.config.tokenFile.filename }}
+{{- end }}
+{{- if .Values.leaderElection.enabled }}
+- --leader-elect
+{{- end }}
+
+ports:
+- name: probes
+  containerPort: 8081
+  protocol: TCP
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: probes
+  initialDelaySeconds: 10
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: probes
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+{{- if .Values.config.tokenFile.enabled }}
+volumeMounts:
+- name: synack-token
+  mountPath: {{ .Values.config.tokenFile.mountPath }}
+  readOnly: true
+{{- end }}
+
+{{- if or (not .Values.config.tokenFile.enabled) .Values.container.env }}
+env:
+{{- if not .Values.config.tokenFile.enabled }}
+- name: SYNACK_TOKEN
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.tokenSecret.name }}
+      key: "token"
+{{- end }}
+{{- with .Values.container.env }}
+{{- include "synack.env" . }}
+{{- end }}
+{{- end }}

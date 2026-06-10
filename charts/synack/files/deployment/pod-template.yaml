@@ -1,0 +1,42 @@
+metadata:
+  labels:
+    {{- include "synack.labels" $ | nindent 4 }}
+  annotations:
+
+spec:
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+
+  containers:
+  # synack
+  {{- with .Values.container }}
+  - {{ include "synack.loadMergePatch" (merge (dict "file" "deployment/synack-container.yaml" "ctx" $) .) | nindent 4 }}
+  {{- end }}
+
+  # don't need service env vars
+  enableServiceLinks: false
+
+  {{- if .Values.config.tokenFile.enabled }}
+  volumes:
+  - name: synack-token
+    secret:
+      secretName: {{ .Values.tokenSecret.name }}
+      items:
+      - key: token
+        path: {{ .Values.config.tokenFile.filename }}
+  {{- end }}
+
+  {{- with .Values.serviceAccount }}
+  {{- if .enabled }}
+  serviceAccountName: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
+
+  {{- with .Values.podTemplate.topologySpreadConstraints }}
+  topologySpreadConstraints:
+  {{- range $k, $v := . }}
+  - {{ merge (dict "topologyKey" $k "labelSelector" (dict "matchLabels" (include "synack.selectorLabels" $ | fromYaml)) "matchLabelKeys" (list "pod-template-hash")) $v | toYaml | nindent 4 }}
+  {{- end }}
+  {{- end}}
