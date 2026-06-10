@@ -1,0 +1,4 @@
+{{- include "synack.defaultValues" . }}
+{{- with .Values.clusterRole }}
+{{- include "synack.loadMergePatch" (merge (dict "file" "cluster-role.yaml" "ctx" $) .) }}
+{{- end }}

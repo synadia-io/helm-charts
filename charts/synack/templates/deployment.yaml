@@ -1,0 +1,4 @@
+{{- include "synack.defaultValues" . }}
+{{- with .Values.deployment }}
+{{- include "synack.loadMergePatch" (merge (dict "file" "deployment/deployment.yaml" "ctx" $) .) }}
+{{- end }}

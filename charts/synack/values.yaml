@@ -1,0 +1,179 @@
+################################################################################
+# Global options
+################################################################################
+global:
+  image:
+    # global image pull policy to use for all container images in the chart
+    # can be overridden by individual image pullPolicy
+    pullPolicy:
+    # global registry to use for all container images in the chart
+    # can be overridden by individual image registry
+    registry: registry.synadia.io
+
+  # global labels will be applied to all resources deployed by the chart
+  labels: {}
+
+################################################################################
+# Common options
+################################################################################
+# override name of the chart
+nameOverride:
+# override full name of the chart+release
+fullnameOverride:
+# override the namespace that resources are installed into
+namespaceOverride:
+
+################################################################################
+# Synack Operator Deployment and associated resources
+################################################################################
+
+############################################################
+# config
+############################################################
+config:
+  # URL for Synadia Control Plane (required)
+  controlPlaneBaseURL:
+  # Synadia Cloud or Control Plane Token (required)
+  token:
+
+  # mount the token Secret as a file and pass --token-file instead of using an env var
+  tokenFile:
+    enabled: false
+    mountPath: /var/run/synack
+    filename: token
+
+############################################################
+# leader election
+############################################################
+leaderElection:
+  # enable leader election for running multiple replicas
+  enabled: false
+
+############################################################
+# deployment
+############################################################
+deployment:
+  replicas: 1
+
+  # merge or patch the deployment
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#deployment-v1-apps
+  merge: {}
+  patch: []
+  # defaults to "{{ include "synack.fullname" $ }}"
+  name:
+
+############################################################
+# deployment -> pod template
+############################################################
+podTemplate:
+  # map of topologyKey: topologySpreadConstraint
+  # labelSelector will be added to match Deployment pods
+  #
+  # topologySpreadConstraints:
+  #   kubernetes.io/hostname:
+  #     maxSkew: 1
+  #
+  topologySpreadConstraints: {}
+
+  # merge or patch the pod template
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# deployment -> pod template -> synack container
+############################################################
+container:
+  image:
+    repository: synack
+    tag: 0.2.0
+    pullPolicy:
+    # defaults to global.registry
+    registry:
+
+  # map with key as env var name, value can be string or map
+  # example:
+  #
+  #   env:
+  #     MY_VAR: my_value
+  #     MY_SECRET:
+  #       valueFrom:
+  #         secretKeyRef:
+  #           name: secret-name
+  #           key: secret-key
+  env: {}
+
+  # merge or patch the container
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#container-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# other extension points
+############################################################
+
+# service account
+serviceAccount:
+  # enable/disable the service account
+  enabled: true
+
+  # merge or patch the service account
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#serviceaccount-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "synack.fullname" $ }}"
+  name:
+
+# token secret
+tokenSecret:
+  # merge or patch the token secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "synack.fullname" $ }}-token"
+  name:
+
+# cluster role
+clusterRole:
+  # merge or patch the cluster role
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#clusterrole-v1-rbac-authorization-k8s-io
+  merge: {}
+  patch: []
+  # defaults to "{{ include "synack.fullname" $ }}"
+  name:
+
+# cluster role binding
+clusterRoleBinding:
+  # merge or patch the cluster role binding
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#clusterrolebinding-v1-rbac-authorization-k8s-io
+  merge: {}
+  patch: []
+  # defaults to "{{ include "synack.fullname" $ }}"
+  name:
+
+################################################################################
+# Extra user-defined resources
+################################################################################
+# extraResources:
+# - apiVersion: v1
+#   kind: Pod
+#   metadata:
+#     name:
+#       $tplYaml: >
+#         {{ include "synack.fullname" $ }}-nats-box
+#     labels:
+#       $tplYaml: |
+#         {{ include "synack.labels" $ }}
+#   spec:
+#     containers:
+#     - name: nats-box
+#       image: natsio/nats-box:latest
+#       command:
+#       - sh
+#       - -ec
+#       - |
+#         exec sh -ec "$0"
+#       args:
+#       - "trap true INT TERM; sleep infinity & wait"
+
+extraResources: []

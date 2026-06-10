@@ -1,0 +1,9 @@
+apiVersion: v2
+name: synack
+version: 0.2.0
+appVersion: 0.2.0
+description: Synadia Kubernetes Operator
+home: http://github.com/synadia-io/helm-charts
+maintainers:
+- email: info@synadia.com
+  name: synadia
