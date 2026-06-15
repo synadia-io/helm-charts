@@ -1,0 +1,6 @@
+{{- include "ins.defaultValues" . }}
+{{- if and .Values.metrics.enabled .Values.podMonitor.enabled }}
+{{- with .Values.podMonitor }}
+{{- include "ins.loadMergePatch" (merge (dict "file" "pod-monitor.yaml" "ctx" $) .) }}
+{{- end }}
+{{- end }}

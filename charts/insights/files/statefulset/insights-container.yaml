@@ -1,0 +1,95 @@
+name: insights
+{{ include "ins.image" (merge (pick .Values "global" "imagePullSecret") .Values.container.image) }}
+
+env:
+- name: INSIGHTS_DATA_DIR
+  value: {{ .Values.config.dataDir | quote }}
+- name: INSIGHTS_WEB_HOSTNAME
+  value: "0.0.0.0"
+- name: INSIGHTS_WEB_PORT
+  value: {{ .Values.config.web.port | quote }}
+{{- with .Values.config.sys.server }}
+- name: INSIGHTS_SYS_SERVER
+  value: {{ . | quote }}
+{{- end }}
+{{- if or .Values.config.sys.creds .Values.config.sys.credsSecretName }}
+- name: INSIGHTS_SYS_CREDS
+  value: "/etc/insights/creds/sys.creds"
+{{- end }}
+{{- if or .Values.config.license.token .Values.config.license.secretName }}
+- name: INSIGHTS_LICENSE_FILE
+  value: "/etc/insights/license/license.jwt"
+{{- end }}
+{{- with .Values.config.web.sessionSeed }}
+- name: INSIGHTS_WEB_SESSION_SEED
+  valueFrom:
+    secretKeyRef:
+      name: {{ $.Values.configSecret.name | quote }}
+      key: session-seed
+{{- end }}
+- name: INSIGHTS_PROMETHEUS_ENABLED
+  value: {{ .Values.metrics.enabled | quote }}
+{{- if .Values.metrics.enabled }}
+- name: INSIGHTS_PROMETHEUS_HOSTNAME
+  value: "0.0.0.0"
+- name: INSIGHTS_PROMETHEUS_PORT
+  value: {{ .Values.metrics.port | quote }}
+{{- end }}
+{{- with .Values.config.db.memoryLimit }}
+- name: INSIGHTS_DB_MEMORY_LIMIT
+  value: {{ . | quote }}
+{{- end }}
+{{- if .Values.config.db.threads }}
+- name: INSIGHTS_DB_THREADS
+  value: {{ .Values.config.db.threads | quote }}
+{{- end }}
+{{- with .Values.config.scraper.interval }}
+- name: INSIGHTS_SCRAPER_INTERVAL
+  value: {{ . | quote }}
+{{- end }}
+{{- with .Values.container.env }}
+{{- include "ins.env" . }}
+{{- end }}
+
+ports:
+- name: http
+  containerPort: {{ .Values.config.web.port }}
+{{- if .Values.metrics.enabled }}
+- name: metrics
+  containerPort: {{ .Values.metrics.port }}
+{{- end }}
+
+{{- with .Values.container.startupProbe }}
+startupProbe:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .Values.container.livenessProbe }}
+livenessProbe:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- with .Values.container.readinessProbe }}
+readinessProbe:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+
+{{- with .Values.container.resources }}
+resources:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+
+volumeMounts:
+- name: data
+  mountPath: {{ .Values.config.dataDir | quote }}
+{{- if or .Values.config.sys.creds .Values.config.sys.credsSecretName }}
+- name: sys-creds
+  mountPath: /etc/insights/creds
+  readOnly: true
+{{- end }}
+{{- if or .Values.config.license.token .Values.config.license.secretName }}
+- name: license
+  mountPath: /etc/insights/license
+  readOnly: true
+{{- end }}
+{{- with .Values.extraVolumeMounts }}
+{{- toYaml . | nindent 0 }}
+{{- end }}

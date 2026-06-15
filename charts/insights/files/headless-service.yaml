@@ -1,0 +1,17 @@
+{{- with .Values.headlessService }}
+apiVersion: v1
+kind: Service
+metadata:
+  {{- include "ins.metadataNamespace" $ | nindent 2 }}
+  name: {{ .name }}
+  labels:
+    {{- include "ins.labels" $ | nindent 4 }}
+spec:
+  clusterIP: None
+  selector:
+    {{- include "ins.selectorLabels" $ | nindent 4 }}
+  ports:
+  - name: http
+    port: {{ $.Values.config.web.port }}
+    targetPort: http
+{{- end }}

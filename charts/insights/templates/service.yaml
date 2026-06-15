@@ -1,0 +1,4 @@
+{{- include "ins.defaultValues" . }}
+{{- with .Values.service }}
+{{- include "ins.loadMergePatch" (merge (dict "file" "service.yaml" "ctx" $) .) }}
+{{- end }}

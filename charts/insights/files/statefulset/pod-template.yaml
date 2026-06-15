@@ -1,0 +1,76 @@
+metadata:
+  labels:
+    {{- include "ins.labels" $ | nindent 4 }}
+  {{- if and .Values.podTemplate.configChecksumAnnotation (or .Values.config.sys.creds .Values.config.license.token .Values.config.web.sessionSeed) }}
+  annotations:
+    {{- $secret := include "ins.loadMergePatch" (merge (dict "file" "config-secret.yaml" "ctx" $) .Values.configSecret) }}
+    checksum/config: {{ $secret | sha256sum }}
+  {{- end }}
+spec:
+  containers:
+  # insights
+  {{- with .Values.container }}
+  - {{ include "ins.loadMergePatch" (merge (dict "file" "statefulset/insights-container.yaml" "ctx" $) .) | nindent 4 }}
+  {{- end }}
+
+  # don't need service env vars
+  enableServiceLinks: false
+
+  {{- with .Values.imagePullSecret }}
+  {{- if .enabled }}
+  imagePullSecrets:
+  - name: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
+
+  {{- with .Values.podTemplate.securityContext }}
+  securityContext:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .Values.serviceAccount }}
+  {{- if .enabled }}
+  serviceAccountName: {{ .name | quote }}
+  {{- end }}
+  {{- end }}
+
+  {{- with .Values.podTemplate.topologySpreadConstraints }}
+  topologySpreadConstraints:
+  {{- range $k, $v := . }}
+  - {{ merge (dict "topologyKey" $k "labelSelector" (dict "matchLabels" (include "ins.selectorLabels" $ | fromYaml))) $v | toYaml | nindent 4 }}
+  {{- end }}
+  {{- end }}
+
+  {{- if or (not .Values.persistence.enabled) .Values.config.sys.creds .Values.config.sys.credsSecretName .Values.config.license.token .Values.config.license.secretName .Values.extraVolumes }}
+  volumes:
+  {{- if not .Values.persistence.enabled }}
+  # ephemeral data dir (no persistence — history is lost on restart)
+  - name: data
+    emptyDir: {}
+  {{- end }}
+  # system-account creds (inline -> config Secret; external -> referenced Secret)
+  {{- with .Values.config.sys }}
+  {{- if or .creds .credsSecretName }}
+  - name: sys-creds
+    secret:
+      secretName: {{ .credsSecretName | default $.Values.configSecret.name | quote }}
+      items:
+      - key: {{ if .credsSecretName }}{{ .credsKey | quote }}{{ else }}"sys.creds"{{ end }}
+        path: sys.creds
+  {{- end }}
+  {{- end }}
+  # license JWT (inline -> config Secret; external -> referenced Secret)
+  {{- with .Values.config.license }}
+  {{- if or .token .secretName }}
+  - name: license
+    secret:
+      secretName: {{ .secretName | default $.Values.configSecret.name | quote }}
+      items:
+      - key: {{ if .secretName }}{{ .fileKey | quote }}{{ else }}"license.jwt"{{ end }}
+        path: license.jwt
+  {{- end }}
+  {{- end }}
+  {{- with .Values.extraVolumes }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+  {{- end }}

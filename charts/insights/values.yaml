@@ -1,0 +1,316 @@
+################################################################################
+# Global options
+################################################################################
+global:
+  image:
+    # global image pull policy to use for all container images in the chart
+    # can be overridden by individual image pullPolicy
+    pullPolicy:
+    # global registry to use for all container images in the chart
+    # can be overridden by individual image registry.
+    # when imagePullSecret is enabled, imagePullSecret.registry takes precedence.
+    registry:
+
+  # global labels will be applied to all resources deployed by the chart
+  labels: {}
+
+################################################################################
+# Common options
+################################################################################
+# override name of the chart
+nameOverride:
+# override full name of the chart+release
+fullnameOverride:
+# override the namespace that resources are installed into
+namespaceOverride:
+
+# edition selects which image and licensing mode to run:
+#   production -> registry.synadia.io/insights           (no license required)
+#   trial      -> registry.synadia.io/insights-licensed  (requires config.license)
+# container.image.repository overrides the repository selected here.
+edition: production
+
+################################################################################
+# image pull secret
+################################################################################
+# registry.synadia.io is a private registry. When enabled, a dockerconfigjson
+# Secret is created from the username/password below, and the deployment's image
+# registry defaults to imagePullSecret.registry.
+# To use an existing pull secret instead, set imagePullSecret.enabled: false and
+# add the secret via podTemplate.merge (imagePullSecrets) or your service account.
+imagePullSecret:
+  enabled: true
+  registry: registry.synadia.io
+  username:
+  password:
+
+  # merge or patch the image pull secret
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#secret-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "ins.fullname" $ }}-regcred"
+  name:
+
+################################################################################
+# config
+################################################################################
+config:
+  # base directory for persistent storage (DuckDB database + JetStream data).
+  # mounted from the persistence volume.
+  dataDir: /data
+
+  # NATS system to monitor (the system-account connection used by the scraper).
+  # This is the only required connection. The API server and data sink default
+  # to the embedded NATS server in the all-in-one deployment.
+  sys:
+    # NATS server URL of the system being monitored, e.g. tls://connect.ngs.global
+    server:
+    # System-account credentials (.creds) file contents. Stored in the config
+    # Secret and mounted as a file; INSIGHTS_SYS_CREDS points at it.
+    creds:
+    # Alternatively, reference an existing Secret that contains the creds file.
+    # Takes precedence over `creds`.
+    credsSecretName:
+    # key within credsSecretName that holds the creds file
+    credsKey: sys.creds
+
+  # license JWT — required only when edition is "trial".
+  license:
+    # raw license JWT token. Stored in the config Secret and mounted as a file;
+    # INSIGHTS_LICENSE_FILE points at it.
+    token:
+    # alternatively, reference an existing Secret containing the license JWT file.
+    # Takes precedence over `token`.
+    secretName:
+    # key within secretName that holds the license JWT file
+    fileKey: license.jwt
+
+  web:
+    # web server bind port (bind host is always 0.0.0.0 in-cluster)
+    port: 8080
+    # seed for secure session cookies. Strongly recommended in production;
+    # if unset, the app falls back to an insecure built-in default.
+    # Stored in the config Secret and injected via INSIGHTS_WEB_SESSION_SEED.
+    sessionSeed:
+
+  db:
+    # DuckDB memory limit (caps the engine buffer pool). Size to the host and the
+    # monitored system. Accepts DuckDB units, e.g. "4GB", "56GB".
+    memoryLimit: "4GB"
+    # DuckDB worker threads. 0 lets DuckDB choose (all cores).
+    threads: 0
+
+  scraper:
+    # interval between scrapes of the monitored system. Empty uses the app default (1m).
+    interval:
+
+################################################################################
+# metrics (Prometheus)
+################################################################################
+# the app serves Prometheus metrics at /metrics on the port below.
+# disabled by default; enabling binds 0.0.0.0:<port>, adds a Service port, and
+# allows the optional PodMonitor below.
+metrics:
+  enabled: false
+  port: 9091
+
+# PodMonitor (Prometheus Operator). Only created when metrics.enabled and this is enabled.
+podMonitor:
+  enabled: false
+  # scrape path and interval
+  path: /metrics
+  interval:
+  # merge or patch the pod monitor
+  merge: {}
+  patch: []
+  # defaults to "{{ include "ins.fullname" $ }}"
+  name:
+
+################################################################################
+# StatefulSet and associated resources
+################################################################################
+statefulSet:
+  # insights runs as a single instance; replicas must be 1.
+  replicas: 1
+
+  # https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
+  updateStrategy:
+    type: RollingUpdate
+
+  # merge or patch the stateful set
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#statefulset-v1-apps
+  merge: {}
+  patch: []
+  # defaults to "{{ include "ins.fullname" $ }}"
+  name:
+
+############################################################
+# persistence (DuckDB + JetStream data dir)
+############################################################
+persistence:
+  # when enabled, a volumeClaimTemplate provisions a PVC mounted at config.dataDir.
+  # when disabled, an emptyDir is used and ALL indexed history is lost on restart.
+  enabled: true
+  size: 10Gi
+  storageClassName:
+  accessModes:
+  - ReadWriteOnce
+
+############################################################
+# pod template
+############################################################
+podTemplate:
+  # add a checksum/config annotation so the pod restarts when the config Secret changes
+  configChecksumAnnotation: true
+
+  # pod security context. fsGroup lets the non-root process write the mounted volume.
+  securityContext:
+    fsGroup: 1000
+    fsGroupChangePolicy: OnRootMismatch
+
+  # map of topologyKey: topologySpreadConstraint
+  topologySpreadConstraints: {}
+
+  # merge or patch the pod template
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#pod-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# insights container
+############################################################
+container:
+  image:
+    # defaults to "insights" (production) or "insights-licensed" (trial) per `edition`
+    repository:
+    # defaults to .Chart.AppVersion
+    tag:
+    pullPolicy:
+    # defaults to imagePullSecret.registry when imagePullSecret is enabled,
+    # otherwise global.image.registry
+    registry:
+
+  # map with key as env var name, value can be string or map. Use this to set any
+  # INSIGHTS_* variable the first-class values above do not cover.
+  # example:
+  #
+  #   env:
+  #     INSIGHTS_LOG_LEVEL: debug
+  #     INSIGHTS_NATS_SERVER:
+  #       valueFrom:
+  #         secretKeyRef:
+  #           name: secret-name
+  #           key: secret-key
+  env: {}
+
+  # probes default to a TCP check on the web port (the app exposes no HTTP health
+  # route). Override with an httpGet probe via these values or container.merge.
+  startupProbe:
+    tcpSocket:
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
+  livenessProbe:
+    tcpSocket:
+      port: http
+    periodSeconds: 15
+    failureThreshold: 3
+  readinessProbe:
+    tcpSocket:
+      port: http
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # resource requests/limits. Empty by default — size to the monitored system.
+  resources: {}
+
+  # merge or patch the container
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#container-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# service
+############################################################
+service:
+  type: ClusterIP
+  ports:
+    http:
+      port: 8080
+  annotations: {}
+  # merge or patch the service
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#service-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "ins.fullname" $ }}"
+  name:
+
+# headless service that governs the StatefulSet (spec.serviceName)
+headlessService:
+  merge: {}
+  patch: []
+  # defaults to "{{ include "ins.fullname" $ }}-headless"
+  name:
+
+############################################################
+# ingress
+############################################################
+# NOTE: the insights web UI ships no built-in authentication. When exposing it,
+# front it with an authenticating ingress/proxy.
+ingress:
+  enabled: false
+  # must contain at least 1 host otherwise the ingress will not be created
+  hosts: []
+  path: /
+  pathType: Prefix
+  className:
+  # set to an existing secret name to enable TLS on the ingress; applies to all hosts
+  tlsSecretName:
+  annotations: {}
+  # merge or patch the ingress
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#ingress-v1-networking-k8s-io
+  merge: {}
+  patch: []
+  # defaults to "{{ include "ins.fullname" $ }}"
+  name:
+
+############################################################
+# other extension points
+############################################################
+# config Secret (holds inline sys creds, license token, and session seed).
+# Only created when at least one of those values is set.
+configSecret:
+  merge: {}
+  patch: []
+  # defaults to "{{ include "ins.fullname" $ }}-config"
+  name:
+
+# service account
+serviceAccount:
+  # the app needs no Kubernetes API access; disabled by default
+  enabled: false
+  merge: {}
+  patch: []
+  # defaults to "{{ include "ins.fullname" $ }}"
+  name:
+
+# pod disruption budget. Disabled by default — a PDB on a single-replica stateful
+# workload can block voluntary node drains.
+podDisruptionBudget:
+  enabled: false
+  maxUnavailable: 1
+  merge: {}
+  patch: []
+  # defaults to "{{ include "ins.fullname" $ }}"
+  name:
+
+# extra volumes/mounts for advanced topologies (e.g. a leaf-node sink config,
+# separate API credentials). Combine with container.env to wire them.
+extraVolumes: []
+extraVolumeMounts: []
+
+################################################################################
+# Extra user-defined resources
+################################################################################
+extraResources: []

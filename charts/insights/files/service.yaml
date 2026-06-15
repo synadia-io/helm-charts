@@ -1,0 +1,26 @@
+{{- with .Values.service }}
+apiVersion: v1
+kind: Service
+metadata:
+  {{- include "ins.metadataNamespace" $ | nindent 2 }}
+  name: {{ .name }}
+  labels:
+    {{- include "ins.labels" $ | nindent 4 }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .type | default "ClusterIP" }}
+  selector:
+    {{- include "ins.selectorLabels" $ | nindent 4 }}
+  ports:
+  - name: http
+    port: {{ .ports.http.port }}
+    targetPort: http
+  {{- if $.Values.metrics.enabled }}
+  - name: metrics
+    port: {{ $.Values.metrics.port }}
+    targetPort: metrics
+  {{- end }}
+{{- end }}

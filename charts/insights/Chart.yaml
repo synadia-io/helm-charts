@@ -1,0 +1,10 @@
+apiVersion: v2
+name: insights
+description: Synadia Insights
+version: 0.1.0
+appVersion: "0.1.8"
+home: http://github.com/synadia-io/helm-charts
+maintainers:
+- name: Synadia
+  url: https://github.com/synadia-io
+  email: info@synadia.com

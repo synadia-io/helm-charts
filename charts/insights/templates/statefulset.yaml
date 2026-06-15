@@ -1,0 +1,4 @@
+{{- include "ins.defaultValues" . }}
+{{- with .Values.statefulSet }}
+{{- include "ins.loadMergePatch" (merge (dict "file" "statefulset/statefulset.yaml" "ctx" $) .) }}
+{{- end }}

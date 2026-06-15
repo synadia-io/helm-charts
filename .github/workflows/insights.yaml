@@ -1,0 +1,36 @@
+name: insights
+
+on:
+  pull_request:
+    paths:
+    - charts/insights/**
+    - .github/workflows/insights.yaml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Setup repo
+      uses: actions/checkout@v4
+
+    - name: Install Helm
+      uses: azure/setup-helm@v4.1.0
+      with:
+        version: v3.17.3
+
+    - name: Helm lint
+      # the chart requires the system to monitor, so provide it for the lint render
+      run: helm lint charts/insights --set config.sys.server=tls://connect.ngs.global
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: charts/insights/test/go.mod
+        check-latest: true
+        cache: true
+        cache-dependency-path: charts/insights/test/go.sum
+
+    - name: Test
+      working-directory: charts/insights/test
+      run: go test -v ./...

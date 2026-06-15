@@ -1,0 +1,6 @@
+{{- include "ins.defaultValues" . }}
+{{- with .Values.ingress }}
+{{- if and .enabled .hosts }}
+{{- include "ins.loadMergePatch" (merge (dict "file" "ingress.yaml" "ctx" $) .) }}
+{{- end }}
+{{- end }}
