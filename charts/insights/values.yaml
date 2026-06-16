@@ -55,24 +55,47 @@ imagePullSecret:
 # config
 ################################################################################
 config:
-  # base directory for persistent storage (DuckDB database + JetStream data).
-  # mounted from the persistence volume.
-  dataDir: /data
-
   # NATS system to monitor (the system-account connection used by the scraper).
   # This is the only required connection. The API server and data sink default
   # to the embedded NATS server in the all-in-one deployment.
+  #
+  # Provide credentials with whichever auth mode your system expects. Sensitive
+  # string values (password, nkey, jwt) are stored in a chart-managed Secret and
+  # injected via secretKeyRef. To reference an existing Secret instead, use
+  # container.env with valueFrom.secretKeyRef (see README). File-based
+  # credentials (creds, tls.*) are always mounted from an existing Secret.
   sys:
-    # NATS server URL of the system being monitored, e.g. tls://connect.ngs.global
+    # NATS server URL of the system being monitored,
+    # e.g. nats://nats.nats.svc.cluster.local:4222
     server:
-    # System-account credentials (.creds) file contents. Stored in the config
-    # Secret and mounted as a file; INSIGHTS_SYS_CREDS points at it.
+
+    # basic auth
+    user:
+    password:
+
+    # NKey seed (+ user JWT). An nkey seed alone is insufficient; pair it with jwt.
+    nkey:
+    jwt:
+
+    # credentials file (.creds = user JWT + NKey seed), mounted from an existing
+    # Secret as a file; INSIGHTS_SYS_CREDS points at it.
     creds:
-    # Alternatively, reference an existing Secret that contains the creds file.
-    # Takes precedence over `creds`.
-    credsSecretName:
-    # key within credsSecretName that holds the creds file
-    credsKey: sys.creds
+      # name of an existing Secret holding the creds file
+      secretName:
+      # key within the Secret that holds the creds file
+      key: sys.creds
+
+    # client TLS — each is mounted as a file from an existing Secret
+    tls:
+      cert:
+        secretName:
+        key: tls.crt
+      key:
+        secretName:
+        key: tls.key
+      caCert:
+        secretName:
+        key: ca.crt
 
   # license JWT — required only when edition is "trial".
   license:
@@ -99,10 +122,18 @@ config:
     memoryLimit: "4GB"
     # DuckDB worker threads. 0 lets DuckDB choose (all cores).
     threads: 0
+    retention:
+      # how long to keep indexed data. Empty uses the app default (768h); 0 disables.
+      duration:
 
   scraper:
     # interval between scrapes of the monitored system. Empty uses the app default (1m).
     interval:
+
+  # embedded NATS server (data sink). Bound on all interfaces at 4222 by default.
+  sink:
+    host: 0.0.0.0
+    port: 4222
 
   # built-in NATS simulator: starts an embedded NATS system with synthetic
   # JetStream traffic and monitors that. Lets you evaluate Insights with NO
@@ -112,28 +143,6 @@ config:
     enabled: false
     # workload profile, e.g. js-small, super-medium
     profile: js-small
-
-################################################################################
-# metrics (Prometheus)
-################################################################################
-# the app serves Prometheus metrics at /metrics on the port below.
-# disabled by default; enabling binds 0.0.0.0:<port>, adds a Service port, and
-# allows the optional PodMonitor below.
-metrics:
-  enabled: false
-  port: 9091
-
-# PodMonitor (Prometheus Operator). Only created when metrics.enabled and this is enabled.
-podMonitor:
-  enabled: false
-  # scrape path and interval
-  path: /metrics
-  interval:
-  # merge or patch the pod monitor
-  merge: {}
-  patch: []
-  # defaults to "{{ include "ins.fullname" $ }}"
-  name:
 
 ################################################################################
 # StatefulSet and associated resources
@@ -157,7 +166,7 @@ statefulSet:
 # persistence (DuckDB + JetStream data dir)
 ############################################################
 persistence:
-  # when enabled, a volumeClaimTemplate provisions a PVC mounted at config.dataDir.
+  # when enabled, a volumeClaimTemplate provisions a PVC mounted at /data.
   # when disabled, an emptyDir is used and ALL indexed history is lost on restart.
   enabled: true
   size: 10Gi

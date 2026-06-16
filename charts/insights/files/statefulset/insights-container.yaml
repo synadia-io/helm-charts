@@ -3,18 +3,47 @@ name: insights
 
 env:
 - name: INSIGHTS_DATA_DIR
-  value: {{ .Values.config.dataDir | quote }}
+  value: "/data"
 - name: INSIGHTS_WEB_HOSTNAME
   value: "0.0.0.0"
 - name: INSIGHTS_WEB_PORT
   value: {{ .Values.config.web.port | quote }}
+- name: INSIGHTS_SINK_HOST
+  value: {{ .Values.config.sink.host | quote }}
+- name: INSIGHTS_SINK_PORT
+  value: {{ .Values.config.sink.port | quote }}
 {{- with .Values.config.sys.server }}
 - name: INSIGHTS_SYS_SERVER
   value: {{ . | quote }}
 {{- end }}
-{{- if or .Values.config.sys.creds .Values.config.sys.credsSecretName }}
-- name: INSIGHTS_SYS_CREDS
-  value: "/etc/insights/creds/sys.creds"
+{{- with .Values.config.sys.user }}
+- name: INSIGHTS_SYS_USER
+  value: {{ . | quote }}
+{{- end }}
+{{- if .Values.config.sys.password }}
+- name: INSIGHTS_SYS_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $.Values.configSecret.name | quote }}
+      key: sys-password
+{{- end }}
+{{- if .Values.config.sys.nkey }}
+- name: INSIGHTS_SYS_NKEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ $.Values.configSecret.name | quote }}
+      key: sys-nkey
+{{- end }}
+{{- if .Values.config.sys.jwt }}
+- name: INSIGHTS_SYS_JWT
+  valueFrom:
+    secretKeyRef:
+      name: {{ $.Values.configSecret.name | quote }}
+      key: sys-jwt
+{{- end }}
+{{- range (include "ins.sysFileSecrets" $ | fromJson).files }}
+- name: {{ .env }}
+  value: {{ printf "%s/%s" .dir .path | quote }}
 {{- end }}
 {{- if or .Values.config.license.token .Values.config.license.secretName }}
 - name: INSIGHTS_LICENSE_FILE
@@ -27,14 +56,6 @@ env:
       name: {{ $.Values.configSecret.name | quote }}
       key: session-seed
 {{- end }}
-- name: INSIGHTS_PROMETHEUS_ENABLED
-  value: {{ .Values.metrics.enabled | quote }}
-{{- if .Values.metrics.enabled }}
-- name: INSIGHTS_PROMETHEUS_HOSTNAME
-  value: "0.0.0.0"
-- name: INSIGHTS_PROMETHEUS_PORT
-  value: {{ .Values.metrics.port | quote }}
-{{- end }}
 {{- with .Values.config.db.memoryLimit }}
 - name: INSIGHTS_DB_MEMORY_LIMIT
   value: {{ . | quote }}
@@ -42,6 +63,10 @@ env:
 {{- if .Values.config.db.threads }}
 - name: INSIGHTS_DB_THREADS
   value: {{ .Values.config.db.threads | quote }}
+{{- end }}
+{{- with .Values.config.db.retention.duration }}
+- name: INSIGHTS_DB_RETENTION_DURATION
+  value: {{ . | quote }}
 {{- end }}
 {{- with .Values.config.scraper.interval }}
 - name: INSIGHTS_SCRAPER_INTERVAL
@@ -62,10 +87,8 @@ env:
 ports:
 - name: http
   containerPort: {{ .Values.config.web.port }}
-{{- if .Values.metrics.enabled }}
-- name: metrics
-  containerPort: {{ .Values.metrics.port }}
-{{- end }}
+- name: nats
+  containerPort: {{ .Values.config.sink.port }}
 
 {{- with .Values.container.startupProbe }}
 startupProbe:
@@ -87,10 +110,10 @@ resources:
 
 volumeMounts:
 - name: data
-  mountPath: {{ .Values.config.dataDir | quote }}
-{{- if or .Values.config.sys.creds .Values.config.sys.credsSecretName }}
-- name: sys-creds
-  mountPath: /etc/insights/creds
+  mountPath: "/data"
+{{- range (include "ins.sysFileSecrets" $ | fromJson).files }}
+- name: {{ .name }}
+  mountPath: {{ .dir | quote }}
   readOnly: true
 {{- end }}
 {{- if or .Values.config.license.token .Values.config.license.secretName }}

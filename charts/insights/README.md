@@ -77,10 +77,17 @@ helm upgrade --install insights synadia/insights -f values.yaml
 kubectl port-forward svc/insights 8080:8080
 ```
 
-### Basic Example
+### Connecting to a System
 
-To monitor a real system, the required input is its server URL and the
-system-account credentials:
+To monitor a real system, set its server URL and the system-account credentials
+in whichever auth mode your system uses.
+
+**Credentials file (`.creds`)** — the common case. The file is mounted from an
+existing Secret you create:
+
+```bash
+kubectl create secret generic my-sys-creds --from-file=sys.creds=./sys.creds
+```
 
 ```yaml
 imagePullSecret:
@@ -90,29 +97,58 @@ imagePullSecret:
 config:
   sys:
     server: nats://nats.nats.svc.cluster.local:4222
-    # contents of a system-account .creds file
-    creds: |
-      -----BEGIN NATS USER JWT-----
-      ...
-      ------END NATS USER JWT------
-      ************************* IMPORTANT *************************
-      -----BEGIN USER NKEY SEED-----
-      ...
-      ------END USER NKEY SEED------
+    creds:
+      secretName: my-sys-creds   # existing Secret
+      key: sys.creds             # key within it (default)
 
   # recommended: a random seed for secure session cookies
   web:
     sessionSeed: <random-string>
 ```
 
-To reference an existing Secret for the creds file instead of inlining it:
+**Basic auth / NKey** — sensitive string values. Provide inline and the chart
+stores them in a managed Secret (`<release>-config`) and injects them via
+`secretKeyRef` — they are never placed inline on the pod spec:
 
 ```yaml
 config:
   sys:
     server: nats://nats.nats.svc.cluster.local:4222
-    credsSecretName: my-sys-creds   # Secret with a key holding the .creds file
-    credsKey: sys.creds             # defaults to "sys.creds"
+    user: sys
+    password: s3cret            # -> chart-managed Secret
+    # or NKey seed + user JWT:
+    # nkey: SUACSEED...
+    # jwt: eyJ...
+```
+
+To reference an **existing Secret** for any of those string values instead of
+inlining, use the `container.env` escape hatch:
+
+```yaml
+config:
+  sys:
+    server: nats://nats.nats.svc.cluster.local:4222
+    user: sys
+container:
+  env:
+    INSIGHTS_SYS_PASSWORD:
+      valueFrom:
+        secretKeyRef:
+          name: my-sys-secret
+          key: password
+```
+
+**Client TLS** — each file is mounted from an existing Secret (e.g. cert + key
+from a `kubernetes.io/tls` Secret, CA from another):
+
+```yaml
+config:
+  sys:
+    server: tls://nats.example.com:4222
+    tls:
+      cert:   { secretName: client-tls, key: tls.crt }
+      key:    { secretName: client-tls, key: tls.key }
+      caCert: { secretName: ca-bundle,  key: ca.crt }
 ```
 
 ### Edition: Production vs Trial
@@ -156,6 +192,8 @@ config:
   db:
     memoryLimit: "8GB"   # DuckDB units; caps the engine buffer pool
     threads: 4
+    retention:
+      duration: 2160h    # keep 90 days; app default 768h (~32 days), 0 disables
 container:
   resources:
     requests:
@@ -180,21 +218,6 @@ ingress:
   tlsSecretName: insights-tls   # optional
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
-```
-
-### Metrics
-
-The app serves Prometheus metrics at `/metrics`. They are disabled by default;
-enabling adds a Service port and (optionally) a `PodMonitor` for the Prometheus
-Operator:
-
-```yaml
-metrics:
-  enabled: true
-  port: 9091
-
-podMonitor:
-  enabled: true
 ```
 
 ### Advanced Topologies

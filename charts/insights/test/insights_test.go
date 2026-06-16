@@ -42,6 +42,17 @@ func hasVolume(spec corev1.PodSpec, name string) bool {
 	return false
 }
 
+func envVar(t *testing.T, c corev1.Container, name string) corev1.EnvVar {
+	t.Helper()
+	for _, e := range c.Env {
+		if e.Name == name {
+			return e
+		}
+	}
+	t.Fatalf("env var %q not found", name)
+	return corev1.EnvVar{}
+}
+
 func TestDefaults(t *testing.T) {
 	t.Parallel()
 	out := render(t, minimalValues())
@@ -58,11 +69,31 @@ func TestDefaults(t *testing.T) {
 	env := envMap(c)
 	assert.Equal(t, "/data", env["INSIGHTS_DATA_DIR"])
 	assert.Equal(t, "0.0.0.0", env["INSIGHTS_WEB_HOSTNAME"])
-	assert.Equal(t, "tls://connect.ngs.global", env["INSIGHTS_SYS_SERVER"])
-	assert.Equal(t, "false", env["INSIGHTS_PROMETHEUS_ENABLED"])
-	// production edition pulls no license
+	assert.Equal(t, "nats://nats.nats.svc.cluster.local:4222", env["INSIGHTS_SYS_SERVER"])
+	// embedded sink binds all interfaces on 4222 by default
+	assert.Equal(t, "0.0.0.0", env["INSIGHTS_SINK_HOST"])
+	assert.Equal(t, "4222", env["INSIGHTS_SINK_PORT"])
+	// production edition pulls no license; no credentials by default
 	assert.NotContains(t, env, "INSIGHTS_LICENSE_FILE")
 	assert.NotContains(t, env, "INSIGHTS_SYS_CREDS")
+	assert.NotContains(t, env, "INSIGHTS_PROMETHEUS_ENABLED")
+
+	// the embedded NATS (sink) port is declared on the container
+	var hasNatsPort bool
+	for _, p := range c.Ports {
+		if p.Name == "nats" && p.ContainerPort == 4222 {
+			hasNatsPort = true
+		}
+	}
+	assert.True(t, hasNatsPort, "nats container port missing")
+
+	// headless service exposes both http and nats
+	headlessPorts := map[string]bool{}
+	hsvc, _ := find[corev1.Service](t, out, "Service", fullName+"-headless")
+	for _, p := range hsvc.Spec.Ports {
+		headlessPorts[p.Name] = true
+	}
+	assert.True(t, headlessPorts["http"] && headlessPorts["nats"], "headless service should expose http + nats")
 
 	// probes default to a TCP check on the web port
 	require.NotNil(t, c.ReadinessProbe)
@@ -139,73 +170,96 @@ func TestTrialEditionRequiresLicense(t *testing.T) {
 	assert.Contains(t, err.Error(), "license")
 }
 
-func TestSysCredsInline(t *testing.T) {
+func TestSysCredsFileSecret(t *testing.T) {
 	t.Parallel()
 	values := minimalValues()
-	values["config.sys.creds"] = "-----BEGIN NATS USER JWT-----"
+	values["config.sys.creds.secretName"] = "my-sys-creds"
+	values["config.sys.creds.key"] = "creds"
 	out := render(t, values)
 
 	c := mainContainer(t, statefulSet(t, out))
-	assert.Equal(t, "/etc/insights/creds/sys.creds", envMap(c)["INSIGHTS_SYS_CREDS"])
+	// the env points at the mounted file, at a stable path regardless of the Secret key
+	assert.Equal(t, "/etc/insights/sys/creds/sys.creds", envMap(c)["INSIGHTS_SYS_CREDS"])
+	// mounted from the referenced Secret; no chart-managed config Secret needed
+	_, ok := find[corev1.Secret](t, out, "Secret", fullName+"-config")
+	assert.False(t, ok, "no config secret when only file creds are referenced")
+
+	spec := statefulSet(t, out).Spec.Template.Spec
+	require.True(t, hasVolume(spec, "sys-creds"))
+	for _, v := range spec.Volumes {
+		if v.Name == "sys-creds" {
+			require.NotNil(t, v.Secret)
+			assert.Equal(t, "my-sys-creds", v.Secret.SecretName)
+			require.Len(t, v.Secret.Items, 1)
+			assert.Equal(t, "creds", v.Secret.Items[0].Key)
+			assert.Equal(t, "sys.creds", v.Secret.Items[0].Path)
+		}
+	}
+}
+
+func TestSysBasicAuth(t *testing.T) {
+	t.Parallel()
+	values := minimalValues()
+	values["config.sys.user"] = "sys"
+	values["config.sys.password"] = "s3cret"
+	out := render(t, values)
+
+	c := mainContainer(t, statefulSet(t, out))
+	assert.Equal(t, "sys", envMap(c)["INSIGHTS_SYS_USER"])
+	// password is injected from the chart-managed config Secret, never set inline on the pod
+	pw := envVar(t, c, "INSIGHTS_SYS_PASSWORD")
+	require.NotNil(t, pw.ValueFrom)
+	require.NotNil(t, pw.ValueFrom.SecretKeyRef)
+	assert.Equal(t, fullName+"-config", pw.ValueFrom.SecretKeyRef.Name)
+	assert.Equal(t, "sys-password", pw.ValueFrom.SecretKeyRef.Key)
+	assert.Empty(t, pw.Value)
 
 	secret, ok := find[corev1.Secret](t, out, "Secret", fullName+"-config")
-	require.True(t, ok, "config secret should hold the inline creds")
-	assert.Contains(t, secret.StringData, "sys.creds")
-	assert.True(t, hasVolume(statefulSet(t, out).Spec.Template.Spec, "sys-creds"))
+	require.True(t, ok)
+	assert.Contains(t, secret.StringData, "sys-password")
 }
 
-func TestSysCredsExistingSecret(t *testing.T) {
+func TestSysNkeyJwt(t *testing.T) {
 	t.Parallel()
 	values := minimalValues()
-	values["config.sys.credsSecretName"] = "my-creds"
+	values["config.sys.nkey"] = "SUACSEED"
+	values["config.sys.jwt"] = "eyJ.jwt.sig"
 	out := render(t, values)
 
 	c := mainContainer(t, statefulSet(t, out))
-	assert.Equal(t, "/etc/insights/creds/sys.creds", envMap(c)["INSIGHTS_SYS_CREDS"])
-	// no inline secret content, so no chart-managed config secret
-	_, ok := find[corev1.Secret](t, out, "Secret", fullName+"-config")
-	assert.False(t, ok)
-	assert.True(t, hasVolume(statefulSet(t, out).Spec.Template.Spec, "sys-creds"))
+	assert.Equal(t, "sys-nkey", envVar(t, c, "INSIGHTS_SYS_NKEY").ValueFrom.SecretKeyRef.Key)
+	assert.Equal(t, "sys-jwt", envVar(t, c, "INSIGHTS_SYS_JWT").ValueFrom.SecretKeyRef.Key)
+
+	secret, _ := find[corev1.Secret](t, out, "Secret", fullName+"-config")
+	assert.Contains(t, secret.StringData, "sys-nkey")
+	assert.Contains(t, secret.StringData, "sys-jwt")
 }
 
-func TestMetricsEnabled(t *testing.T) {
+func TestSysTLS(t *testing.T) {
 	t.Parallel()
 	values := minimalValues()
-	values["metrics.enabled"] = "true"
-	values["podMonitor.enabled"] = "true"
+	values["config.sys.tls.cert.secretName"] = "client-tls"
+	values["config.sys.tls.key.secretName"] = "client-tls"
+	values["config.sys.tls.caCert.secretName"] = "ca-bundle"
 	out := render(t, values)
 
-	c := mainContainer(t, statefulSet(t, out))
-	env := envMap(c)
-	assert.Equal(t, "true", env["INSIGHTS_PROMETHEUS_ENABLED"])
-	assert.Equal(t, "9091", env["INSIGHTS_PROMETHEUS_PORT"])
-	var hasMetricsPort bool
-	for _, p := range c.Ports {
-		if p.Name == "metrics" {
-			hasMetricsPort = true
-		}
-	}
-	assert.True(t, hasMetricsPort, "metrics container port missing")
+	env := envMap(mainContainer(t, statefulSet(t, out)))
+	assert.Equal(t, "/etc/insights/sys/tls-cert/tls.crt", env["INSIGHTS_SYS_TLS_CERT"])
+	assert.Equal(t, "/etc/insights/sys/tls-key/tls.key", env["INSIGHTS_SYS_TLS_KEY"])
+	assert.Equal(t, "/etc/insights/sys/tls-ca/ca.crt", env["INSIGHTS_SYS_TLS_CA"])
 
-	svc, _ := find[corev1.Service](t, out, "Service", fullName)
-	var svcMetrics bool
-	for _, p := range svc.Spec.Ports {
-		if p.Name == "metrics" {
-			svcMetrics = true
-		}
-	}
-	assert.True(t, svcMetrics, "metrics service port missing")
-
-	require.Contains(t, out, "kind: PodMonitor")
+	spec := statefulSet(t, out).Spec.Template.Spec
+	assert.True(t, hasVolume(spec, "sys-tls-cert"))
+	assert.True(t, hasVolume(spec, "sys-tls-key"))
+	assert.True(t, hasVolume(spec, "sys-tls-ca"))
 }
 
-func TestPodMonitorRequiresMetrics(t *testing.T) {
+func TestRetentionDuration(t *testing.T) {
 	t.Parallel()
-	// podMonitor.enabled alone (metrics disabled) must not emit a PodMonitor
 	values := minimalValues()
-	values["podMonitor.enabled"] = "true"
+	values["config.db.retention.duration"] = "720h"
 	out := render(t, values)
-	assert.NotContains(t, out, "kind: PodMonitor")
+	assert.Equal(t, "720h", envMap(mainContainer(t, statefulSet(t, out)))["INSIGHTS_DB_RETENTION_DURATION"])
 }
 
 func TestIngressEnabled(t *testing.T) {

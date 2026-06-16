@@ -81,6 +81,6 @@ func find[T any](t *testing.T, out, kind, name string) (T, bool) {
 // requires the system to monitor.
 func minimalValues() map[string]string {
 	return map[string]string{
-		"config.sys.server": "tls://connect.ngs.global",
+		"config.sys.server": "nats://nats.nats.svc.cluster.local:4222",
 	}
 }

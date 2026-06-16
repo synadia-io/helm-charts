@@ -18,9 +18,4 @@ spec:
   - name: http
     port: {{ .ports.http.port }}
     targetPort: http
-  {{- if $.Values.metrics.enabled }}
-  - name: metrics
-    port: {{ $.Values.metrics.port }}
-    targetPort: metrics
-  {{- end }}
 {{- end }}

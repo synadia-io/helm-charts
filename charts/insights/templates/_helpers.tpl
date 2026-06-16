@@ -61,7 +61,6 @@ Set default values.
     {{- $_ := set .headlessService     "name" (.headlessService.name     | default (printf "%s-headless" $name)) }}
     {{- $_ := set .serviceAccount      "name" (.serviceAccount.name      | default $name) }}
     {{- $_ := set .podDisruptionBudget "name" (.podDisruptionBudget.name | default $name) }}
-    {{- $_ := set .podMonitor          "name" (.podMonitor.name          | default $name) }}
     {{- /* edition selects the default image repository: production -> insights, trial -> insights-licensed */}}
     {{- $repo := ternary "insights-licensed" "insights" (eq .edition "trial") }}
     {{- $_ := set .container.image "repository" (.container.image.repository | default $repo) }}
@@ -141,6 +140,52 @@ image: {{ $image }}
 {{- if or .pullPolicy .global.image.pullPolicy }}
 imagePullPolicy: {{ .pullPolicy | default .global.image.pullPolicy }}
 {{- end }}
+{{- end }}
+
+{{- /*
+ins.sysFileSecrets
+Returns the file-mounted system credential secrets that are configured
+(creds + client TLS cert/key/caCert). Each entry drives a secret volume, a
+volume mount, and the env var that points the app at the mounted file path.
+output: JSON {files: [{name, env, secretName, key, dir, path}]}
+*/}}
+{{- define "ins.sysFileSecrets" -}}
+{{- $files := list -}}
+{{- with .Values.config.sys -}}
+  {{- with .creds -}}
+    {{- if .secretName -}}
+      {{- $files = append $files (dict "name" "sys-creds" "env" "INSIGHTS_SYS_CREDS" "secretName" .secretName "key" (.key | default "sys.creds") "dir" "/etc/insights/sys/creds" "path" "sys.creds") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with .tls -}}
+    {{- with .cert -}}
+      {{- if .secretName -}}
+        {{- $files = append $files (dict "name" "sys-tls-cert" "env" "INSIGHTS_SYS_TLS_CERT" "secretName" .secretName "key" (.key | default "tls.crt") "dir" "/etc/insights/sys/tls-cert" "path" "tls.crt") -}}
+      {{- end -}}
+    {{- end -}}
+    {{- with .key -}}
+      {{- if .secretName -}}
+        {{- $files = append $files (dict "name" "sys-tls-key" "env" "INSIGHTS_SYS_TLS_KEY" "secretName" .secretName "key" (.key | default "tls.key") "dir" "/etc/insights/sys/tls-key" "path" "tls.key") -}}
+      {{- end -}}
+    {{- end -}}
+    {{- with .caCert -}}
+      {{- if .secretName -}}
+        {{- $files = append $files (dict "name" "sys-tls-ca" "env" "INSIGHTS_SYS_TLS_CA" "secretName" .secretName "key" (.key | default "ca.crt") "dir" "/etc/insights/sys/tls-ca" "path" "ca.crt") -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- toJson (dict "files" $files) -}}
+{{- end }}
+
+{{- /*
+ins.hasConfigSecret
+Non-empty ("true") when the chart-managed config Secret has any content:
+the inline string credentials, the inline license token, or the session seed.
+File-based credentials (creds, tls.*) live in user-supplied Secrets instead.
+*/}}
+{{- define "ins.hasConfigSecret" -}}
+{{- if or .Values.config.sys.password .Values.config.sys.nkey .Values.config.sys.jwt .Values.config.license.token .Values.config.web.sessionSeed -}}true{{- end -}}
 {{- end }}
 
 {{/*

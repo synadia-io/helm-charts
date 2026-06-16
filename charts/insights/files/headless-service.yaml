@@ -14,4 +14,7 @@ spec:
   - name: http
     port: {{ $.Values.config.web.port }}
     targetPort: http
+  - name: nats
+    port: {{ $.Values.config.sink.port }}
+    targetPort: nats
 {{- end }}
