@@ -47,6 +47,14 @@ env:
 - name: INSIGHTS_SCRAPER_INTERVAL
   value: {{ . | quote }}
 {{- end }}
+{{- if .Values.config.simulator.enabled }}
+- name: INSIGHTS_SIMULATOR_ENABLED
+  value: "true"
+{{- with .Values.config.simulator.profile }}
+- name: INSIGHTS_SIMULATOR_PROFILE
+  value: {{ . | quote }}
+{{- end }}
+{{- end }}
 {{- with .Values.container.env }}
 {{- include "ins.env" . }}
 {{- end }}

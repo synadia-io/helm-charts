@@ -88,13 +88,17 @@ Set required values.
     {{- if ne (int .statefulSet.replicas) 1 }}
       {{- fail "statefulSet.replicas must be 1: insights runs as a single instance (single-writer DuckDB + embedded NATS sink)" }}
     {{- end }}
-    {{- if eq .edition "trial" }}
-      {{- if not (or .config.license.token .config.license.secretName) }}
-        {{- fail "config.license.token or config.license.secretName is required when edition is \"trial\" (the insights-licensed image validates a license JWT)" }}
+    {{- /* the simulator provides its own embedded system and skips licensing,
+           so neither config.sys nor a license is required when it is enabled */}}
+    {{- if not .config.simulator.enabled }}
+      {{- if eq .edition "trial" }}
+        {{- if not (or .config.license.token .config.license.secretName) }}
+          {{- fail "config.license.token or config.license.secretName is required when edition is \"trial\" (the insights-licensed image validates a license JWT)" }}
+        {{- end }}
       {{- end }}
-    {{- end }}
-    {{- if not .config.sys.server }}
-      {{- fail "config.sys.server is required: the NATS system URL to monitor (e.g. tls://connect.ngs.global)" }}
+      {{- if not .config.sys.server }}
+        {{- fail "config.sys.server is required: the NATS system URL to monitor (or set config.simulator.enabled=true to run against the built-in simulator)" }}
+      {{- end }}
     {{- end }}
   {{- end }}
 {{- end }}

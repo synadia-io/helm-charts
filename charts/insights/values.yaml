@@ -104,6 +104,15 @@ config:
     # interval between scrapes of the monitored system. Empty uses the app default (1m).
     interval:
 
+  # built-in NATS simulator: starts an embedded NATS system with synthetic
+  # JetStream traffic and monitors that. Lets you evaluate Insights with NO
+  # external system, sys creds, or license. For demos/evaluation, not production.
+  # When enabled, config.sys is ignored and no license is required.
+  simulator:
+    enabled: false
+    # workload profile, e.g. js-small, super-medium
+    profile: js-small
+
 ################################################################################
 # metrics (Prometheus)
 ################################################################################

@@ -257,6 +257,31 @@ func TestRequiresSysServer(t *testing.T) {
 	assert.Contains(t, err.Error(), "config.sys.server")
 }
 
+func TestSimulatorMode(t *testing.T) {
+	t.Parallel()
+	// the simulator provides its own embedded system: no sys.server, creds, or
+	// license required, even on the default production image.
+	out := render(t, map[string]string{"config.simulator.enabled": "true"})
+
+	c := mainContainer(t, statefulSet(t, out))
+	env := envMap(c)
+	assert.Equal(t, "true", env["INSIGHTS_SIMULATOR_ENABLED"])
+	assert.Equal(t, "js-small", env["INSIGHTS_SIMULATOR_PROFILE"])
+	assert.NotContains(t, env, "INSIGHTS_SYS_SERVER")
+	assert.True(t, strings.HasPrefix(c.Image, "registry.synadia.io/insights:"))
+}
+
+func TestSimulatorTrialNeedsNoLicense(t *testing.T) {
+	t.Parallel()
+	// simulator skips licensing in the app, so the chart must not require a
+	// license even when the trial image is selected.
+	err := renderErr(t, map[string]string{
+		"edition":                  "trial",
+		"config.simulator.enabled": "true",
+	})
+	require.NoError(t, err)
+}
+
 func TestPodDisruptionBudgetEnabled(t *testing.T) {
 	t.Parallel()
 	values := minimalValues()

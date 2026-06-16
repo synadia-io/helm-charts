@@ -53,9 +53,33 @@ podTemplate:
       - name: my-existing-regcred
 ```
 
+### Quick Start (built-in simulator)
+
+To evaluate Insights without wiring up a real NATS system, enable the built-in
+simulator. It starts an embedded NATS system with synthetic JetStream traffic
+and monitors that — no `config.sys`, no credentials, and no license required
+(it works with the default production image). For demos/evaluation only.
+
+```yaml
+imagePullSecret:
+  username: my-user
+  password: my-password
+
+config:
+  simulator:
+    enabled: true
+    # profile: js-small   # or e.g. super-medium
+```
+
+```bash
+helm upgrade --install insights synadia/insights -f values.yaml
+# then port-forward the web UI:
+kubectl port-forward svc/insights 8080:8080
+```
+
 ### Basic Example
 
-The only required input is the NATS system to monitor — its server URL and the
+To monitor a real system, the required input is its server URL and the
 system-account credentials:
 
 ```yaml
@@ -65,7 +89,7 @@ imagePullSecret:
 
 config:
   sys:
-    server: tls://connect.ngs.global
+    server: nats://nats.nats.svc.cluster.local:4222
     # contents of a system-account .creds file
     creds: |
       -----BEGIN NATS USER JWT-----
@@ -86,7 +110,7 @@ To reference an existing Secret for the creds file instead of inlining it:
 ```yaml
 config:
   sys:
-    server: tls://connect.ngs.global
+    server: nats://nats.nats.svc.cluster.local:4222
     credsSecretName: my-sys-creds   # Secret with a key holding the .creds file
     credsKey: sys.creds             # defaults to "sys.creds"
 ```

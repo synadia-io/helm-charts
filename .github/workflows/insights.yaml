@@ -20,8 +20,9 @@ jobs:
         version: v3.17.3
 
     - name: Helm lint
-      # the chart requires the system to monitor, so provide it for the lint render
-      run: helm lint charts/insights --set config.sys.server=tls://connect.ngs.global
+      # lint via the simulator path: a complete, valid config that needs no
+      # external system, creds, or license
+      run: helm lint charts/insights --set config.simulator.enabled=true
 
     - name: Setup Go
       uses: actions/setup-go@v5
