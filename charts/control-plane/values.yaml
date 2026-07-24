@@ -183,7 +183,7 @@ podTemplate:
 container:
   image:
     repository: control-plane
-    tag: 1.11.0
+    tag: 1.12.0
     # use slim image, requires config.dataSources.postgres to be configured
     slim: false
     pullPolicy:
