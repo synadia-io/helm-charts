@@ -1,235 +1,159 @@
-# Synadia Insights Helm Chart
+# Insights Helm chart
 
-[Synadia Insights](https://www.synadia.com/insights) observes a NATS system: it
-scrapes the system-account monitoring endpoints, indexes the data into an
-embedded DuckDB database, and serves a web UI plus audit checks.
+This chart runs one persistent Insights instance. It intentionally contains
+only the Kubernetes resources the application needs: a StatefulSet, Service,
+config Secret, and data volume.
 
-Insights runs as a **single, stateful instance** — the chart deploys a
-1-replica StatefulSet with a persistent volume for the DuckDB database and
-JetStream data. It is not horizontally scalable (single-writer DB + embedded
-NATS sink).
+## Deployment guides
 
-## Accessing the Helm Chart
+- [Local k3s](docs/local-k3s.md)
+- [Amazon EKS](docs/aws-eks.md)
+- [Azure Kubernetes Service](docs/azure-aks.md)
+- [Google Kubernetes Engine](docs/google-gke.md)
 
-```bash
-# add the synadia repo (only needs to be run once)
-helm repo add synadia https://synadia-io.github.io/helm-charts
+## Install
 
-# update the synadia repo index (run to get updated chart versions)
-helm repo update synadia
-
-# note: you must configure an image pull secret (see below) and the NATS system to monitor
-helm upgrade --install insights synadia/insights -f values.yaml
-```
-
-### Useful Tools and References
-
-- [Chart Values file](https://github.com/synadia-io/helm-charts/blob/main/charts/insights/values.yaml) — lists all possible configuration options
-
-## Common Configuration
-
-### Image Pull Secret
-
-The Insights image is hosted on the private `registry.synadia.io`. By default the
-chart creates an image pull secret from the credentials you provide:
+For a simulator deployment:
 
 ```yaml
-imagePullSecret:
-  username: my-user
-  password: my-password
-```
-
-To use an existing pull secret instead, disable the managed one and reference
-yours via the pod template:
-
-```yaml
-imagePullSecret:
-  enabled: false
-
-podTemplate:
-  merge:
-    spec:
-      imagePullSecrets:
-      - name: my-existing-regcred
-```
-
-### Quick Start (built-in simulator)
-
-To evaluate Insights without wiring up a real NATS system, enable the built-in
-simulator. It starts an embedded NATS system with synthetic JetStream traffic
-and monitors that — no `config.sys`, no credentials, and no license required
-(it works with the default production image). For demos/evaluation only.
-
-```yaml
-imagePullSecret:
-  username: my-user
-  password: my-password
-
+# values.yaml
 config:
+  data-dir: /var/lib/insights
+  web:
+    hostname: 0.0.0.0
   simulator:
     enabled: true
-    # profile: js-small   # or e.g. super-medium
 ```
 
-```bash
+```sh
+helm repo add synadia https://synadia-io.github.io/helm-charts
+helm repo update synadia
 helm upgrade --install insights synadia/insights -f values.yaml
-# then port-forward the web UI:
-kubectl port-forward svc/insights 8080:8080
+kubectl port-forward service/insights 8080:8080
 ```
 
-### Connecting to a System
-
-To monitor a real system, set its server URL and the system-account credentials
-in whichever auth mode your system uses.
-
-**Credentials file (`.creds`)** — the common case. The file is mounted from an
-existing Secret you create:
-
-```bash
-kubectl create secret generic my-sys-creds --from-file=sys.creds=./sys.creds
-```
+To monitor a NATS system, replace `simulator` with the same configuration you
+would put in an Insights `config.yaml`:
 
 ```yaml
-imagePullSecret:
-  username: my-user
-  password: my-password
-
 config:
-  sys:
-    server: nats://nats.nats.svc.cluster.local:4222
-    creds:
-      secretName: my-sys-creds   # existing Secret
-      key: sys.creds             # key within it (default)
-
-  # recommended: a random seed for secure session cookies
+  data-dir: /var/lib/insights
   web:
-    sessionSeed: <random-string>
-```
-
-**Basic auth / NKey** — sensitive string values. Provide inline and the chart
-stores them in a managed Secret (`<release>-config`) and injects them via
-`secretKeyRef` — they are never placed inline on the pod spec:
-
-```yaml
-config:
+    hostname: 0.0.0.0
   sys:
     server: nats://nats.nats.svc.cluster.local:4222
-    user: sys
-    password: s3cret            # -> chart-managed Secret
-    # or NKey seed + user JWT:
-    # nkey: SUACSEED...
-    # jwt: eyJ...
+    user: system
+    password: secret
 ```
 
-To reference an **existing Secret** for any of those string values instead of
-inlining, use the `container.env` escape hatch:
+The complete application configuration is documented in the
+[Insights configuration example](https://github.com/ConnectEverything/insights/blob/main/docs/config.example.yaml).
+
+## Configuration mapping
+
+Everything below `config` is serialized directly to `/etc/insights/config.yaml`.
+There is no chart-specific translation layer, so application keys, nesting,
+lists, booleans, durations, and future configuration additions work as they do
+in a standalone config file. The `config` wrapper is the only extra level.
+
+The chart does not copy every application default into `values.yaml`. Doing so
+would make defaults drift between the chart and Insights. It includes only the
+two container-specific settings: a persistent `data-dir` and a web listener on
+all pod interfaces.
+
+File paths in the application config still need corresponding Kubernetes
+mounts. Use `extraVolumes` and `extraVolumeMounts` for NATS credentials, TLS
+files, an embedded NATS config, or a file-based license.
+
+## Images and licensing
+
+The default image is selected from the application config:
+
+| Application config | Default image |
+| --- | --- |
+| No `license.token` or `license.file` | `registry.synadia.io/insights` |
+| `license.token` or `license.file` set | `registry.synadia.io/insights-licensed` |
+
+Set `image.tag` to pin a version. Set `image.registry` for a registry mirror.
+Set both `image.registry` and `image.repository` when the mirror uses a custom
+layout. An explicit repository name takes precedence over automatic edition
+selection.
+
+```yaml
+image:
+  registry: mirror.example.com
+  tag: 0.1.9
+```
+
+The default registry may require authentication. Create the registry Secret
+outside the chart, then reference it:
+
+```yaml
+image:
+  pullSecrets:
+    - name: synadia-registry
+```
+
+When `configSecret.existingSecret` is used, Helm cannot inspect that Secret to
+detect a license or its web settings. Select the licensed image explicitly and,
+if needed, set `service.targetPort` to the port in that config. Set
+`startupProbe`, `livenessProbe`, and `readinessProbe` to `null` if its web server
+is disabled. Insights reads the config at startup, so restart the StatefulSet
+after changing an externally managed Secret:
+
+```sh
+kubectl rollout restart statefulset/insights
+```
+
+```yaml
+configSecret:
+  existingSecret: insights-config
+image:
+  repository: insights-licensed
+service:
+  targetPort: 8888
+```
+
+## Secrets
+
+The generated config is a Kubernetes Secret because an Insights config may
+contain credentials. Kubernetes Secrets are not encrypted unless the cluster
+is configured for encryption at rest, and values passed to Helm may be retained
+in Helm release history.
+
+For production credentials, use a secret-management workflow and point
+`configSecret.existingSecret` at a Secret containing the complete `config.yaml`.
+The Secret key is configurable with `configSecret.key`.
+
+For file-based credentials, mount an existing Secret:
 
 ```yaml
 config:
+  data-dir: /var/lib/insights
+  web:
+    hostname: 0.0.0.0
   sys:
     server: nats://nats.nats.svc.cluster.local:4222
-    user: sys
-container:
-  env:
-    INSIGHTS_SYS_PASSWORD:
-      valueFrom:
-        secretKeyRef:
-          name: my-sys-secret
-          key: password
+    creds: /etc/insights/credentials/sys.creds
+
+extraVolumes:
+  - name: credentials
+    secret:
+      secretName: insights-sys-creds
+extraVolumeMounts:
+  - name: credentials
+    mountPath: /etc/insights/credentials
+    readOnly: true
 ```
 
-**Client TLS** — each file is mounted from an existing Secret (e.g. cert + key
-from a `kubernetes.io/tls` Secret, CA from another):
+## Persistence
 
-```yaml
-config:
-  sys:
-    server: tls://nats.example.com:4222
-    tls:
-      cert:   { secretName: client-tls, key: tls.crt }
-      key:    { secretName: client-tls, key: tls.key }
-      caCert: { secretName: ca-bundle,  key: ca.crt }
-```
+Persistence is enabled by default with a 10 GiB `ReadWriteOnce` volume claim.
+Set `persistence.size`, `persistence.storageClass`, and
+`persistence.accessModes` to match the cluster, or set
+`persistence.existingClaim` to reuse a PVC.
 
-### Edition: Production vs Trial
-
-`edition` selects which image is deployed and whether a license is required:
-
-| edition | image | license |
-| --- | --- | --- |
-| `production` (default) | `registry.synadia.io/insights` | not required |
-| `trial` | `registry.synadia.io/insights-licensed` | **required** |
-
-For a trial, supply the license JWT:
-
-```yaml
-edition: trial
-config:
-  license:
-    token: <license-jwt>
-    # or reference an existing Secret:
-    # secretName: my-license
-    # fileKey: license.jwt
-```
-
-### Persistence
-
-Persistence is enabled by default. Size the volume to your retention needs;
-disabling persistence uses an `emptyDir` and **all indexed history is lost on
-restart**.
-
-```yaml
-persistence:
-  enabled: true
-  size: 50Gi
-  storageClassName: fast-ssd
-```
-
-The DuckDB memory limit should be sized to the host and the monitored system:
-
-```yaml
-config:
-  db:
-    memoryLimit: "8GB"   # DuckDB units; caps the engine buffer pool
-    threads: 4
-    retention:
-      duration: 2160h    # keep 90 days; app default 768h (~32 days), 0 disables
-container:
-  resources:
-    requests:
-      cpu: "2"
-      memory: 8Gi
-    limits:
-      memory: 16Gi
-```
-
-### Exposing the Web UI via Ingress
-
-> **The Insights web UI ships no built-in authentication.** When exposing it,
-> front it with an authenticating ingress or proxy (e.g. oauth2-proxy, your
-> ingress controller's auth, or a service mesh).
-
-```yaml
-ingress:
-  enabled: true
-  className: nginx
-  hosts:
-  - insights.example.com
-  tlsSecretName: insights-tls   # optional
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt
-```
-
-### Advanced Topologies
-
-The API server and data sink default to the embedded NATS server. For advanced
-setups (a leaf-node sink config, separate API credentials, extra TLS material),
-use the escape hatches: set any `INSIGHTS_*` variable via `container.env`, mount
-additional material via `extraVolumes`/`extraVolumeMounts`, and adjust any
-resource with its `merge`/`patch` keys.
-
-```yaml
-container:
-  env:
-    INSIGHTS_LOG_LEVEL: debug
-```
+Disabling persistence uses `emptyDir`; all indexed history is then lost with
+the pod. StatefulSet-created PVCs are intentionally retained by Kubernetes when
+the Helm release is deleted and must be removed separately when their data is
+no longer needed.

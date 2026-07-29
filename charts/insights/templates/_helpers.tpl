@@ -1,20 +1,18 @@
 {{/*
-Expand the name of the chart.
+Chart name.
 */}}
-{{- define "ins.name" -}}
+{{- define "insights.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
+Fully qualified resource name.
 */}}
-{{- define "ins.fullname" -}}
+{{- define "insights.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- $name := include "insights.name" . }}
 {{- if contains $name .Release.Name }}
 {{- .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,198 +22,89 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
-Create chart name and version as used by the chart label.
+Common labels.
 */}}
-{{- define "ins.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Print the namespace
-*/}}
-{{- define "ins.namespace" -}}
-{{- default .Release.Namespace .Values.namespaceOverride }}
-{{- end }}
-
-{{/*
-Print the namespace for the metadata section
-*/}}
-{{- define "ins.metadataNamespace" -}}
-{{- with .Values.namespaceOverride }}
-namespace: {{ . | quote }}
-{{- end }}
-{{- end }}
-
-{{/*
-Set default values.
-*/}}
-{{- define "ins.defaultValues" }}
-{{- if not .defaultValuesSet }}
-  {{- $name := include "ins.fullname" . }}
-  {{- with .Values }}
-    {{- $_ := set .configSecret        "name" (.configSecret.name        | default (printf "%s-config" $name)) }}
-    {{- $_ := set .statefulSet         "name" (.statefulSet.name         | default $name) }}
-    {{- $_ := set .imagePullSecret     "name" (.imagePullSecret.name     | default (printf "%s-regcred" $name)) }}
-    {{- $_ := set .ingress             "name" (.ingress.name             | default $name) }}
-    {{- $_ := set .service             "name" (.service.name             | default $name) }}
-    {{- $_ := set .headlessService     "name" (.headlessService.name     | default (printf "%s-headless" $name)) }}
-    {{- $_ := set .serviceAccount      "name" (.serviceAccount.name      | default $name) }}
-    {{- $_ := set .podDisruptionBudget "name" (.podDisruptionBudget.name | default $name) }}
-    {{- /* edition selects the default image repository: production -> insights, trial -> insights-licensed */}}
-    {{- $repo := ternary "insights-licensed" "insights" (eq .edition "trial") }}
-    {{- $_ := set .container.image "repository" (.container.image.repository | default $repo) }}
-    {{- $_ := set .container.image "tag"        (.container.image.tag        | default $.Chart.AppVersion) }}
-  {{- end }}
-
-  {{- include "ins.requiredValues" . }}
-
-  {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
-  {{- $_ := set . "Values" $values }}
-
-  {{- $_ := set . "defaultValuesSet" true }}
-{{- end }}
-{{- end }}
-
-{{/*
-Set required values.
-*/}}
-{{- define "ins.requiredValues" }}
-  {{- with .Values }}
-    {{- if not (or (eq .edition "production") (eq .edition "trial")) }}
-      {{- fail (cat "edition must be \"production\" or \"trial\", got" (.edition | quote)) }}
-    {{- end }}
-    {{- if ne (int .statefulSet.replicas) 1 }}
-      {{- fail "statefulSet.replicas must be 1: insights runs as a single instance (single-writer DuckDB + embedded NATS sink)" }}
-    {{- end }}
-    {{- /* the simulator provides its own embedded system and skips licensing,
-           so neither config.sys nor a license is required when it is enabled */}}
-    {{- if not .config.simulator.enabled }}
-      {{- if eq .edition "trial" }}
-        {{- if not (or .config.license.token .config.license.secretName) }}
-          {{- fail "config.license.token or config.license.secretName is required when edition is \"trial\" (the insights-licensed image validates a license JWT)" }}
-        {{- end }}
-      {{- end }}
-      {{- if not .config.sys.server }}
-        {{- fail "config.sys.server is required: the NATS system URL to monitor (or set config.simulator.enabled=true to run against the built-in simulator)" }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-{{- end }}
-
-{{/*
-ins.labels
-*/}}
-{{- define "ins.labels" -}}
-{{- with .Values.global.labels -}}
-{{ toYaml . }}
-{{ end -}}
-helm.sh/chart: {{ include "ins.chart" . }}
-{{ include "ins.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
+{{- define "insights.labels" -}}
+helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{ include "insights.selectorLabels" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-ins.selectorLabels
+Selector labels.
 */}}
-{{- define "ins.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "ins.name" . }}
+{{- define "insights.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "insights.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/component: insights
 {{- end }}
 
 {{/*
-Print the image.
-When imagePullSecret is enabled the registry defaults to imagePullSecret.registry,
-otherwise it falls back to global.image.registry. An explicit image.registry always wins.
+Config Secret name.
 */}}
-{{- define "ins.image" }}
-{{- $image := printf "%s:%s" .repository .tag }}
-{{- if or .registry .imagePullSecret.enabled .global.image.registry }}
-{{- $image = printf "%s/%s" (.registry | default (ternary .imagePullSecret.registry .global.image.registry .imagePullSecret.enabled)) $image }}
-{{- end -}}
-image: {{ $image }}
-{{- if or .pullPolicy .global.image.pullPolicy }}
-imagePullPolicy: {{ .pullPolicy | default .global.image.pullPolicy }}
-{{- end }}
-{{- end }}
-
-{{- /*
-ins.sysFileSecrets
-Returns the file-mounted system credential secrets that are configured
-(creds + client TLS cert/key/caCert). Each entry drives a secret volume, a
-volume mount, and the env var that points the app at the mounted file path.
-output: JSON {files: [{name, env, secretName, key, dir, path}]}
-*/}}
-{{- define "ins.sysFileSecrets" -}}
-{{- $files := list -}}
-{{- with .Values.config.sys -}}
-  {{- with .creds -}}
-    {{- if .secretName -}}
-      {{- $files = append $files (dict "name" "sys-creds" "env" "INSIGHTS_SYS_CREDS" "secretName" .secretName "key" (.key | default "sys.creds") "dir" "/etc/insights/sys/creds" "path" "sys.creds") -}}
-    {{- end -}}
-  {{- end -}}
-  {{- with .tls -}}
-    {{- with .cert -}}
-      {{- if .secretName -}}
-        {{- $files = append $files (dict "name" "sys-tls-cert" "env" "INSIGHTS_SYS_TLS_CERT" "secretName" .secretName "key" (.key | default "tls.crt") "dir" "/etc/insights/sys/tls-cert" "path" "tls.crt") -}}
-      {{- end -}}
-    {{- end -}}
-    {{- with .key -}}
-      {{- if .secretName -}}
-        {{- $files = append $files (dict "name" "sys-tls-key" "env" "INSIGHTS_SYS_TLS_KEY" "secretName" .secretName "key" (.key | default "tls.key") "dir" "/etc/insights/sys/tls-key" "path" "tls.key") -}}
-      {{- end -}}
-    {{- end -}}
-    {{- with .caCert -}}
-      {{- if .secretName -}}
-        {{- $files = append $files (dict "name" "sys-tls-ca" "env" "INSIGHTS_SYS_TLS_CA" "secretName" .secretName "key" (.key | default "ca.crt") "dir" "/etc/insights/sys/tls-ca" "path" "ca.crt") -}}
-      {{- end -}}
-    {{- end -}}
-  {{- end -}}
-{{- end -}}
-{{- toJson (dict "files" $files) -}}
-{{- end }}
-
-{{- /*
-ins.hasConfigSecret
-Non-empty ("true") when the chart-managed config Secret has any content:
-the inline string credentials, the inline license token, or the session seed.
-File-based credentials (creds, tls.*) live in user-supplied Secrets instead.
-*/}}
-{{- define "ins.hasConfigSecret" -}}
-{{- if or .Values.config.sys.password .Values.config.sys.nkey .Values.config.sys.jwt .Values.config.license.token .Values.config.web.sessionSeed -}}true{{- end -}}
+{{- define "insights.configSecretName" -}}
+{{- default (printf "%s-config" (include "insights.fullname" .)) .Values.configSecret.existingSecret }}
 {{- end }}
 
 {{/*
-Translates env var map to list.
+Image name. An explicit repository is authoritative. Otherwise, the presence
+of a license token or file in the application config selects the licensed image.
 */}}
-{{- define "ins.env" -}}
-{{- range $k, $v := . }}
-{{- if kindIs "string" $v }}
-- name: {{ $k | quote }}
-  value: {{ $v | quote }}
-{{- else if kindIs "map" $v }}
-- {{ merge (dict "name" $k) $v | toYaml | nindent 2 }}
+{{- define "insights.image" -}}
+{{- $repository := .Values.image.repository }}
+{{- if not $repository }}
+  {{- $licensed := false }}
+  {{- with .Values.config.license }}
+    {{- $licensed = or (not (empty .token)) (not (empty .file)) }}
+  {{- end }}
+  {{- $repository = ternary "insights-licensed" "insights" $licensed }}
+{{- end }}
+{{- $image := $repository }}
+{{- with .Values.image.registry }}
+  {{- $image = printf "%s/%s" (trimSuffix "/" .) $repository }}
+{{- end }}
+{{- printf "%s:%s" $image (default .Chart.AppVersion .Values.image.tag) }}
+{{- end }}
+
+{{/*
+Web port from application config, falling back to the Service port.
+*/}}
+{{- define "insights.webPort" -}}
+{{- $port := .Values.service.port }}
+{{- if .Values.service.targetPort }}
+  {{- $port = .Values.service.targetPort }}
+{{- else if not .Values.configSecret.existingSecret }}
+  {{- with .Values.config.web }}
+    {{- $port = default $port .port }}
+  {{- end }}
+{{- end }}
+{{- $port }}
+{{- end }}
+
+{{/*
+Whether the managed application config enables the web server. An opaque
+existing Secret cannot be inspected and therefore defaults to enabled.
+*/}}
+{{- define "insights.webEnabled" -}}
+{{- $enabled := true }}
+{{- if not .Values.configSecret.existingSecret }}
+  {{- with .Values.config.web }}
+    {{- if hasKey . "enabled" }}
+      {{- $enabled = .enabled }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- $enabled }}
+{{- end }}
+
+{{/*
+Data mount path from application config. An opaque existing config Secret uses
+the explicit persistence.mountPath fallback.
+*/}}
+{{- define "insights.dataDir" -}}
+{{- if .Values.configSecret.existingSecret }}
+{{- .Values.persistence.mountPath }}
 {{- else }}
-{{- fail (cat "env var" $k "must be string or map, got" (kindOf $v)) }}
+{{- default .Values.persistence.mountPath (get .Values.config "data-dir") }}
 {{- end }}
-{{- end }}
-{{- end }}
-
-{{- /*
-ins.loadMergePatch
-input: map with 4 keys:
-- file: name of file to load
-- ctx: context to pass to tpl
-- merge: interface{} to merge
-- patch: []interface{} valid JSON Patch document
-output: JSON encoded map with 1 key:
-- doc: interface{} patched json result
-*/}}
-{{- define "ins.loadMergePatch" -}}
-{{- $doc := tpl (.ctx.Files.Get (printf "files/%s" .file)) .ctx | fromYaml | default dict -}}
-{{- $doc = mergeOverwrite $doc (deepCopy (.merge | default dict)) -}}
-{{- get (include "jsonpatch" (dict "doc" $doc "patch" (.patch | default list)) | fromJson ) "doc" | toYaml -}}
 {{- end }}

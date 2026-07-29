@@ -1,4 +1,0 @@
-{{- include "ins.defaultValues" . }}
-{{- with .Values.headlessService }}
-{{- include "ins.loadMergePatch" (merge (dict "file" "headless-service.yaml" "ctx" $) .) }}
-{{- end }}

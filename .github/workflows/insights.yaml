@@ -20,18 +20,30 @@ jobs:
         version: v3.17.3
 
     - name: Helm lint
-      # lint via the simulator path: a complete, valid config that needs no
-      # external system, creds, or license
-      run: helm lint charts/insights --set config.simulator.enabled=true
+      run: helm lint --strict charts/insights
 
-    - name: Setup Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: charts/insights/test/go.mod
-        check-latest: true
-        cache: true
-        cache-dependency-path: charts/insights/test/go.sum
+    - name: Test rendered variants
+      shell: bash
+      run: |
+        set -euo pipefail
 
-    - name: Test
-      working-directory: charts/insights/test
-      run: go test -v ./...
+        helm template default charts/insights \
+          --set config.simulator.enabled=true > /tmp/insights-default.yaml
+        grep -q 'image: "registry.synadia.io/insights:' /tmp/insights-default.yaml
+
+        helm template licensed charts/insights \
+          --set-string config.license.token=test-license > /tmp/insights-licensed.yaml
+        grep -q 'image: "registry.synadia.io/insights-licensed:' /tmp/insights-licensed.yaml
+
+        helm template disabled charts/insights \
+          --set config.web.enabled=false > /tmp/insights-disabled.yaml
+        ! grep -q 'startupProbe:' /tmp/insights-disabled.yaml
+        ! grep -q 'livenessProbe:' /tmp/insights-disabled.yaml
+        ! grep -q 'readinessProbe:' /tmp/insights-disabled.yaml
+
+        helm template external charts/insights \
+          --set configSecret.existingSecret=my-config \
+          --set service.targetPort=8888 > /tmp/insights-external.yaml
+        grep -q 'containerPort: 8888' /tmp/insights-external.yaml
+
+        helm package charts/insights --destination /tmp
