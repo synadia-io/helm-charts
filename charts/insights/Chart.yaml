@@ -2,11 +2,11 @@ apiVersion: v2
 name: insights
 description: Real-time observability for NATS infrastructure
 type: application
-version: 0.1.0
+version: "0.1.0"
 appVersion: "0.1.9"
-home: https://github.com/ConnectEverything/insights
+home: https://docs.synadia.com/insights
 sources:
-  - https://github.com/ConnectEverything/insights
+  - https://github.com/synadia-io/helm-charts
 maintainers:
   - name: Synadia
     url: https://github.com/synadia-io

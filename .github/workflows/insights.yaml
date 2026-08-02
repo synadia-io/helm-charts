@@ -20,7 +20,7 @@ jobs:
         version: v3.17.3
 
     - name: Helm lint
-      run: helm lint --strict charts/insights
+      run: helm lint --strict charts/insights --set config.simulator.enabled=true
 
     - name: Test rendered variants
       shell: bash
@@ -32,10 +32,12 @@ jobs:
         grep -q 'image: "registry.synadia.io/insights:' /tmp/insights-default.yaml
 
         helm template licensed charts/insights \
+          --set config.simulator.enabled=true \
           --set-string config.license.token=test-license > /tmp/insights-licensed.yaml
         grep -q 'image: "registry.synadia.io/insights-licensed:' /tmp/insights-licensed.yaml
 
         helm template disabled charts/insights \
+          --set config.simulator.enabled=true \
           --set config.web.enabled=false > /tmp/insights-disabled.yaml
         ! grep -q 'startupProbe:' /tmp/insights-disabled.yaml
         ! grep -q 'livenessProbe:' /tmp/insights-disabled.yaml
@@ -45,5 +47,8 @@ jobs:
           --set configSecret.existingSecret=my-config \
           --set service.targetPort=8888 > /tmp/insights-external.yaml
         grep -q 'containerPort: 8888' /tmp/insights-external.yaml
+
+        # A config that observes no system must fail to render.
+        ! helm template invalid charts/insights > /dev/null 2>&1
 
         helm package charts/insights --destination /tmp

@@ -1,8 +1,12 @@
 # Application configuration. This map is written directly to config.yaml, so
 # keys below `config` match the Insights config file one-for-one.
 #
-# See https://github.com/ConnectEverything/insights/blob/main/docs/config.example.yaml
-# for the complete configuration reference.
+# See https://docs.synadia.com/insights/reference/configuration for the
+# complete configuration reference.
+#
+# Insights needs a system to observe, so a deployable config also sets one of
+# `simulator.enabled`, `sys`, or `systems`. The chart refuses to render
+# without one.
 config:
   # Persist DuckDB and embedded JetStream data on the chart's data volume.
   data-dir: /var/lib/insights
@@ -56,6 +60,14 @@ resources: {}
 
 podAnnotations: {}
 podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  # Gives the data volume to the pod's group so a non-root process can write
+  # it. OnRootMismatch keeps Kubernetes from walking the whole volume on every
+  # start once ownership is correct.
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
   seccompProfile:
     type: RuntimeDefault
 securityContext:

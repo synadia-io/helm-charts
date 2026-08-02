@@ -4,13 +4,6 @@ This chart runs one persistent Insights instance. It intentionally contains
 only the Kubernetes resources the application needs: a StatefulSet, Service,
 config Secret, and data volume.
 
-## Deployment guides
-
-- [Local k3s](docs/local-k3s.md)
-- [Amazon EKS](docs/aws-eks.md)
-- [Azure Kubernetes Service](docs/azure-aks.md)
-- [Google Kubernetes Engine](docs/google-gke.md)
-
 ## Install
 
 For a simulator deployment:
@@ -46,8 +39,12 @@ config:
     password: secret
 ```
 
+Insights needs a system to observe, so `config` must set one of
+`simulator.enabled`, `sys`, or `systems`. The chart refuses to render without
+one rather than deploying a pod that cannot start.
+
 The complete application configuration is documented in the
-[Insights configuration example](https://github.com/ConnectEverything/insights/blob/main/docs/config.example.yaml).
+[Insights configuration reference](https://docs.synadia.com/insights/reference/configuration).
 
 ## Configuration mapping
 
@@ -86,13 +83,27 @@ image:
 ```
 
 The default registry may require authentication. Create the registry Secret
-outside the chart, then reference it:
+outside the chart:
+
+```sh
+kubectl create secret docker-registry synadia-registry \
+  --namespace insights \
+  --docker-server registry.synadia.io \
+  --docker-username "$SYNADIA_REGISTRY_USERNAME" \
+  --docker-password "$SYNADIA_REGISTRY_PASSWORD"
+```
+
+Then reference it:
 
 ```yaml
 image:
   pullSecrets:
     - name: synadia-registry
 ```
+
+Registry credentials and an Insights license are separate concerns. Adding
+`config.license.token` or `config.license.file` selects the licensed image but
+does not authenticate the pull.
 
 When `configSecret.existingSecret` is used, Helm cannot inspect that Secret to
 detect a license or its web settings. Select the licensed image explicitly and,
@@ -157,3 +168,28 @@ Disabling persistence uses `emptyDir`; all indexed history is then lost with
 the pod. StatefulSet-created PVCs are intentionally retained by Kubernetes when
 the Helm release is deleted and must be removed separately when their data is
 no longer needed.
+
+Leaving `persistence.storageClass` empty uses the cluster default. Managed
+clusters differ in what they provide:
+
+| Cluster | Notes |
+| --- | --- |
+| Amazon EKS | Auto Mode provides the EBS CSI driver but creates no StorageClass; define one (for example encrypted `gp3`) before installing. |
+| Azure AKS | `managed-csi` (Standard SSD) and `managed-csi-premium` (Premium SSD) are preinstalled. |
+| Google GKE | `standard-rwo` is preinstalled and is the default. |
+
+The volume claim template is immutable once the StatefulSet exists, so
+`persistence.size`, `persistence.storageClass`, and `persistence.accessModes`
+cannot be changed by upgrading the release. Expanding a volume is a change to
+the PVC, made through a StorageClass that allows expansion.
+
+## Security context
+
+The pod runs as UID and GID 1000 with `runAsNonRoot`, and `fsGroup` gives the
+data volume to that group. Override `podSecurityContext` for a cluster that
+assigns its own UID range, such as OpenShift.
+
+The container drops all capabilities and disallows privilege escalation. A
+`memory-limit` in the application config bounds DuckDB's buffer pool only, so
+size `resources.limits.memory` above it to leave headroom for Go, embedded
+NATS, and allocations outside that pool.

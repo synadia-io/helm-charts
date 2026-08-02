@@ -40,6 +40,21 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Required application config. Insights needs a system to observe: the embedded
+simulator, a sys connection, or a systems list. An opaque existing Secret cannot
+be inspected, so its contents remain the operator's responsibility.
+*/}}
+{{- define "insights.validateConfig" -}}
+{{- if not .Values.configSecret.existingSecret }}
+  {{- $config := default dict .Values.config }}
+  {{- $simulator := default dict (get $config "simulator") }}
+  {{- if not (or (get $simulator "enabled") (get $config "sys") (get $config "systems")) }}
+    {{- fail "insights: config observes no NATS system. Set config.simulator.enabled, config.sys, or config.systems, or point configSecret.existingSecret at a complete config.yaml." }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Config Secret name.
 */}}
 {{- define "insights.configSecretName" -}}
