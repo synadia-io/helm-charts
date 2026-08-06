@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+  # Manual trigger for when the push event does not produce a release: the run
+  # was never created, or it failed after a chart merge. chart-releaser is
+  # idempotent (skip-existing in charts/cr.yaml), so re-running only publishes
+  # chart versions that have no release tag yet.
+  workflow_dispatch:
 
 jobs:
   release:
