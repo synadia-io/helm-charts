@@ -1,0 +1,54 @@
+name: insights
+
+on:
+  pull_request:
+    paths:
+    - charts/insights/**
+    - .github/workflows/insights.yaml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Setup repo
+      uses: actions/checkout@v4
+
+    - name: Install Helm
+      uses: azure/setup-helm@v4.1.0
+      with:
+        version: v3.17.3
+
+    - name: Helm lint
+      run: helm lint --strict charts/insights --set config.simulator.enabled=true
+
+    - name: Test rendered variants
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        helm template default charts/insights \
+          --set config.simulator.enabled=true > /tmp/insights-default.yaml
+        grep -q 'image: "registry.synadia.io/insights:' /tmp/insights-default.yaml
+
+        helm template licensed charts/insights \
+          --set config.simulator.enabled=true \
+          --set-string config.license.token=test-license > /tmp/insights-licensed.yaml
+        grep -q 'image: "registry.synadia.io/insights-licensed:' /tmp/insights-licensed.yaml
+
+        helm template disabled charts/insights \
+          --set config.simulator.enabled=true \
+          --set config.web.enabled=false > /tmp/insights-disabled.yaml
+        ! grep -q 'startupProbe:' /tmp/insights-disabled.yaml
+        ! grep -q 'livenessProbe:' /tmp/insights-disabled.yaml
+        ! grep -q 'readinessProbe:' /tmp/insights-disabled.yaml
+
+        helm template external charts/insights \
+          --set configSecret.existingSecret=my-config \
+          --set service.targetPort=8888 > /tmp/insights-external.yaml
+        grep -q 'containerPort: 8888' /tmp/insights-external.yaml
+
+        # A config that observes no system must fail to render.
+        ! helm template invalid charts/insights > /dev/null 2>&1
+
+        helm package charts/insights --destination /tmp

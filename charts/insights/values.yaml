@@ -1,0 +1,100 @@
+# Application configuration. This map is written directly to config.yaml, so
+# keys below `config` match the Insights config file one-for-one.
+#
+# See https://docs.synadia.com/insights/reference/configuration for the
+# complete configuration reference.
+#
+# Insights needs a system to observe, so a deployable config also sets one of
+# `simulator.enabled`, `sys`, or `systems`. The chart refuses to render
+# without one.
+config:
+  # Persist DuckDB and embedded JetStream data on the chart's data volume.
+  data-dir: /var/lib/insights
+  # Listen on the pod network rather than loopback.
+  web:
+    hostname: 0.0.0.0
+
+image:
+  registry: registry.synadia.io
+  # Empty selects "insights-licensed" when config.license.token or
+  # config.license.file is set, and "insights" otherwise.
+  repository: ""
+  # Empty uses the chart appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+configSecret:
+  # Mount a complete config.yaml from an existing Secret instead of creating
+  # one from config above. The chart cannot infer licensing from an opaque
+  # existing Secret. Also set image.repository when it is licensed,
+  # service.targetPort for a non-default web port, and null the probes when its
+  # web server is disabled.
+  existingSecret: ""
+  key: config.yaml
+
+service:
+  type: ClusterIP
+  port: 8080
+  # Empty follows config.web.port for a managed config, or service.port for an
+  # opaque existing config Secret.
+  targetPort: ""
+  annotations: {}
+
+persistence:
+  enabled: true
+  # Use an existing PVC instead of a StatefulSet volume claim template.
+  existingClaim: ""
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  # Used when configSecret.existingSecret is set and the chart cannot inspect
+  # its data-dir setting.
+  mountPath: /var/lib/insights
+
+resources: {}
+
+podAnnotations: {}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  # Gives the data volume to the pod's group so a non-root process can write
+  # it. OnRootMismatch keeps Kubernetes from walking the whole volume on every
+  # start once ownership is correct.
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+startupProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: 10
+  failureThreshold: 30
+
+livenessProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: 15
+  failureThreshold: 3
+
+readinessProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: 10
+  failureThreshold: 3
+
+# Escape hatches for file-based NATS credentials, TLS material, or a license
+# file referenced by config.
+extraVolumes: []
+extraVolumeMounts: []

@@ -1,0 +1,7 @@
+Insights is available inside the cluster at:
+
+  http://{{ include "insights.fullname" . }}:{{ .Values.service.port }}
+
+To access it locally:
+
+  kubectl port-forward service/{{ include "insights.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
