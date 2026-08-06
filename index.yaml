@@ -626,6 +626,23 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/http-gateway-0.1.0/http-gateway-0.1.0.tgz
     version: 0.1.0
+  insights:
+  - apiVersion: v2
+    appVersion: 0.1.9
+    created: "2026-08-06T23:19:35.630193566Z"
+    description: Real-time observability for NATS infrastructure
+    digest: f8ae8413ac3afa7b4140cbfe29fc7e88adb8388761c10d16cc8e32f429c2020a
+    home: https://docs.synadia.com/insights
+    maintainers:
+    - name: Synadia
+      url: https://github.com/synadia-io
+    name: insights
+    sources:
+    - https://github.com/synadia-io/helm-charts
+    type: application
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/insights-0.1.0/insights-0.1.0.tgz
+    version: 0.1.0
   nex-ce:
   - apiVersion: v2
     appVersion: 0.1.8
@@ -1226,4 +1243,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2026-07-24T18:44:09.893729725Z"
+generated: "2026-08-06T23:19:35.630396065Z"
