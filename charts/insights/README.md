@@ -79,11 +79,13 @@ selection.
 ```yaml
 image:
   registry: mirror.example.com
-  tag: 0.1.9
+  tag: 0.1.10
 ```
 
-The default registry may require authentication. Create the registry Secret
-outside the chart:
+`registry.synadia.io` requires authentication, so unless you point `image.registry`
+at an open mirror you must supply a pull secret; without one the pod fails to
+start with `ImagePullBackOff`. Create the Secret outside the chart, using the
+credentials issued with your trial or license:
 
 ```sh
 kubectl create secret docker-registry synadia-registry \
