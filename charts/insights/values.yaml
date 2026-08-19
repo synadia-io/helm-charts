@@ -76,20 +76,30 @@ securityContext:
     drop:
       - ALL
 
+# Probes hit /healthz rather than opening a socket. The listener binds before
+# its routes are registered, so a TCP connect can succeed while the app is
+# still starting; /healthz answers only once Insights is actually serving.
+#
+# Requires Insights 0.1.10 or newer, which is where /healthz was added. If you
+# pin image.tag to an older release, override these back to `tcpSocket: {port:
+# http}` or the pod will never become ready.
 startupProbe:
-  tcpSocket:
+  httpGet:
+    path: /healthz
     port: http
   periodSeconds: 10
   failureThreshold: 30
 
 livenessProbe:
-  tcpSocket:
+  httpGet:
+    path: /healthz
     port: http
   periodSeconds: 15
   failureThreshold: 3
 
 readinessProbe:
-  tcpSocket:
+  httpGet:
+    path: /healthz
     port: http
   periodSeconds: 10
   failureThreshold: 3
