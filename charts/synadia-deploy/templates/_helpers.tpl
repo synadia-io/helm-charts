@@ -38,6 +38,20 @@ Print the namespace
 {{- end }}
 
 {{/*
+Create the cluster role name.
+*/}}
+{{- define "sd.clusterRoleName" -}}
+{{- printf "%s-%s-cluster-role" (include "sd.namespace" .) .Values.serviceAccount.name }}
+{{- end }}
+
+{{/*
+Create the cluster role binding name.
+*/}}
+{{- define "sd.clusterRoleBindingName" -}}
+{{- printf "%s-binding" (include "sd.clusterRoleName" .) }}
+{{- end }}
+
+{{/*
 Print the namespace for the metadata section
 */}}
 {{- define "sd.metadataNamespace" -}}
