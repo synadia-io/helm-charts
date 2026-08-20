@@ -20,6 +20,14 @@ ports:
   containerPort: {{ .Values.config.server.httpsPort }}
 {{- end }}
 
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  privileged: false
+
 startupProbe:
   initialDelaySeconds: 5
   periodSeconds: 3
