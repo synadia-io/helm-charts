@@ -67,6 +67,9 @@ config:
     patch: []
 
   kms:
+    # Toggles the use of kms secret managed outside of helm
+    enabled: false
+
     # if the key is not configured, a default KMS key will be generated and written to the data PVC
     key:
       # set to use a KMS URL
@@ -102,9 +105,9 @@ config:
         cert:
         key:
         ca: tls.ca
-        
+
         # add TLS options to DSN
-        # if cert and key are set, sslcert and sslkey will be added to the dsn 
+        # if cert and key are set, sslcert and sslkey will be added to the dsn
         # if ca is set, sslrootcert will be added to the dsn
         addToDsn: true
         # sslmode to add to dsn, if addToDsn is true
@@ -336,7 +339,7 @@ configSecret:
 serviceAccount:
   # enable/disable the service account
   enabled: false
-  
+
   # merge or patch the service account
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#serviceaccount-v1-core
   merge: {}
