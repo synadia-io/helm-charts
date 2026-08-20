@@ -62,6 +62,20 @@ File paths in the application config still need corresponding Kubernetes
 mounts. Use `extraVolumes` and `extraVolumeMounts` for NATS credentials, TLS
 files, an embedded NATS config, or a file-based license.
 
+Every config key also has an `INSIGHTS_`-prefixed environment variable, which
+outranks the config file. `extraEnv` sets them, taking either a literal or a
+whole `valueFrom` body so a value can come from a Secret you already keep:
+
+```yaml
+extraEnv:
+  INSIGHTS_LOG_LEVEL: debug
+  INSIGHTS_LICENSE_TOKEN:
+    valueFrom:
+      secretKeyRef:
+        name: insights-license
+        key: token
+```
+
 ## Images and licensing
 
 The default image is selected from the application config:
@@ -153,11 +167,76 @@ extraVolumes:
   - name: credentials
     secret:
       secretName: insights-sys-creds
+      defaultMode: 0400
 extraVolumeMounts:
   - name: credentials
     mountPath: /etc/insights/credentials
     readOnly: true
 ```
+
+Mounting under `/etc/insights`, where the config Secret is mounted, is fine: the
+kubelet creates the subdirectory inside that volume and mounts the second Secret
+there, leaving `config.yaml` readable alongside it.
+
+Insights can observe several NATS systems at once through `config.systems`, and
+each entry carries its own connection — so each needs its own credentials file
+and its own TLS material, and the four filenames would otherwise collide. Give
+each system a Secret and a directory named for it:
+
+```yaml
+config:
+  systems:
+    - id: east
+      scrape:
+        nats:
+          server: nats://east.example.com:4222
+          creds: /etc/insights/systems/east/sys.creds
+    - id: west
+      scrape:
+        nats:
+          server: nats://west.example.com:4222
+          creds: /etc/insights/systems/west/sys.creds
+
+extraVolumes:
+  - name: creds-east
+    secret: { secretName: insights-nats-east, defaultMode: 0400 }
+  - name: creds-west
+    secret: { secretName: insights-nats-west, defaultMode: 0400 }
+extraVolumeMounts:
+  - name: creds-east
+    mountPath: /etc/insights/systems/east
+    readOnly: true
+  - name: creds-west
+    mountPath: /etc/insights/systems/west
+    readOnly: true
+```
+
+## Web session seed
+
+Insights signs web session cookies with `web.session-seed`. Its application
+default is the literal string `insights`, so every deployment that leaves it
+alone signs with the same publicly known value; Insights warns about this at
+startup.
+
+To sign with your own, create a Secret and name it in `sessionSeed`:
+
+```sh
+kubectl create secret generic insights-session \
+  --from-literal=seed="$(head -c 48 /dev/urandom | base64)"
+```
+
+```yaml
+sessionSeed:
+  existingSecret: insights-session
+  key: seed
+```
+
+The chart never reads the Secret, only references it in a `secretKeyRef`, so the
+seed stays out of your values, out of the rendered manifests, and out of git.
+
+`INSIGHTS_WEB_SESSION_SEED` outranks the config file, so set `sessionSeed` or
+`config.web.session-seed`, not both. Changing the seed signs out every session
+the deployment has issued.
 
 ## Persistence
 
