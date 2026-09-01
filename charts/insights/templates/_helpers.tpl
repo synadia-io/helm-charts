@@ -55,6 +55,19 @@ be inspected, so its contents remain the operator's responsibility.
 {{- end }}
 
 {{/*
+ServiceAccount name. A created account defaults to the release's fullname. An
+account the operator manages has to be named, since the chart cannot guess it,
+and falls back to the namespace default.
+*/}}
+{{- define "insights.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "insights.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+{{/*
 Config Secret name.
 */}}
 {{- define "insights.configSecretName" -}}

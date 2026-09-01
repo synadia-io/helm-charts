@@ -47,6 +47,19 @@ sessionSeed:
   existingSecret: ""
   key: seed
 
+# ServiceAccount for the pod. Insights calls no Kubernetes or cloud API, so it
+# needs no permissions and the pod mounts no token. A dedicated account exists
+# because the surrounding platform may still need the pod to carry an identity,
+# which is expressed as annotations: an IAM role on EKS, a Google service
+# account on GKE, and nothing at all when self-hosted.
+#
+# Set create to false to attach an account you manage. Leaving name empty then
+# falls back to the namespace default.
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
 service:
   type: ClusterIP
   port: 8080

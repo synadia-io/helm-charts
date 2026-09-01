@@ -25,6 +25,7 @@ spec:
         {{- end }}
       {{- end }}
     spec:
+      serviceAccountName: {{ include "insights.serviceAccountName" . }}
       automountServiceAccountToken: false
       enableServiceLinks: false
       {{- with .Values.image.pullSecrets }}
