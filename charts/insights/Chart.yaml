@@ -2,7 +2,7 @@ apiVersion: v2
 name: insights
 description: Real-time observability for NATS infrastructure
 type: application
-version: "0.1.1"
+version: "0.1.2"
 appVersion: "0.1.10"
 home: https://docs.synadia.com/insights
 sources:

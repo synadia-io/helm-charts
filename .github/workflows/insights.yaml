@@ -48,6 +48,29 @@ jobs:
           --set service.targetPort=8888 > /tmp/insights-external.yaml
         grep -q 'containerPort: 8888' /tmp/insights-external.yaml
 
+        # The seed reaches the container only when an operator supplies a
+        # Secret to take it from; otherwise the application default stands.
+        ! grep -q 'INSIGHTS_WEB_SESSION_SEED' /tmp/insights-default.yaml
+
+        helm template seeded charts/insights \
+          --set config.simulator.enabled=true \
+          --set sessionSeed.existingSecret=my-seed > /tmp/insights-seeded.yaml
+        grep -q 'name: INSIGHTS_WEB_SESSION_SEED' /tmp/insights-seeded.yaml
+        grep -q 'name: my-seed' /tmp/insights-seeded.yaml
+
+        # extraEnv takes both a literal and a whole EnvVar body, and rejects
+        # anything else rather than emitting invalid YAML.
+        helm template extra-env charts/insights \
+          --set config.simulator.enabled=true \
+          --set extraEnv.PLAIN=hello \
+          --set extraEnv.FROM_SECRET.valueFrom.secretKeyRef.name=other \
+          --set extraEnv.FROM_SECRET.valueFrom.secretKeyRef.key=k > /tmp/insights-env.yaml
+        grep -q 'value: "hello"' /tmp/insights-env.yaml
+        grep -q 'name: FROM_SECRET' /tmp/insights-env.yaml
+        ! helm template bad-env charts/insights \
+          --set config.simulator.enabled=true \
+          --set 'extraEnv.BAD={a,b}' > /dev/null 2>&1
+
         # A config that observes no system must fail to render.
         ! helm template invalid charts/insights > /dev/null 2>&1
 

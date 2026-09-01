@@ -113,6 +113,24 @@ existing Secret cannot be inspected and therefore defaults to enabled.
 {{- end }}
 
 {{/*
+Container env from a map keyed by variable name. A string value becomes a
+literal, a map is spliced in whole so valueFrom and friends work without the
+chart enumerating them.
+*/}}
+{{- define "insights.env" -}}
+{{- range $k, $v := . }}
+{{- if kindIs "string" $v }}
+- name: {{ $k | quote }}
+  value: {{ $v | quote }}
+{{- else if kindIs "map" $v }}
+- {{ merge (dict "name" $k) $v | toYaml | nindent 2 }}
+{{- else }}
+{{- fail (cat "env var" $k "must be string or map, got" (kindOf $v)) }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Data mount path from application config. An opaque existing config Secret uses
 the explicit persistence.mountPath fallback.
 */}}

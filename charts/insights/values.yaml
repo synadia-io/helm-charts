@@ -36,6 +36,17 @@ configSecret:
   existingSecret: ""
   key: config.yaml
 
+# Seed Insights signs web session cookies with, taken from a Secret you manage
+# and injected as INSIGHTS_WEB_SESSION_SEED. Empty leaves the application
+# default in place, which is the literal string `insights` and therefore the
+# same value in every deployment that does not override it.
+#
+# The environment variable outranks `config.web.session-seed`, so set one or the
+# other. Referencing a Secret keeps the seed out of values and out of git.
+sessionSeed:
+  existingSecret: ""
+  key: seed
+
 service:
   type: ClusterIP
   port: 8080
@@ -108,3 +119,15 @@ readinessProbe:
 # file referenced by config.
 extraVolumes: []
 extraVolumeMounts: []
+
+# map with key as env var name, value can be string or map
+# example:
+#
+#   extraEnv:
+#     MY_VAR: my_value
+#     MY_SECRET:
+#       valueFrom:
+#         secretKeyRef:
+#           name: secret-name
+#           key: secret-key
+extraEnv: {}

@@ -42,6 +42,19 @@ spec:
           args:
             - --config
             - /etc/insights/config.yaml
+          {{- if or .Values.sessionSeed.existingSecret .Values.extraEnv }}
+          env:
+            {{- with .Values.sessionSeed.existingSecret }}
+            - name: INSIGHTS_WEB_SESSION_SEED
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . }}
+                  key: {{ $.Values.sessionSeed.key }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- include "insights.env" . | trim | nindent 12 }}
+            {{- end }}
+          {{- end }}
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
