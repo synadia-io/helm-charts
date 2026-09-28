@@ -47,6 +47,7 @@ spec:
   - name: config
     secret:
       secretName: {{ .Values.configSecret.name | default (printf "%s-config" (include "nce.fullname" $)) | quote }}
+      defaultMode: 288   # 0440; fsGroup 65532 makes it readable by the node
   - name: tmp
     emptyDir: {}
 

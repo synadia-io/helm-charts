@@ -58,6 +58,7 @@ Set default values.
     {{- $_ := set .deployment          "name" (.deployment.name          | default $name) }}
     {{- $_ := set .serviceAccount      "name" (.serviceAccount.name      | default $name) }}
     {{- $_ := set .podDisruptionBudget "name" (.podDisruptionBudget.name | default $name) }}
+    {{- $_ := set .workloadServiceAccount "name" (.workloadServiceAccount.name | default (printf "%s-workload" $name)) }}
   {{- end }}
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
@@ -77,6 +78,16 @@ Set required values.
     {{- end }}
     {{- if and .config.tls.clientCert.key (not .config.tls.clientCert.cert) }}
       {{- fail "config.tls.clientCert.cert is required if key is defined" }}
+    {{- end }}
+    {{- if .config.platform.enabled }}
+      {{- if not .config.platform.token }}
+        {{- fail "config.platform.token is required when config.platform.enabled is true" }}
+      {{- end }}
+    {{- else if not .config.url }}
+      {{- fail "set config.platform.enabled (Control Plane registration) or config.url (direct NATS connection)" }}
+    {{- end }}
+    {{- if not (or .config.nexlets.connectors.enabled .config.nexlets.containers.enabled) }}
+      {{- fail "enable at least one of config.nexlets.connectors or config.nexlets.containers" }}
     {{- end }}
   {{- end }}
 {{- end }}
@@ -258,8 +269,8 @@ Keys are only written when set, so empty values do not override nex-ce defaults.
 
 {{- $ns := include "nce.namespace" . | trim }}
 {{- $nexlets := dict }}
-{{- $_ := set $nexlets "connectors-kubernetes" (dict "enabled" $c.nexlets.connectors.enabled "registerType" "connector" "k8sNamespace" ($c.connectorsNamespace | default $ns)) }}
-{{- $_ := set $nexlets "containers-kubernetes" (dict "enabled" $c.nexlets.containers.enabled "registerType" "container" "k8sNamespace" ($c.workloadsNamespace | default $ns)) }}
+{{- $_ := set $nexlets "connectors-kubernetes" (include "nce.nexletConfig" (dict "ctx" . "nexlet" $c.nexlets.connectors "registerType" "connector" "namespace" ($c.connectorsNamespace | default $ns)) | fromJson) }}
+{{- $_ := set $nexlets "containers-kubernetes" (include "nce.nexletConfig" (dict "ctx" . "nexlet" $c.nexlets.containers "registerType" "container" "namespace" ($c.workloadsNamespace | default $ns)) | fromJson) }}
 {{- $_ := set $cfg "nexlets" $nexlets }}
 
 {{- toPrettyJson $cfg }}
@@ -279,4 +290,33 @@ nce.nexletNamespaces prints a JSON list of the namespaces the enabled nexlets cr
 {{- $list = append $list ($c.workloadsNamespace | default $ns) }}
 {{- end }}
 {{- $list | uniq | toJson }}
+{{- end }}
+
+{{/*
+nce.nexletConfig renders one nexlet entry of the nex-ce config.
+input: dict with ctx, nexlet (values), registerType, namespace
+Keys are only written when set; k8sServiceAccountName falls back to the workload ServiceAccount.
+*/}}
+{{- define "nce.nexletConfig" -}}
+{{- $cfg := dict "enabled" (.nexlet.enabled | default false) "registerType" .registerType "k8sNamespace" .namespace }}
+{{- $sa := .nexlet.serviceAccountName }}
+{{- if and (not $sa) .ctx.Values.workloadServiceAccount.enabled }}
+{{- $sa = .ctx.Values.workloadServiceAccount.name }}
+{{- end }}
+{{- with $sa }}
+{{- $_ := set $cfg "k8sServiceAccountName" . }}
+{{- end }}
+{{- with .nexlet.imagePullSecrets }}
+{{- $_ := set $cfg "k8sImagePullSecrets" . }}
+{{- end }}
+{{- with .nexlet.defaultCpu }}
+{{- $_ := set $cfg "k8sDefaultCpu" . }}
+{{- end }}
+{{- with .nexlet.defaultMemoryMb }}
+{{- $_ := set $cfg "k8sDefaultMemoryMb" . }}
+{{- end }}
+{{- with .nexlet.metricsPort }}
+{{- $_ := set $cfg "k8sMetricsPort" . }}
+{{- end }}
+{{- toJson $cfg }}
 {{- end }}

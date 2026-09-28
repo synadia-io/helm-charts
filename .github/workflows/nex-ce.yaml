@@ -1,0 +1,88 @@
+name: nex-ce
+
+on:
+  pull_request:
+    paths:
+    - charts/nex-ce/**
+    - .github/workflows/nex-ce.yaml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Setup repo
+      uses: actions/checkout@v4
+
+    - name: Install Helm
+      uses: azure/setup-helm@v4.1.0
+      with:
+        version: v3.17.3
+
+    - name: Helm lint
+      run: |
+        helm lint --strict charts/nex-ce \
+          --set config.platform.enabled=true --set-string config.platform.token=t
+
+    - name: Test rendered variants
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # Control Plane managed node: platform block in, static-mode keys out,
+        # catalog and nexlet keys mapped, restricted pod security.
+        helm template platform charts/nex-ce -n nodes \
+          --set config.platform.enabled=true --set-string config.platform.token=pcm_t \
+          --set-string config.nodeSeed=SNSEED \
+          --set config.catalog.enabled=true --set-string config.catalog.id=cat1 \
+          --set config.connectorsNamespace=conn \
+          --set config.nexlets.connectors.imagePullSecrets[0]=reg > /tmp/nex-ce-platform.yaml
+        grep -q '"platform": {' /tmp/nex-ce-platform.yaml
+        grep -q '"token": "pcm_t"' /tmp/nex-ce-platform.yaml
+        ! grep -q '"nexus"' /tmp/nex-ce-platform.yaml
+        ! grep -q '"creds_signing_key"' /tmp/nex-ce-platform.yaml
+        grep -q '"id": "cat1"' /tmp/nex-ce-platform.yaml
+        grep -q '"k8sNamespace": "conn"' /tmp/nex-ce-platform.yaml
+        grep -q '"k8sNamespace": "nodes"' /tmp/nex-ce-platform.yaml
+        grep -q '"k8sImagePullSecrets"' /tmp/nex-ce-platform.yaml
+        grep -q '"k8sServiceAccountName": "platform-nex-ce-workload"' /tmp/nex-ce-platform.yaml
+        grep -q 'runAsNonRoot: true' /tmp/nex-ce-platform.yaml
+        grep -q 'readOnlyRootFilesystem: true' /tmp/nex-ce-platform.yaml
+        grep -q 'type: Recreate' /tmp/nex-ce-platform.yaml
+        grep -q 'image: registry.synadia.io/nexce:' /tmp/nex-ce-platform.yaml
+
+        # One Role, RoleBinding and workload ServiceAccount per workload namespace.
+        [ "$(grep -c '^kind: Role$' /tmp/nex-ce-platform.yaml)" = 2 ]
+        [ "$(grep -c '^kind: RoleBinding$' /tmp/nex-ce-platform.yaml)" = 2 ]
+        [ "$(grep -c 'automountServiceAccountToken: false' /tmp/nex-ce-platform.yaml)" = 2 ]
+        grep -q 'namespace: conn' /tmp/nex-ce-platform.yaml
+        ! grep -q 'rolebindings' /tmp/nex-ce-platform.yaml
+        ! grep -q 'ingresses' /tmp/nex-ce-platform.yaml
+
+        # Static mode keeps the pre-0.2.0 keys.
+        helm template static charts/nex-ce \
+          --set-string config.url=nats://nats:4222 \
+          --set-string config.creds.jwt=j --set-string config.creds.seed=s \
+          --set-string config.credsSigning.signingKey=k \
+          --set-string config.credsSigning.signingKeyAccount=A > /tmp/nex-ce-static.yaml
+        grep -q '"nexus": "nexus"' /tmp/nex-ce-static.yaml
+        grep -q '"creds_signing_key": "k"' /tmp/nex-ce-static.yaml
+        ! grep -q '"platform"' /tmp/nex-ce-static.yaml
+
+        # Per-nexlet keys map onto nex-ce's k8s* keys and are omitted when unset.
+        helm template keys charts/nex-ce \
+          --set-string config.url=nats://nats:4222 \
+          --set config.nexlets.containers.defaultCpu=2 \
+          --set config.nexlets.containers.metricsPort=9100 > /tmp/nex-ce-keys.yaml
+        grep -q '"k8sDefaultCpu": 2' /tmp/nex-ce-keys.yaml
+        grep -q '"k8sMetricsPort": 9100' /tmp/nex-ce-keys.yaml
+        ! grep -q '"k8sDefaultMemoryMb"' /tmp/nex-ce-keys.yaml
+
+        # A node that cannot connect, or a token-less platform node, must not render.
+        ! helm template invalid charts/nex-ce > /dev/null 2>&1
+        ! helm template notoken charts/nex-ce --set config.platform.enabled=true > /dev/null 2>&1
+        ! helm template nonexlet charts/nex-ce --set-string config.url=nats://n \
+            --set config.nexlets.connectors.enabled=false \
+            --set config.nexlets.containers.enabled=false > /dev/null 2>&1
+
+        helm package charts/nex-ce --destination /tmp

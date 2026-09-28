@@ -56,13 +56,30 @@ config:
   # the chart creates a Role and RoleBinding in each one
   workloadsNamespace:
   connectorsNamespace:
+  # per-nexlet keys map to the nexlet's k8sServiceAccountName, k8sImagePullSecrets, k8sDefaultCpu,
+  # k8sDefaultMemoryMb and k8sMetricsPort; unset keys are omitted so nex-ce defaults apply.
+  # nex-ce 0.3.3 parses only k8sNamespace and ignores the rest (see README, "Private registry")
   nexlets:
     # containers-kubernetes nexlet (Workloads)
     containers:
       enabled: true
+      # serviceAccountName of workload pods; defaults to workloadServiceAccount.name when that is enabled
+      serviceAccountName:
+      # kubernetes.io/dockerconfigjson Secrets (in the workload namespace) for workload image pulls
+      imagePullSecrets: []
+      # cpu cores / memory MB when the run request sets no limits (requests = limits); nex-ce defaults 1 / 1024
+      defaultCpu:
+      defaultMemoryMb:
+      # Prometheus /metrics port of the nexlet itself; unset or 0 disables it
+      metricsPort:
     # connectors-kubernetes nexlet (Connectors)
     connectors:
       enabled: true
+      serviceAccountName:
+      imagePullSecrets: []
+      defaultCpu:
+      defaultMemoryMb:
+      metricsPort:
   # Control Plane registration
   # when enabled, Control Plane supplies the nexus, control account and NATS credentials,
   # so nexus, creds and credsSigning are not used
@@ -161,6 +178,15 @@ container:
   #           key: secret-key
   env: {}
 
+  # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
   # merge or patch the container
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#container-v1-core
   merge: {}
@@ -180,6 +206,19 @@ serviceAccount:
   merge: {}
   patch: []
   # defaults to "{{ include "nce.fullname" $ }}"
+  name:
+
+# service account of workload pods: no token is mounted and no Role is bound to it.
+# Created in every workload namespace and used as the nexlets' k8sServiceAccountName
+# unless config.nexlets.<nexlet>.serviceAccountName is set.
+workloadServiceAccount:
+  enabled: true
+
+  # merge or patch the service account
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#serviceaccount-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "nce.fullname" $ }}-workload"
   name:
 
 # config secret
