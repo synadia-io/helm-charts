@@ -79,12 +79,21 @@ Set required values.
     {{- if and .config.tls.clientCert.key (not .config.tls.clientCert.cert) }}
       {{- fail "config.tls.clientCert.cert is required if key is defined" }}
     {{- end }}
+    {{- if not .config.nodeSeed }}
+      {{- fail "config.nodeSeed is required (go run github.com/nats-io/nkeys/nk@latest -gen server)" }}
+    {{- end }}
     {{- if .config.platform.enabled }}
       {{- if not .config.platform.token }}
         {{- fail "config.platform.token is required when config.platform.enabled is true" }}
       {{- end }}
     {{- else if not .config.url }}
       {{- fail "set config.platform.enabled (Control Plane registration) or config.url (direct NATS connection)" }}
+    {{- end }}
+    {{- if and .config.tls.clientCert.enabled (not .config.tls.clientCert.secretName) }}
+      {{- fail "config.tls.clientCert.secretName is required when config.tls.clientCert.enabled is true (nex-ce checks the files at startup)" }}
+    {{- end }}
+    {{- if and .config.tls.caCerts.enabled (not (or .config.tls.caCerts.configMapName .config.tls.caCerts.secretName)) }}
+      {{- fail "config.tls.caCerts.configMapName or secretName is required when config.tls.caCerts.enabled is true" }}
     {{- end }}
     {{- if not (or .config.nexlets.connectors.enabled .config.nexlets.containers.enabled) }}
       {{- fail "enable at least one of config.nexlets.connectors or config.nexlets.containers" }}
@@ -208,7 +217,12 @@ Keys are only written when set, so empty values do not override nex-ce defaults.
 {{- $c := .Values.config }}
 {{- $cfg := dict "name" ($c.name | default "nex-ce") "node_seed" ($c.nodeSeed | default "") }}
 {{- with $c.tags }}
-{{- $_ := set $cfg "tags" . }}
+{{- /* nex-ce takes map[string]string; --set tags.x=1 would otherwise arrive as a number */}}
+{{- $tags := dict }}
+{{- range $k, $v := . }}
+{{- $_ := set $tags $k (toString $v) }}
+{{- end }}
+{{- $_ := set $cfg "tags" $tags }}
 {{- end }}
 {{- $_ := set $cfg "logger" (dict "level" ($c.logLevel | default "info" | lower)) }}
 
@@ -239,7 +253,10 @@ Keys are only written when set, so empty values do not override nex-ce defaults.
 
 {{- if $c.platform.enabled }}
 {{- /* Control Plane supplies the nexus and control account in platform mode */}}
-{{- $platform := dict "enabled" true "url" $c.platform.url }}
+{{- $platform := dict "enabled" true }}
+{{- with $c.platform.url }}
+{{- $_ := set $platform "url" . }}
+{{- end }}
 {{- with $c.platform.token }}
 {{- $_ := set $platform "token" . }}
 {{- end }}
@@ -307,16 +324,21 @@ Keys are only written when set; k8sServiceAccountName falls back to the workload
 {{- $_ := set $cfg "k8sServiceAccountName" . }}
 {{- end }}
 {{- with .nexlet.imagePullSecrets }}
+{{- if kindIs "slice" . }}
 {{- $_ := set $cfg "k8sImagePullSecrets" . }}
+{{- else }}
+{{- $_ := set $cfg "k8sImagePullSecrets" (list (toString .)) }}
 {{- end }}
+{{- end }}
+{{- /* --set-string leaves numbers as strings; nex-ce wants a number, an integer and an integer */}}
 {{- with .nexlet.defaultCpu }}
-{{- $_ := set $cfg "k8sDefaultCpu" . }}
+{{- $_ := set $cfg "k8sDefaultCpu" (float64 .) }}
 {{- end }}
 {{- with .nexlet.defaultMemoryMb }}
-{{- $_ := set $cfg "k8sDefaultMemoryMb" . }}
+{{- $_ := set $cfg "k8sDefaultMemoryMb" (int .) }}
 {{- end }}
 {{- with .nexlet.metricsPort }}
-{{- $_ := set $cfg "k8sMetricsPort" . }}
+{{- $_ := set $cfg "k8sMetricsPort" (int .) }}
 {{- end }}
 {{- toJson $cfg }}
 {{- end }}

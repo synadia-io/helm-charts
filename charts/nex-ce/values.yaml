@@ -93,7 +93,8 @@ config:
   catalog:
     enabled: false
     name:
-    # NUID of the catalog, from Control Plane system settings
+    # NUID of an existing catalog to host (direct NATS connection only; with platform registration
+    # Control Plane assigns the catalog id and this key is ignored)
     id:
     # Catalog platform component token from Control Plane system settings
     token:

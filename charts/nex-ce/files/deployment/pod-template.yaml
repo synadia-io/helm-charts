@@ -2,6 +2,8 @@ metadata:
   labels:
     {{- include "nce.labels" $ | nindent 4 }}
   annotations:
+    # a config change rolls the pod: the Secret is mounted with subPath, which never updates in place
+    checksum/config: {{ include "nce.config" $ | sha256sum }}
 
 spec:
   securityContext:

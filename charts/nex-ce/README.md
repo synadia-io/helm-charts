@@ -19,7 +19,7 @@ helm upgrade --install nex-ce synadia/nex-ce -f values.yaml
 
 ## Common Configuration
 
-The chart runs one Nex CE node with the Kubernetes nexlets. The node creates a Deployment and a Secret for each workload in `config.workloadsNamespace` (Workloads) and `config.connectorsNamespace` (Connectors). Both default to the release namespace. The chart creates a Role and RoleBinding in each of these namespaces.
+The chart runs one Nex CE node with the Kubernetes nexlets. The node creates a Deployment and a Secret for each workload in `config.workloadsNamespace` (Workloads) and `config.connectorsNamespace` (Connectors). Both default to the release namespace. The chart creates a Role and RoleBinding in each of these namespaces; a namespace other than the release namespace must already exist.
 
 Generate a node seed with `nk -gen server`. Back it up: the node finds its workloads by the public key of this seed.
 
@@ -44,12 +44,13 @@ To host the connector catalog, enable the Catalog platform component and add:
 config:
   catalog:
     enabled: true
-    id: <catalog NUID>
     token: <catalog component token>
 container:
   env:
     YES_SEED: "true"
 ```
+
+Control Plane assigns the catalog id in this mode; `config.catalog.id` is read only with a direct NATS connection.
 
 ### Direct NATS connection
 
@@ -99,4 +100,8 @@ Workload images must set a numeric, non-root `USER`.
 
 ### Validation
 
-The chart refuses to render a node that cannot connect: set `config.platform.enabled` (with a token) or `config.url`, and enable at least one nexlet.
+The chart refuses to render a node that would fail at startup: `config.nodeSeed` is required; set `config.platform.enabled` (with a token) or `config.url`; enable at least one nexlet; an enabled `config.tls.clientCert` / `config.tls.caCerts` needs its `secretName` / `configMapName` (nex-ce checks the files when it starts).
+
+A change to `config` rolls the node pod (the pod template carries a checksum of the rendered config).
+
+The node seed and the platform / catalog tokens live in the chart's config Secret and, like all values, in the Helm release Secret (`helm get values`). Restrict Secret access in the release namespace accordingly.
