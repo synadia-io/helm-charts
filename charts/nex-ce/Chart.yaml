@@ -1,8 +1,8 @@
 apiVersion: v2
-appVersion: 0.1.8
+appVersion: 0.3.3
 description: Synadia Nex CE
 name: nex-ce
-version: 0.1.5
+version: 0.2.0
 home: http://github.com/synadia-io/helm-charts
 maintainers:
 - name: Synadia

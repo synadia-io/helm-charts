@@ -52,8 +52,52 @@ config:
     signingKeyAccount:
   allowRemoteRegister: false
   logLevel: "info"
+  # namespaces the nexlets create workloads in; default to the release namespace
+  # the chart creates a Role and RoleBinding in each one
   workloadsNamespace:
   connectorsNamespace:
+  # per-nexlet keys map to the nexlet's k8sServiceAccountName, k8sImagePullSecrets, k8sDefaultCpu,
+  # k8sDefaultMemoryMb and k8sMetricsPort; unset keys are omitted so nex-ce defaults apply.
+  # nex-ce 0.3.3 parses only k8sNamespace and ignores the rest (see README, "Private registry")
+  nexlets:
+    # containers-kubernetes nexlet (Workloads)
+    containers:
+      enabled: true
+      # serviceAccountName of workload pods; defaults to workloadServiceAccount.name when that is enabled
+      serviceAccountName:
+      # kubernetes.io/dockerconfigjson Secrets (in the workload namespace) for workload image pulls
+      imagePullSecrets: []
+      # cpu cores / memory MB when the run request sets no limits (requests = limits); nex-ce defaults 1 / 1024
+      defaultCpu:
+      defaultMemoryMb:
+      # Prometheus /metrics port of the nexlet itself; unset or 0 disables it
+      metricsPort:
+    # connectors-kubernetes nexlet (Connectors)
+    connectors:
+      enabled: true
+      serviceAccountName:
+      imagePullSecrets: []
+      defaultCpu:
+      defaultMemoryMb:
+      metricsPort:
+  # Control Plane registration
+  # when enabled, Control Plane supplies the nexus, control account and NATS credentials,
+  # so nexus, creds and credsSigning are not used
+  platform:
+    enabled: false
+    url: https://cloud.synadia.com
+    # Workloads platform component token from Control Plane system settings
+    token:
+  # host a Synadia Catalog on this node
+  # set container.env.YES_SEED to "true" to fill a new catalog on first start
+  catalog:
+    enabled: false
+    name:
+    # NUID of an existing catalog to host (direct NATS connection only; with platform registration
+    # Control Plane assigns the catalog id and this key is ignored)
+    id:
+    # Catalog platform component token from Control Plane system settings
+    token:
   # URL for NATS Server
   url:
   # Certificate Authority for Validation of Server Certificate
@@ -77,12 +121,14 @@ config:
       # key in the configMap or secret that contains the CA Certificate or Bundle
       key: ca.crt
     # Skip certificate validation
+    # not supported by nex-ce; kept for compatibility
     insecureSkipVerify: false
 
 ############################################################
 # deployment
 ############################################################
 deployment:
+  # keep at 1: two nodes with one seed duplicate logs and events
   replicas: 1
 
   # merge or patch the stateful set
@@ -116,7 +162,7 @@ podTemplate:
 container:
   image:
     repository: nexce
-    tag: 0.1.8
+    tag: 0.3.3
     pullPolicy:
     # defaults to global.registry
     registry:
@@ -132,6 +178,15 @@ container:
   #           name: secret-name
   #           key: secret-key
   env: {}
+
+  # https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
 
   # merge or patch the container
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#container-v1-core
@@ -152,6 +207,19 @@ serviceAccount:
   merge: {}
   patch: []
   # defaults to "{{ include "nce.fullname" $ }}"
+  name:
+
+# service account of workload pods: no token is mounted and no Role is bound to it.
+# Created in every workload namespace and used as the nexlets' k8sServiceAccountName
+# unless config.nexlets.<nexlet>.serviceAccountName is set.
+workloadServiceAccount:
+  enabled: true
+
+  # merge or patch the service account
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#serviceaccount-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "nce.fullname" $ }}-workload"
   name:
 
 # config secret

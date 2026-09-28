@@ -11,6 +11,10 @@ spec:
 
   replicas: {{ .Values.deployment.replicas }}
 
+  # two nodes with one seed must never run at the same time
+  strategy:
+    type: Recreate
+
   template:
     {{- with .Values.podTemplate }}
     {{- include "nce.loadMergePatch" (merge (dict "file" "deployment/pod-template.yaml" "ctx" $) .) | nindent 4 }}

@@ -3,13 +3,21 @@ name: nex-ce
 
 securityContext:
   allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
   capabilities:
     drop:
     - ALL
 
 args:
+- node
+- up
 - --config
 - /app/config.json
+
+{{- with .Values.container.resources }}
+resources:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
 
 env:
 {{- with .Values.container.env }}
@@ -28,3 +36,5 @@ volumeMounts:
 - name: config
   mountPath: /app/config.json
   subPath: config.json
+- name: tmp
+  mountPath: /tmp

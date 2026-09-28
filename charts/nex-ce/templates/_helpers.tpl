@@ -58,6 +58,7 @@ Set default values.
     {{- $_ := set .deployment          "name" (.deployment.name          | default $name) }}
     {{- $_ := set .serviceAccount      "name" (.serviceAccount.name      | default $name) }}
     {{- $_ := set .podDisruptionBudget "name" (.podDisruptionBudget.name | default $name) }}
+    {{- $_ := set .workloadServiceAccount "name" (.workloadServiceAccount.name | default (printf "%s-workload" $name)) }}
   {{- end }}
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
@@ -77,6 +78,25 @@ Set required values.
     {{- end }}
     {{- if and .config.tls.clientCert.key (not .config.tls.clientCert.cert) }}
       {{- fail "config.tls.clientCert.cert is required if key is defined" }}
+    {{- end }}
+    {{- if not .config.nodeSeed }}
+      {{- fail "config.nodeSeed is required (go run github.com/nats-io/nkeys/nk@latest -gen server)" }}
+    {{- end }}
+    {{- if .config.platform.enabled }}
+      {{- if not .config.platform.token }}
+        {{- fail "config.platform.token is required when config.platform.enabled is true" }}
+      {{- end }}
+    {{- else if not .config.url }}
+      {{- fail "set config.platform.enabled (Control Plane registration) or config.url (direct NATS connection)" }}
+    {{- end }}
+    {{- if and .config.tls.clientCert.enabled (not .config.tls.clientCert.secretName) }}
+      {{- fail "config.tls.clientCert.secretName is required when config.tls.clientCert.enabled is true (nex-ce checks the files at startup)" }}
+    {{- end }}
+    {{- if and .config.tls.caCerts.enabled (not (or .config.tls.caCerts.configMapName .config.tls.caCerts.secretName)) }}
+      {{- fail "config.tls.caCerts.configMapName or secretName is required when config.tls.caCerts.enabled is true" }}
+    {{- end }}
+    {{- if not (or .config.nexlets.connectors.enabled .config.nexlets.containers.enabled) }}
+      {{- fail "enable at least one of config.nexlets.connectors or config.nexlets.containers" }}
     {{- end }}
   {{- end }}
 {{- end }}
@@ -186,4 +206,139 @@ output: JSON encoded map with 1 key:
 {{- $doc := tpl (.ctx.Files.Get (printf "files/%s" .file)) .ctx | fromYaml | default dict -}}
 {{- $doc = mergeOverwrite $doc (deepCopy (.merge | default dict)) -}}
 {{- get (include "jsonpatch" (dict "doc" $doc "patch" (.patch | default list)) | fromJson ) "doc" | toYaml -}}
+{{- end }}
+
+{{/*
+nce.config renders the nex-ce config file as JSON.
+Top-level and nested group keys are snake_case; nexlet keys are camelCase.
+Keys are only written when set, so empty values do not override nex-ce defaults.
+*/}}
+{{- define "nce.config" -}}
+{{- $c := .Values.config }}
+{{- $cfg := dict "name" ($c.name | default "nex-ce") "node_seed" ($c.nodeSeed | default "") }}
+{{- with $c.tags }}
+{{- /* nex-ce takes map[string]string; --set tags.x=1 would otherwise arrive as a number */}}
+{{- $tags := dict }}
+{{- range $k, $v := . }}
+{{- $_ := set $tags $k (toString $v) }}
+{{- end }}
+{{- $_ := set $cfg "tags" $tags }}
+{{- end }}
+{{- $_ := set $cfg "logger" (dict "level" ($c.logLevel | default "info" | lower)) }}
+
+{{- $nats := dict }}
+{{- with $c.url }}
+{{- $_ := set $nats "servers" (list .) }}
+{{- end }}
+{{- with $c.creds.seed }}
+{{- $_ := set $nats "seed" . }}
+{{- end }}
+{{- with $c.creds.jwt }}
+{{- $_ := set $nats "jwt" . }}
+{{- end }}
+{{- with $c.tls.clientCert }}
+{{- if .enabled }}
+{{- $_ := set $nats "tlscert" (printf "%s/%s" .dir .cert) }}
+{{- $_ := set $nats "tlskey" (printf "%s/%s" .dir .key) }}
+{{- end }}
+{{- end }}
+{{- with $c.tls.caCerts }}
+{{- if .enabled }}
+{{- $_ := set $nats "tlsca" (printf "%s/%s" .dir .key) }}
+{{- end }}
+{{- end }}
+{{- if $nats }}
+{{- $_ := set $cfg "nats" $nats }}
+{{- end }}
+
+{{- if $c.platform.enabled }}
+{{- /* Control Plane supplies the nexus and control account in platform mode */}}
+{{- $platform := dict "enabled" true }}
+{{- with $c.platform.url }}
+{{- $_ := set $platform "url" . }}
+{{- end }}
+{{- with $c.platform.token }}
+{{- $_ := set $platform "token" . }}
+{{- end }}
+{{- $_ := set $cfg "platform" $platform }}
+{{- else }}
+{{- $_ := set $cfg "nexus" ($c.nexus | default "nexus") }}
+{{- with $c.credsSigning.signingKey }}
+{{- $_ := set $cfg "creds_signing_key" . }}
+{{- end }}
+{{- with $c.credsSigning.signingKeyAccount }}
+{{- $_ := set $cfg "control_account" . }}
+{{- end }}
+{{- end }}
+{{- if $c.allowRemoteRegister }}
+{{- $_ := set $cfg "allow_remote_register" true }}
+{{- end }}
+
+{{- if $c.catalog.enabled }}
+{{- $catalog := dict "enabled" true }}
+{{- range $k := list "name" "id" "token" }}
+{{- with get $c.catalog $k }}
+{{- $_ := set $catalog $k . }}
+{{- end }}
+{{- end }}
+{{- $_ := set $cfg "catalog" $catalog }}
+{{- end }}
+
+{{- $ns := include "nce.namespace" . | trim }}
+{{- $nexlets := dict }}
+{{- $_ := set $nexlets "connectors-kubernetes" (include "nce.nexletConfig" (dict "ctx" . "nexlet" $c.nexlets.connectors "registerType" "connector" "namespace" ($c.connectorsNamespace | default $ns)) | fromJson) }}
+{{- $_ := set $nexlets "containers-kubernetes" (include "nce.nexletConfig" (dict "ctx" . "nexlet" $c.nexlets.containers "registerType" "container" "namespace" ($c.workloadsNamespace | default $ns)) | fromJson) }}
+{{- $_ := set $cfg "nexlets" $nexlets }}
+
+{{- toPrettyJson $cfg }}
+{{- end }}
+
+{{/*
+nce.nexletNamespaces prints a JSON list of the namespaces the enabled nexlets create workloads in.
+*/}}
+{{- define "nce.nexletNamespaces" -}}
+{{- $c := .Values.config }}
+{{- $ns := include "nce.namespace" . | trim }}
+{{- $list := list }}
+{{- if $c.nexlets.connectors.enabled }}
+{{- $list = append $list ($c.connectorsNamespace | default $ns) }}
+{{- end }}
+{{- if $c.nexlets.containers.enabled }}
+{{- $list = append $list ($c.workloadsNamespace | default $ns) }}
+{{- end }}
+{{- $list | uniq | toJson }}
+{{- end }}
+
+{{/*
+nce.nexletConfig renders one nexlet entry of the nex-ce config.
+input: dict with ctx, nexlet (values), registerType, namespace
+Keys are only written when set; k8sServiceAccountName falls back to the workload ServiceAccount.
+*/}}
+{{- define "nce.nexletConfig" -}}
+{{- $cfg := dict "enabled" (.nexlet.enabled | default false) "registerType" .registerType "k8sNamespace" .namespace }}
+{{- $sa := .nexlet.serviceAccountName }}
+{{- if and (not $sa) .ctx.Values.workloadServiceAccount.enabled }}
+{{- $sa = .ctx.Values.workloadServiceAccount.name }}
+{{- end }}
+{{- with $sa }}
+{{- $_ := set $cfg "k8sServiceAccountName" . }}
+{{- end }}
+{{- with .nexlet.imagePullSecrets }}
+{{- if kindIs "slice" . }}
+{{- $_ := set $cfg "k8sImagePullSecrets" . }}
+{{- else }}
+{{- $_ := set $cfg "k8sImagePullSecrets" (list (toString .)) }}
+{{- end }}
+{{- end }}
+{{- /* --set-string leaves numbers as strings; nex-ce wants a number, an integer and an integer */}}
+{{- with .nexlet.defaultCpu }}
+{{- $_ := set $cfg "k8sDefaultCpu" (float64 .) }}
+{{- end }}
+{{- with .nexlet.defaultMemoryMb }}
+{{- $_ := set $cfg "k8sDefaultMemoryMb" (int .) }}
+{{- end }}
+{{- with .nexlet.metricsPort }}
+{{- $_ := set $cfg "k8sMetricsPort" (int .) }}
+{{- end }}
+{{- toJson $cfg }}
 {{- end }}
