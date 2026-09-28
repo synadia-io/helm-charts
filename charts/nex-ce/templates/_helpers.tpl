@@ -187,3 +187,96 @@ output: JSON encoded map with 1 key:
 {{- $doc = mergeOverwrite $doc (deepCopy (.merge | default dict)) -}}
 {{- get (include "jsonpatch" (dict "doc" $doc "patch" (.patch | default list)) | fromJson ) "doc" | toYaml -}}
 {{- end }}
+
+{{/*
+nce.config renders the nex-ce config file as JSON.
+Top-level and nested group keys are snake_case; nexlet keys are camelCase.
+Keys are only written when set, so empty values do not override nex-ce defaults.
+*/}}
+{{- define "nce.config" -}}
+{{- $c := .Values.config }}
+{{- $cfg := dict "name" ($c.name | default "nex-ce") "node_seed" ($c.nodeSeed | default "") }}
+{{- with $c.tags }}
+{{- $_ := set $cfg "tags" . }}
+{{- end }}
+{{- $_ := set $cfg "logger" (dict "level" ($c.logLevel | default "info" | lower)) }}
+
+{{- $nats := dict }}
+{{- with $c.url }}
+{{- $_ := set $nats "servers" (list .) }}
+{{- end }}
+{{- with $c.creds.seed }}
+{{- $_ := set $nats "seed" . }}
+{{- end }}
+{{- with $c.creds.jwt }}
+{{- $_ := set $nats "jwt" . }}
+{{- end }}
+{{- with $c.tls.clientCert }}
+{{- if .enabled }}
+{{- $_ := set $nats "tlscert" (printf "%s/%s" .dir .cert) }}
+{{- $_ := set $nats "tlskey" (printf "%s/%s" .dir .key) }}
+{{- end }}
+{{- end }}
+{{- with $c.tls.caCerts }}
+{{- if .enabled }}
+{{- $_ := set $nats "tlsca" (printf "%s/%s" .dir .key) }}
+{{- end }}
+{{- end }}
+{{- if $nats }}
+{{- $_ := set $cfg "nats" $nats }}
+{{- end }}
+
+{{- if $c.platform.enabled }}
+{{- /* Control Plane supplies the nexus and control account in platform mode */}}
+{{- $platform := dict "enabled" true "url" $c.platform.url }}
+{{- with $c.platform.token }}
+{{- $_ := set $platform "token" . }}
+{{- end }}
+{{- $_ := set $cfg "platform" $platform }}
+{{- else }}
+{{- $_ := set $cfg "nexus" ($c.nexus | default "nexus") }}
+{{- with $c.credsSigning.signingKey }}
+{{- $_ := set $cfg "creds_signing_key" . }}
+{{- end }}
+{{- with $c.credsSigning.signingKeyAccount }}
+{{- $_ := set $cfg "control_account" . }}
+{{- end }}
+{{- end }}
+{{- if $c.allowRemoteRegister }}
+{{- $_ := set $cfg "allow_remote_register" true }}
+{{- end }}
+
+{{- if $c.catalog.enabled }}
+{{- $catalog := dict "enabled" true }}
+{{- range $k := list "name" "id" "token" }}
+{{- with get $c.catalog $k }}
+{{- $_ := set $catalog $k . }}
+{{- end }}
+{{- end }}
+{{- $_ := set $cfg "catalog" $catalog }}
+{{- end }}
+
+{{- $ns := include "nce.namespace" . | trim }}
+{{- $nexlets := dict }}
+{{- $_ := set $nexlets "connectors-kubernetes" (dict "enabled" $c.nexlets.connectors.enabled "registerType" "connector" "k8sNamespace" ($c.connectorsNamespace | default $ns)) }}
+{{- $_ := set $nexlets "containers-kubernetes" (dict "enabled" $c.nexlets.containers.enabled "registerType" "container" "k8sNamespace" ($c.workloadsNamespace | default $ns)) }}
+{{- $_ := set $cfg "nexlets" $nexlets }}
+
+{{- toPrettyJson $cfg }}
+{{- end }}
+
+{{/*
+nce.nexletNamespaces prints a JSON list of the namespaces the enabled nexlets create workloads in.
+*/}}
+{{- define "nce.nexletNamespaces" -}}
+{{- $c := .Values.config }}
+{{- $ns := include "nce.namespace" . | trim }}
+{{- $list := list }}
+{{- if $c.nexlets.connectors.enabled }}
+{{- $list = append $list ($c.connectorsNamespace | default $ns) }}
+{{- end }}
+{{- if $c.nexlets.containers.enabled }}
+{{- $list = append $list ($c.workloadsNamespace | default $ns) }}
+{{- end }}
+{{- $list | uniq | toJson }}
+{{- end }}

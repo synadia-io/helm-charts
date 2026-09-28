@@ -52,8 +52,34 @@ config:
     signingKeyAccount:
   allowRemoteRegister: false
   logLevel: "info"
+  # namespaces the nexlets create workloads in; default to the release namespace
+  # the chart creates a Role and RoleBinding in each one
   workloadsNamespace:
   connectorsNamespace:
+  nexlets:
+    # containers-kubernetes nexlet (Workloads)
+    containers:
+      enabled: true
+    # connectors-kubernetes nexlet (Connectors)
+    connectors:
+      enabled: true
+  # Control Plane registration
+  # when enabled, Control Plane supplies the nexus, control account and NATS credentials,
+  # so nexus, creds and credsSigning are not used
+  platform:
+    enabled: false
+    url: https://cloud.synadia.com
+    # Workloads platform component token from Control Plane system settings
+    token:
+  # host a Synadia Catalog on this node
+  # set container.env.YES_SEED to "true" to fill a new catalog on first start
+  catalog:
+    enabled: false
+    name:
+    # NUID of the catalog, from Control Plane system settings
+    id:
+    # Catalog platform component token from Control Plane system settings
+    token:
   # URL for NATS Server
   url:
   # Certificate Authority for Validation of Server Certificate
@@ -77,12 +103,14 @@ config:
       # key in the configMap or secret that contains the CA Certificate or Bundle
       key: ca.crt
     # Skip certificate validation
+    # not supported by nex-ce; kept for compatibility
     insecureSkipVerify: false
 
 ############################################################
 # deployment
 ############################################################
 deployment:
+  # keep at 1: two nodes with one seed duplicate logs and events
   replicas: 1
 
   # merge or patch the stateful set
@@ -116,7 +144,7 @@ podTemplate:
 container:
   image:
     repository: nexce
-    tag: 0.1.8
+    tag: 0.3.3
     pullPolicy:
     # defaults to global.registry
     registry:

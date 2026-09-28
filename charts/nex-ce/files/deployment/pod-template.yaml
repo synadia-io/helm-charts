@@ -5,6 +5,10 @@ metadata:
 
 spec:
   securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
     seccompProfile:
       type: RuntimeDefault
 
@@ -43,6 +47,8 @@ spec:
   - name: config
     secret:
       secretName: {{ .Values.configSecret.name | default (printf "%s-config" (include "nce.fullname" $)) | quote }}
+  - name: tmp
+    emptyDir: {}
 
   {{- with .Values.podTemplate.topologySpreadConstraints }}
   topologySpreadConstraints:
