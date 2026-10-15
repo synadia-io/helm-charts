@@ -143,4 +143,21 @@ extraVolumeMounts: []
 #         secretKeyRef:
 #           name: secret-name
 #           key: secret-key
+#
+# A notification endpoint in config can reference a variable set here, keeping
+# its secret out of this file:
+#
+#   config:
+#     notifications:
+#       webhook:
+#         - name: alerts
+#           url: https://hooks.example.com/insights
+#           auth-type: bearer
+#           auth-token: "${WEBHOOK_TOKEN}"
+#   extraEnv:
+#     WEBHOOK_TOKEN:
+#       valueFrom:
+#         secretKeyRef:
+#           name: insights-webhook
+#           key: token
 extraEnv: {}
