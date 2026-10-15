@@ -62,9 +62,11 @@ File paths in the application config still need corresponding Kubernetes
 mounts. Use `extraVolumes` and `extraVolumeMounts` for NATS credentials, TLS
 files, an embedded NATS config, or a file-based license.
 
-Every config key also has an `INSIGHTS_`-prefixed environment variable, which
-outranks the config file. `extraEnv` sets them, taking either a literal or a
-whole `valueFrom` body so a value can come from a Secret you already keep:
+Most config keys also have an `INSIGHTS_`-prefixed environment variable, which
+outranks the config file. Lists such as `notifications` have none; see
+[Notification secrets](#notification-secrets) for those. `extraEnv` sets them,
+taking either a literal or a whole `valueFrom` body so a value can come from a
+Secret you already keep:
 
 ```yaml
 extraEnv:
@@ -210,6 +212,34 @@ extraVolumeMounts:
     mountPath: /etc/insights/systems/west
     readOnly: true
 ```
+
+### Notification secrets
+
+Notification endpoints under `config.notifications` read `${NAME}` in `url`,
+`auth-user` and `auth-token` from environment variable `NAME`, so their secrets
+stay out of `values.yaml`. Map a Secret key to the variable with `extraEnv`:
+
+```yaml
+config:
+  notifications:
+    webhook:
+      - name: alerts
+        url: https://hooks.example.com/insights
+        auth-type: bearer
+        auth-token: "${WEBHOOK_TOKEN}"
+        subscriptions: ["*"]
+
+extraEnv:
+  WEBHOOK_TOKEN:
+    valueFrom:
+      secretKeyRef:
+        name: insights-webhook
+        key: token
+```
+
+Helm writes `${WEBHOOK_TOKEN}` into the config unchanged and Insights resolves it
+at startup. An enabled endpoint whose variable is unset or empty stops Insights
+from starting, so the pod fails rather than delivering without credentials.
 
 ## Web session seed
 
