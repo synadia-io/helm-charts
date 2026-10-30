@@ -33,7 +33,7 @@ spec:
       serviceAccountName: {{ include "mq-gateway.serviceAccountName" . }}
       automountServiceAccountToken: false
       enableServiceLinks: false
-      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ include "mq-gateway.terminationGracePeriodSeconds" . }}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

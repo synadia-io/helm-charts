@@ -44,6 +44,12 @@ jobs:
         grep -q 'kind: PodDisruptionBudget' /tmp/default.yaml
         grep -q 'path: /readyz' /tmp/default.yaml
         grep -q 'containerPort: 1883' /tmp/default.yaml
+        # A stopping pod drains through lame duck mode, and is given the
+        # lame duck duration plus 20s to do it.
+        grep -q -- '- signal' /tmp/default.yaml
+        grep -q 'terminationGracePeriodSeconds: 140' /tmp/default.yaml
+        helm template ldm charts/mq-gateway "${base[@]}" --set config.ldm.duration=1m30s \
+          | grep -q 'terminationGracePeriodSeconds: 110'
         refused grep -q 'containerPort: 5672' /tmp/default.yaml
 
         # A license from a Secret or in the config selects the licensed image.
@@ -88,7 +94,8 @@ jobs:
 
         # Configs that cannot deploy must fail to render: no protocol, no
         # NATS servers, a shared gateway id, a listener name Kubernetes
-        # refuses as a port name, no health port, servers given twice.
+        # refuses as a port name, no health port, a lame duck duration it
+        # cannot read, servers given twice.
         rejects 'serves no protocol' helm template invalid charts/mq-gateway --set nats.url=nats://nats:4222
         rejects 'nats.url is required' helm template invalid charts/mq-gateway --set-json 'config.mqtt={}'
         rejects 'config.id is set' helm template invalid charts/mq-gateway "${base[@]}" --set config.id=gw
@@ -96,6 +103,7 @@ jobs:
           --set nats.url=nats://nats:4222 \
           --set-json 'config.mqtt={"listeners":[{"name":"Public_MQTT","addr":":1883"}]}'
         rejects 'config.monitor.addr is required' helm template invalid charts/mq-gateway "${base[@]}" --set config.monitor=null
+        rejects 'is not a duration' helm template invalid charts/mq-gateway "${base[@]}" --set config.ldm.duration=2x
         rejects 'not config.nats.url' helm template invalid charts/mq-gateway "${base[@]}" --set config.nats.url=nats://other:4222
 
         helm package charts/mq-gateway --destination /tmp

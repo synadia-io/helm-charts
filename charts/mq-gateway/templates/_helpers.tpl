@@ -277,3 +277,36 @@ other.
 {{- end }}
 {{- toYaml $affinity }}
 {{- end }}
+
+{{/*
+The pod's termination grace period: an explicit value, or the lame duck
+duration plus 20s for the drain to finish and the gateway to exit. The
+duration is read as Go parses it ("2m", "1m30s"); an opaque config Secret
+cannot be read, so it is taken as the default.
+*/}}
+{{- define "mq-gateway.terminationGracePeriodSeconds" -}}
+{{- $set := .Values.terminationGracePeriodSeconds }}
+{{- if and $set (not (kindIs "string" $set)) }}
+{{- int $set }}
+{{- else if $set }}
+{{- fail (printf "mq-gateway: terminationGracePeriodSeconds is %q; want a number of seconds, or empty to follow ldm.duration." $set) }}
+{{- else }}
+{{- $duration := "2m" }}
+{{- if not .Values.configSecret.existingSecret }}
+  {{- with .Values.config.ldm }}
+    {{- with get . "duration" }}{{ $duration = toString . }}{{ end }}
+  {{- end }}
+{{- end }}
+{{- $unit := "[0-9]+(\\.[0-9]+)?(h|ms|m|s|us|µs|ns)" }}
+{{- if not (regexMatch (printf "^(%s)+$" $unit) $duration) }}
+  {{- fail (printf "mq-gateway: config.ldm.duration %q is not a duration such as 2m or 90s." $duration) }}
+{{- end }}
+{{- $seconds := dict "h" 3600.0 "m" 60.0 "s" 1.0 "ms" 0.001 "us" 0.000001 "µs" 0.000001 "ns" 0.000000001 }}
+{{- $total := 0.0 }}
+{{- range regexFindAll $unit $duration -1 }}
+  {{- $n := regexFind "^[0-9]+(\\.[0-9]+)?" . }}
+  {{- $total = addf $total (mulf (float64 $n) (get $seconds (trimPrefix $n .))) }}
+{{- end }}
+{{- add (int (ceil $total)) 20 }}
+{{- end }}
+{{- end }}

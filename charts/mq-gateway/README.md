@@ -177,15 +177,16 @@ stops an old one (`maxSurge: 1`, `maxUnavailable: 0`). A config change
 changes the config Secret's checksum on the pod template, so `helm upgrade`
 rolls the gateways; the gateway reads its config only at start.
 
-When a pod stops, its preStop hook waits five seconds so the Service stops
-sending it new clients, then the container is sent its stop signal. On
-SIGTERM the gateway closes every connection at once, writing each session
-for another gateway to resume, and its clients reconnect through the
-Service to another replica. A gateway sent SIGUSR2 enters lame duck mode
-instead, which spreads those closes over `ldm.duration` (2m) so a large
-fleet does not reconnect at once; `terminationGracePeriodSeconds` (150) is
-sized for it. Keep it above `ldm.duration` plus 10 seconds if you lengthen
-it.
+When a pod stops, its preStop hook runs `mq-gateway signal ldm`, which puts
+the gateway into lame duck mode: it closes its listeners at once, then after
+`ldm.grace-period` (10s) its connections, spread over the rest of
+`ldm.duration` (2m), writing each session for another gateway to resume, and
+exits. Its clients reconnect through the Service to the other replicas a few
+at a time rather than all at once. The kubelet's SIGTERM is ignored
+meanwhile, and `terminationGracePeriodSeconds` follows `ldm.duration`, plus
+20 seconds, so the drain is not cut short. With `configSecret.existingSecret`
+the chart cannot read the duration: set `terminationGracePeriodSeconds` if
+it is not the default.
 
 `/readyz` answers 503 from the moment the gateway starts to stop, and while
 its NATS connections reconnect, so the Service stops routing to it. The

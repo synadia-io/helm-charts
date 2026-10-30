@@ -102,19 +102,20 @@ podDisruptionBudget:
   enabled: true
   maxUnavailable: 1
 
-# Lame duck mode closes the listeners, then the connections spread over
-# `ldm.duration` (2m by default) and exits, so a node drain or rollout moves
-# clients a few at a time. Keep this above ldm.duration plus 10s, or the
-# kubelet kills the gateway partway through.
-terminationGracePeriodSeconds: 150
-
-# The sleep lets the Service take the pod out of its endpoints before the
-# container is told to stop, so clients that reconnect reach another
-# gateway.
+# A stopping pod enters lame duck mode from its preStop hook: the gateway
+# closes its listeners, then its connections spread over `ldm.duration` (2m
+# by default), each client reconnecting to another gateway, and exits. The
+# kubelet's SIGTERM is ignored meanwhile.
 lifecycle:
   preStop:
-    sleep:
-      seconds: 5
+    exec:
+      command: ["/usr/local/bin/mq-gateway", "signal", "ldm"]
+
+# Empty is config.ldm.duration (2m when unset) plus 20s, so the kubelet
+# does not kill a gateway partway through its drain. A config from
+# configSecret.existingSecret cannot be read: set this when its
+# ldm.duration is not the default.
+terminationGracePeriodSeconds: ""
 
 # ServiceAccount for the pod. The gateway calls no Kubernetes or cloud API,
 # so it needs no permissions and the pod mounts no token. Annotations carry
