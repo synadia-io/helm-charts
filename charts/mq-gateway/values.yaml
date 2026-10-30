@@ -67,6 +67,8 @@ image:
   # Empty uses the chart appVersion.
   tag: ""
   pullPolicy: IfNotPresent
+  # registry.synadia.io requires credentials for both images: a
+  # docker-registry Secret, for example [{name: synadia-registry}].
   pullSecrets: []
 
 nameOverride: ""

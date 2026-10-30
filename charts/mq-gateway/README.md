@@ -11,14 +11,24 @@ and create the streams and buckets as described below.
 
 ## Install
 
-Give the gateway its NATS servers, a credential, and what to serve:
+Give the cluster your `registry.synadia.io` credentials (see [Images and
+licensing](#images-and-licensing)), and the gateway its NATS servers, a
+credential, and what to serve:
 
 ```sh
+kubectl create secret docker-registry synadia-registry \
+  --docker-server registry.synadia.io \
+  --docker-username "$SYNADIA_REGISTRY_USERNAME" \
+  --docker-password "$SYNADIA_REGISTRY_PASSWORD"
 kubectl create secret generic mq-gateway-nats --from-file=nats.creds=gateway.creds
 ```
 
 ```yaml
 # values.yaml
+image:
+  pullSecrets:
+    - name: synadia-registry
+
 nats:
   url: nats://nats.nats.svc.cluster.local:4222
   credentials:
@@ -132,20 +142,11 @@ extraEnv:
 | No license | `registry.synadia.io/mq-gateway` |
 | `license.existingSecret`, `config.license.token` or `config.license.file` | `registry.synadia.io/mq-gateway-licensed` |
 
-The licensed image serves only under a Synadia license that entitles MQ
-Gateway:
-
-```sh
-kubectl create secret generic mq-gateway-license --from-file=license.jwt=license.jwt
-```
-
-```yaml
-license:
-  existingSecret: mq-gateway-license
-```
-
-Pulling `registry.synadia.io/mq-gateway` needs authentication: create a pull
-secret with the registry credentials issued to you and reference it.
+`registry.synadia.io` requires authentication for both images, so unless you
+point `image.registry` at an open mirror you must supply a pull secret;
+without one the pod fails to start with `ImagePullBackOff`. Create it with
+the registry credentials you were sent: with your trial for the licensed
+image, or issued to you for the unlicensed one.
 
 ```sh
 kubectl create secret docker-registry synadia-registry \
@@ -159,6 +160,21 @@ image:
   pullSecrets:
     - name: synadia-registry
 ```
+
+The licensed image serves only under a Synadia license that entitles MQ
+Gateway. Put the license in a Secret too:
+
+```sh
+kubectl create secret generic mq-gateway-license --from-file=license.jwt=license.jwt
+```
+
+```yaml
+license:
+  existingSecret: mq-gateway-license
+```
+
+Registry credentials and the license are separate: the license selects the
+licensed image but does not authenticate its pull.
 
 Set `image.tag` to pin a version and `image.registry` for a mirror; an
 explicit `image.repository` overrides the licensed or unlicensed choice.
