@@ -1,0 +1,209 @@
+# Application configuration. This map is written directly to the gateway's
+# config file, so keys below `config` match the MQ Gateway config file
+# one-for-one, with the NATS connection, TLS files and license taken from the
+# `nats`, `tls` and `license` values below instead.
+#
+# A deployable config serves MQTT, AMQP or both: add an `mqtt` or `amqp`
+# block, even an empty one. The chart refuses to render without one.
+#
+# The streams and KV buckets the routing names (`bindings`,
+# `mqtt.retained`, `mqtt.sessions`, `amqp.delivery-counts`) must be created
+# in NATS; the chart does not create them. Until they exist the gateway
+# refuses those clients and /readyz stays 200, /healthz names what is
+# missing. `mq-gateway generate --config <file> --format nats-cli` prints the
+# nats CLI commands that create them.
+config:
+  # The health endpoints the probes use. Only the kubelet needs to reach
+  # them; the Service does not expose this port.
+  monitor:
+    addr: ":8222"
+
+# The NATS system the gateway serves clients on. The chart runs no NATS
+# server: install one with the nats chart (https://github.com/nats-io/k8s).
+nats:
+  # Server URLs, a string with commas or a list, without credentials.
+  # Required unless configSecret.existingSecret supplies the whole config.
+  url: ""
+  # The gateway's own NATS credential, a .creds file in a Secret you manage,
+  # mounted at /etc/mq-gateway/nats/nats.creds and set as `nats.creds`.
+  # For a user and password instead, set `config.nats.user` and
+  # `config.nats.password: env://NATS_PASSWORD` with NATS_PASSWORD in
+  # extraEnv.
+  credentials:
+    existingSecret: ""
+    key: nats.creds
+  # TLS to NATS, from a Secret you manage, mounted at
+  # /etc/mq-gateway/nats-tls and set as `nats.tls`. The key names default to
+  # those of a kubernetes.io/tls Secret with a CA, as cert-manager writes
+  # them. Empty cert and key trust the servers without a client certificate.
+  tls:
+    existingSecret: ""
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+
+# TLS on every MQTT and AMQP listener (mqtts://, wss://, amqps://), from a
+# kubernetes.io/tls Secret you manage, mounted at /etc/mq-gateway/tls and
+# set as `tls`. A ca key makes every client present a certificate it signed.
+tls:
+  existingSecret: ""
+  cert: tls.crt
+  key: tls.key
+  ca: ""
+
+# The license a licensed build needs to serve, a JWT in a Secret you manage,
+# mounted at /etc/mq-gateway/license/license.jwt and set as `license.file`.
+# Setting it, or `config.license.token`, selects the licensed image.
+license:
+  existingSecret: ""
+  key: license.jwt
+
+image:
+  registry: registry.synadia.io
+  # Empty selects "mq-gateway-licensed" when license.existingSecret,
+  # config.license.token or config.license.file is set, and "mq-gateway"
+  # otherwise.
+  repository: ""
+  # Empty uses the chart appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+  # registry.synadia.io requires credentials for both images: a
+  # docker-registry Secret, for example [{name: synadia-registry}].
+  pullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+configSecret:
+  # Mount a complete config file from an existing Secret instead of creating
+  # one from config above. The chart cannot read an opaque Secret, so it
+  # sets nothing in it: the file names its own NATS servers, and the paths
+  # above for any credentials, TLS and license file the chart mounts. Name
+  # its listeners and monitor port here so the pod and Service expose them,
+  # and set image.repository when its license selects the licensed image.
+  existingSecret: ""
+  key: config.yaml
+  # For example: [{name: mqtt, port: 1883}, {name: amqp, port: 5672}]
+  listeners: []
+  monitorPort: 8222
+
+# Two or more, so clients reconnect to another gateway and resume their
+# sessions there while one restarts. Sessions move between gateways only
+# when the config names `mqtt.sessions.bucket`.
+replicas: 2
+
+# Bring each new gateway up and ready before an old one stops, so a rollout
+# never runs with fewer gateways than replicas.
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+# A stopping pod enters lame duck mode from its preStop hook: the gateway
+# closes its listeners, then its connections spread over `ldm.duration` (2m
+# by default), each client reconnecting to another gateway, and exits. The
+# kubelet's SIGTERM is ignored meanwhile.
+lifecycle:
+  preStop:
+    exec:
+      command: ["/usr/local/bin/mq-gateway", "signal", "ldm"]
+
+# Empty is config.ldm.duration (2m when unset) plus 20s, so the kubelet
+# does not kill a gateway partway through its drain. A config from
+# configSecret.existingSecret cannot be read: set this when its
+# ldm.duration is not the default.
+terminationGracePeriodSeconds: ""
+
+# ServiceAccount for the pod. The gateway calls no Kubernetes or cloud API,
+# so it needs no permissions and the pod mounts no token. Annotations carry
+# a platform identity where one is needed. Set create to false to attach an
+# account you manage; leaving name empty then uses the namespace default.
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# One Service with a port per listener in the config, named for the listener
+# (or "mqtt", "amqp", "mqtt-1", ... when it has no name). Clients need no
+# affinity: any gateway serves any client.
+service:
+  type: ClusterIP
+  annotations: {}
+
+resources: {}
+
+podAnnotations: {}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  # Gives the mounted Secrets to the pod's group, which reads them.
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  # The gateway keeps nothing on disk.
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# /readyz answers 503 while the gateway's start-up checks run, while its NATS
+# connections reconnect, and for the whole of lame duck mode, so the Service
+# stops sending it clients. It must not be the liveness probe: the kubelet
+# would kill a gateway that is draining or waiting for NATS.
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: monitor
+  periodSeconds: 5
+  failureThreshold: 2
+
+livenessProbe:
+  httpGet:
+    path: /livez
+    port: monitor
+  periodSeconds: 10
+  failureThreshold: 3
+
+# Keep the gateways on different nodes: "soft" prefers it, so a small
+# cluster still schedules them all, "hard" requires it, and "" leaves it to
+# affinity.
+podAntiAffinity: soft
+
+# Spread the gateways over zones, preferred rather than required. A
+# constraint without a labelSelector gets the release's pod labels. Nodes
+# scoring a constraint must carry every topologyKey the pod names, so nodes
+# are kept apart by podAntiAffinity, which works on a cluster without zone
+# labels, rather than by a hostname constraint here. Set [] for none.
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+
+affinity: {}
+nodeSelector: {}
+tolerations: []
+
+# Escape hatches for files the config names that the values above do not
+# mount, such as a fixed listener's credential.
+extraVolumes: []
+extraVolumeMounts: []
+
+# map with key as env var name, value can be string or map
+# example:
+#
+#   extraEnv:
+#     MQGW_LOG_LEVEL: debug
+#     NATS_PASSWORD:
+#       valueFrom:
+#         secretKeyRef:
+#           name: secret-name
+#           key: secret-key
+extraEnv: {}

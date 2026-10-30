@@ -1,0 +1,192 @@
+{{- if and .Values.configSecret.existingSecret .Values.nats.url }}
+{{- fail "mq-gateway: nats.url is set with configSecret.existingSecret, whose config the chart does not change. Put the servers in that config." }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mq-gateway.fullname" . }}
+  labels:
+    {{- include "mq-gateway.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  {{- with .Values.updateStrategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "mq-gateway.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mq-gateway.selectorLabels" . | nindent 8 }}
+      {{- if or (not .Values.configSecret.existingSecret) .Values.podAnnotations }}
+      annotations:
+        {{- if not .Values.configSecret.existingSecret }}
+        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "mq-gateway.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: {{ include "mq-gateway.terminationGracePeriodSeconds" . }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- range . }}
+        {{- $c := deepCopy . }}
+        {{- if not (hasKey $c "labelSelector") }}
+        {{- $_ := set $c "labelSelector" (dict "matchLabels" (include "mq-gateway.selectorLabels" $ | fromYaml)) }}
+        {{- $_ := set $c "matchLabelKeys" (list "pod-template-hash") }}
+        {{- end }}
+        - {{- toYaml $c | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- with include "mq-gateway.affinity" . | fromYaml }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: mq-gateway
+          image: {{ include "mq-gateway.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --config
+            - /etc/mq-gateway/config/config.yaml
+          env:
+            # Replicas sharing a sessions bucket need distinct ids.
+            - name: MQGW_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- with .Values.extraEnv }}
+            {{- include "mq-gateway.env" . | trim | nindent 12 }}
+            {{- end }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            {{- range include "mq-gateway.listeners" . | fromYamlArray }}
+            - name: {{ .name }}
+              containerPort: {{ .port }}
+              protocol: TCP
+            {{- end }}
+            - name: monitor
+              containerPort: {{ include "mq-gateway.monitorPort" . }}
+              protocol: TCP
+          {{- with .Values.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/mq-gateway/config
+              readOnly: true
+            {{- if .Values.nats.credentials.existingSecret }}
+            - name: nats-credentials
+              mountPath: /etc/mq-gateway/nats
+              readOnly: true
+            {{- end }}
+            {{- if .Values.nats.tls.existingSecret }}
+            - name: nats-tls
+              mountPath: /etc/mq-gateway/nats-tls
+              readOnly: true
+            {{- end }}
+            {{- if .Values.tls.existingSecret }}
+            - name: tls
+              mountPath: /etc/mq-gateway/tls
+              readOnly: true
+            {{- end }}
+            {{- if .Values.license.existingSecret }}
+            - name: license
+              mountPath: /etc/mq-gateway/license
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ include "mq-gateway.configSecretName" . }}
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.configSecret.key | quote }}
+                path: config.yaml
+        {{- with .Values.nats.credentials }}
+        {{- if .existingSecret }}
+        - name: nats-credentials
+          secret:
+            secretName: {{ .existingSecret }}
+            defaultMode: 0440
+            items:
+              - key: {{ .key | quote }}
+                path: nats.creds
+        {{- end }}
+        {{- end }}
+        {{- with .Values.nats.tls }}
+        {{- if .existingSecret }}
+        - name: nats-tls
+          secret:
+            secretName: {{ .existingSecret }}
+            defaultMode: 0440
+            items:
+              {{- include "mq-gateway.tlsItems" . | trim | nindent 14 }}
+        {{- end }}
+        {{- end }}
+        {{- with .Values.tls }}
+        {{- if .existingSecret }}
+        - name: tls
+          secret:
+            secretName: {{ .existingSecret }}
+            defaultMode: 0440
+            items:
+              {{- include "mq-gateway.tlsItems" . | trim | nindent 14 }}
+        {{- end }}
+        {{- end }}
+        {{- with .Values.license }}
+        {{- if .existingSecret }}
+        - name: license
+          secret:
+            secretName: {{ .existingSecret }}
+            defaultMode: 0440
+            items:
+              - key: {{ .key | quote }}
+                path: license.jwt
+        {{- end }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
