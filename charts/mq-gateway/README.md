@@ -9,6 +9,9 @@ stores messages and sessions in. Install NATS with JetStream first, for
 example with the [nats chart](https://github.com/nats-io/k8s/tree/main/helm/charts/nats),
 and create the streams and buckets as described below.
 
+The gateway itself is documented at
+[docs.synadia.com/mq-gateway](https://docs.synadia.com/mq-gateway).
+
 ## Install
 
 Give the cluster your `registry.synadia.io` credentials, which the
@@ -81,13 +84,14 @@ kubectl exec deploy/mq-gateway -- mq-gateway check \
 ```
 
 `--format nack` and `--format terraform` print NACK manifests and Terraform
-resources instead. The MQ Gateway guide *Provision the streams and buckets*
-explains each limit.
+resources instead. [Provision the streams and
+buckets](https://docs.synadia.com/mq-gateway/how-to/provision-streams-and-buckets) explains each limit.
 
 ## Configuration mapping
 
 Everything below `config` is written to the gateway's config file, so keys,
-nesting and future settings work as they do in a standalone file. The chart
+nesting and future settings work as they do in a standalone file (see the
+[config file reference](https://docs.synadia.com/mq-gateway/reference/config-file)). The chart
 fills in only what it manages, and refuses a value set both ways:
 
 | Value | Written as |
