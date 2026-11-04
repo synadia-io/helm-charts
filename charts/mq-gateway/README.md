@@ -11,9 +11,9 @@ and create the streams and buckets as described below.
 
 ## Install
 
-Give the cluster your `registry.synadia.io` credentials (see [Images and
-licensing](#images-and-licensing)), and the gateway its NATS servers, a
-credential, and what to serve:
+Give the cluster your `registry.synadia.io` credentials, which the
+unlicensed image needs (see [Images and licensing](#images-and-licensing)),
+and the gateway its NATS servers, a credential, and what to serve:
 
 ```sh
 kubectl create secret docker-registry synadia-registry \
@@ -142,11 +142,22 @@ extraEnv:
 | No license | `registry.synadia.io/mq-gateway` |
 | `license.existingSecret`, `config.license.token` or `config.license.file` | `registry.synadia.io/mq-gateway-licensed` |
 
-`registry.synadia.io` requires authentication for both images, so unless you
-point `image.registry` at an open mirror you must supply a pull secret;
-without one the pod fails to start with `ImagePullBackOff`. Create it with
-the registry credentials you were sent: with your trial for the licensed
-image, or issued to you for the unlicensed one.
+The licensed image pulls from `registry.synadia.io` without credentials. It
+serves only under a Synadia license that entitles MQ Gateway, so put the
+license in a Secret:
+
+```sh
+kubectl create secret generic mq-gateway-license --from-file=license.jwt=license.jwt
+```
+
+```yaml
+license:
+  existingSecret: mq-gateway-license
+```
+
+The unlicensed image needs registry credentials: without a pull secret its
+pods fail to start with `ImagePullBackOff`. Create one with the credentials
+issued to you:
 
 ```sh
 kubectl create secret docker-registry synadia-registry \
@@ -160,21 +171,6 @@ image:
   pullSecrets:
     - name: synadia-registry
 ```
-
-The licensed image serves only under a Synadia license that entitles MQ
-Gateway. Put the license in a Secret too:
-
-```sh
-kubectl create secret generic mq-gateway-license --from-file=license.jwt=license.jwt
-```
-
-```yaml
-license:
-  existingSecret: mq-gateway-license
-```
-
-Registry credentials and the license are separate: the license selects the
-licensed image but does not authenticate its pull.
 
 Set `image.tag` to pin a version and `image.registry` for a mirror; an
 explicit `image.repository` overrides the licensed or unlicensed choice.
