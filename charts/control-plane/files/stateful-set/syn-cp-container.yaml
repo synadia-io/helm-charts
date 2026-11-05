@@ -3,9 +3,8 @@ name: syn-cp
 
 args:
 - server
-- start
 - -c
-- /etc/syn-cp/syn-cp.yaml
+- /etc/syn-cp/syn-cp.json
 
 {{- with .Values.container.env }}
 env:
@@ -20,10 +19,17 @@ ports:
   containerPort: {{ .Values.config.server.httpsPort }}
 {{- end }}
 
+# allows for the 3 minute HA bootstrap timeout
 startupProbe:
-  initialDelaySeconds: 5
-  periodSeconds: 3
-  failureThreshold: 20
+  periodSeconds: 5
+  failureThreshold: 60
+  httpGet:
+    path: /healthz
+    port: http
+
+readinessProbe:
+  periodSeconds: 10
+  failureThreshold: 3
   httpGet:
     path: /healthz
     port: http
@@ -39,33 +45,9 @@ volumeMounts:
 # config secret
 - name: config
   mountPath: /etc/syn-cp
-{{- $dataDir := trimSuffix "/" .config.data_dir }}
-# data emptyDir
+# data pvc
 - name: data
-  mountPath: {{ $dataDir | quote }}
-# Single Replica Mode PVCs
-{{- with .Values.singleReplicaMode }}
-{{- if .enabled }}
-{{- with .encryptionPvc }}
-{{- if .enabled }}
-- name: encryption
-  mountPath: {{ printf "%s/encryption" $dataDir | quote}}
-{{- end }}
-{{- end }}
-{{- with .postgresPvc }}
-{{- if .enabled }}
-- name: postgres
-  mountPath: {{ printf "%s/postgres" $dataDir | quote}}
-{{- end }}
-{{- end }}
-{{- with .prometheusPvc }}
-{{- if .enabled }}
-- name: prometheus
-  mountPath: {{ printf "%s/prometheus" $dataDir | quote}}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
+  mountPath: {{ .config.data_dir | quote }}
 # external secrets
 {{- range (include "scp.secretNames" $ | fromJson).secretNames }}
 - name: {{ .name | quote }}

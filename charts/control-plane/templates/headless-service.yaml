@@ -1,0 +1,4 @@
+{{- include "scp.defaultValues" . }}
+{{- with .Values.headlessService }}
+{{- include "scp.loadMergePatch" (merge (dict "file" "headless-service.yaml" "ctx" $) .) }}
+{{- end }}

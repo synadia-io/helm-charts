@@ -14,13 +14,13 @@ global:
   labels: {}
 
 ################################################################################
-# Control Plane Deployment and associated resources
+# Control Plane StatefulSet and associated resources
 ################################################################################
 
 ############################################################
 # image pull secret
 ############################################################
-# when enabled, the registry for images in the control plane deployment
+# when enabled, the registry for images in the control plane stateful set
 # will default to imagePullSecret.registry
 imagePullSecret:
   enabled: true
@@ -42,6 +42,10 @@ imagePullSecret:
 # options, the entire configuration will be stored in a Kubernetes Secret
 #
 config:
+  # standalone: no login, every user is an admin.
+  # managed: requires login and config.merge.license.enabled=true
+  mode: standalone
+
   server:
     # URL where Control Plane server will be accessed
     url:
@@ -68,6 +72,7 @@ config:
 
   kms:
     # if the key is not configured, a default KMS key will be generated and written to the data PVC
+    # set secretName to mount a Secret whose key file contains a KMS URL
     key:
       # set to use a KMS URL
       url:
@@ -91,35 +96,8 @@ config:
     patch: []
 
   dataSources:
-    postgres:
-      # DSN to external PostgreSQL, TLS settings will be automatically added if supplied
-      dsn:
-      tls:
-        enabled: false
-        # set secretName in order to mount an existing secret to dir
-        secretName:
-        dir: /etc/syn-cp/certs/postgres
-        cert:
-        key:
-        ca: tls.ca
-        
-        # add TLS options to DSN
-        # if cert and key are set, sslcert and sslkey will be added to the dsn 
-        # if ca is set, sslrootcert will be added to the dsn
-        addToDsn: true
-        # sslmode to add to dsn, if addToDsn is true
-        addToDsnSslMode: verify-full
-
-        # merge or patch the tls config
-        merge: {}
-        patch: []
-
-      # merge or patch the postgres config
-      merge: {}
-      patch: []
-
     prometheus:
-      # URL to external Prometheus
+      # URL to external Prometheus. When unset, the internal Prometheus stores data on the data PVC
       url:
       tls:
         enabled: false
@@ -142,29 +120,41 @@ config:
   patch: []
 
 ############################################################
-# deployment
+# stateful set
 ############################################################
-deployment:
-  # singleReplicaMode must be disabled to set replicas >1
-  replicas: 1
-
+# runs 1 replica, HA is not supported yet
+statefulSet:
   # merge or patch the stateful set
-  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#deployment-v1-apps
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#statefulset-v1-apps
   merge: {}
   patch: []
   # defaults to "{{ include "scp.fullname" $ }}"
   name:
 
 ############################################################
-# deployment -> pod template
+# stateful set -> volume claim template
+############################################################
+# all Control Plane state is stored on this volume
+# volume claim templates cannot change after install, resize the PVC directly
+persistence:
+  size: 20Gi
+  storageClassName:
+
+  # merge or patch the volume claim template
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
+  merge: {}
+  patch: []
+
+############################################################
+# stateful set -> pod template
 ############################################################
 podTemplate:
   # adds a hash of the Config Secret as a pod annotation
-  # this will cause the Deployment to roll when the Config Secret is updated
+  # this will cause the StatefulSet to roll when the Config Secret is updated
   configChecksumAnnotation: true
 
   # map of topologyKey: topologySpreadConstraint
-  # labelSelector will be added to match Deployment pods
+  # labelSelector will be added to match StatefulSet pods
   #
   # topologySpreadConstraints:
   #   kubernetes.io/hostname:
@@ -178,14 +168,12 @@ podTemplate:
   patch: []
 
 ############################################################
-# deployment -> pod template -> syn-cp container
+# stateful set -> pod template -> syn-cp container
 ############################################################
 container:
   image:
     repository: control-plane
-    tag: 1.14.1
-    # use slim image, requires config.dataSources.postgres to be configured
-    slim: false
+    tag: 2.0.0
     pullPolicy:
     # defaults to imagePullSecret.registry if imagePullSecret is enabled
     # defaults to global.registry if imagePullSecret is disabled
@@ -231,6 +219,20 @@ service:
   name:
 
 ############################################################
+# headless service
+############################################################
+# gives each pod a stable DNS name for peer discovery, includes pods that are not ready
+# clients must use the service above, which only routes to ready pods
+headlessService:
+  # merge or patch the headless service
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#service-v1-core
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}-headless"
+  # cannot change after install
+  name:
+
+############################################################
 # ingress
 ############################################################
 # service must be enabled also
@@ -251,73 +253,6 @@ ingress:
   patch: []
   # defaults to "{{ include "scp.fullname" $ }}"
   name:
-
-############################################################
-# single replica mode
-############################################################
-singleReplicaMode:
-  # in order to disable singleReplicaMode, the following must be configured
-  # - config.kms
-  # - config.dataSources.postgres
-  # - config.dataSources.prometheus
-  enabled: true
-
-  ############################################################
-  # encryption pvc
-  ############################################################
-  # should be enabled when config.kms.key is not configured
-  encryptionPvc:
-    # enable/disable creation of the PVC
-    # WARNING: changing this to false after the PVC is created will result in the PVC being deleted
-    enabled: true
-
-    size: 1Gi
-    storageClassName:
-
-    # merge or patch the pvc
-    # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
-    merge: {}
-    patch: []
-    # defaults to "{{ include "scp.fullname" $ }}-encryption"
-    name:
-
-  ############################################################
-  # postgres pvc
-  ############################################################
-  # should be enabled when config.dataSources.postgres is not configured
-  postgresPvc:
-    # enable/disable creation of the PVC
-    # WARNING: changing this to false after the PVC is created will result in the PVC being deleted
-    enabled: true
-
-    size: 10Gi
-    storageClassName:
-
-    # merge or patch the pvc
-    # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
-    merge: {}
-    patch: []
-    # defaults to "{{ include "scp.fullname" $ }}-postgres"
-    name:
-
-  ############################################################
-  # prometheus pvc
-  ############################################################
-  # should be enabled when config.dataSources.prometheus is not configured
-  prometheusPvc:
-    # enable/disable creation of the PVC
-    # WARNING: changing this to false after the PVC is created will result in the PVC being deleted
-    enabled: true
-
-    size: 10Gi
-    storageClassName:
-
-    # merge or patch the pvc
-    # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core
-    merge: {}
-    patch: []
-    # defaults to "{{ include "scp.fullname" $ }}-prometheus"
-    name:
 
 ############################################################
 # other extension points

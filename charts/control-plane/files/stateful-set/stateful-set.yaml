@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.statefulSet.name }}
+  labels:
+    {{- include "scp.labels" $ | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "scp.selectorLabels" $ | nindent 6 }}
+
+  replicas: 1
+
+  # serviceName and podManagementPolicy cannot change after install
+  # HA bootstrap needs all pods to start at the same time
+  serviceName: {{ .Values.headlessService.name }}
+  podManagementPolicy: Parallel
+
+  template:
+    {{- with .Values.podTemplate }}
+    {{- include "scp.loadMergePatch" (merge (dict "file" "stateful-set/pod-template.yaml" "ctx" $) .) | nindent 4 }}
+    {{- end }}
+
+  volumeClaimTemplates:
+  {{- with .Values.persistence }}
+  - {{ include "scp.loadMergePatch" (merge (dict "file" "stateful-set/data-pvc.yaml" "ctx" $) .) | nindent 4 }}
+  {{- end }}

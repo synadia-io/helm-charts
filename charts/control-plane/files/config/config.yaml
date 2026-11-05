@@ -1,5 +1,7 @@
 {{- with .Values.config }}
 
+mode: {{ .mode | quote }}
+
 ############################################################
 # server
 ############################################################
@@ -22,23 +24,12 @@ kms:
 ############################################################
 # data sources
 ############################################################
-{{- with .dataSources }}
-{{- $dataSources := dict }}
-{{- with .postgres }}
-  {{- $postgres := include "scp.loadMergePatch" (merge (dict "file" "config/postgres.yaml" "ctx" $) .) | fromYaml }}
-  {{- if $postgres}}
-    {{- $_ := set $dataSources "postgres" $postgres }}
-  {{- end }}
-{{- end }}
-{{- with .prometheus }}
-  {{- $prometheus := include "scp.loadMergePatch" (merge (dict "file" "config/prometheus.yaml" "ctx" $) .) | fromYaml }}
-  {{- if $prometheus}}
-    {{- $_ := set $dataSources "prometheus" $prometheus }}
-  {{- end }}
-{{- end }}
-{{- if $dataSources }}
+{{- with .dataSources.prometheus }}
+{{- $prometheus := include "scp.loadMergePatch" (merge (dict "file" "config/prometheus.yaml" "ctx" $) .) | fromYaml }}
+{{- if $prometheus }}
 data_sources:
-  {{- toYaml $dataSources | nindent 2 }}
+  prometheus:
+    {{- toYaml $prometheus | nindent 4 }}
 {{- end }}
 {{- end }}
 

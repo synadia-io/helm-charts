@@ -1,10 +1,9 @@
-{{- with .pvc }}
-apiVersion: v1
-kind: PersistentVolumeClaim
+{{- with .Values.persistence }}
 metadata:
-  name: {{ .name | quote }}
+  name: data
+  # volume claim templates are immutable, so use labels that do not change between chart versions
   labels:
-    {{- include "scp.labels" $ | nindent 4 }}
+    {{- include "scp.selectorLabels" $ | nindent 4 }}
 spec:
   accessModes:
   - ReadWriteOnce

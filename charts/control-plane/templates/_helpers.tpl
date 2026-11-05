@@ -37,15 +37,21 @@ Set default values.
 {{- if not .defaultValuesSet }}
   {{- $name := include "scp.fullname" . }}
   {{- with .Values }}
-    {{- $_ := set .configSecret                    "name" (.configSecret.name                    | default (printf "%s-config" $name)) }}
-    {{- $_ := set .deployment                      "name" (.deployment.name                      | default $name) }}
-    {{- $_ := set .imagePullSecret                 "name" (.imagePullSecret.name                 | default (printf "%s-regcred" $name)) }}
-    {{- $_ := set .ingress                         "name" (.ingress.name                         | default $name) }}
-    {{- $_ := set .service                         "name" (.service.name                         | default $name) }}
-    {{- $_ := set .serviceAccount                  "name" (.serviceAccount.name                  | default $name) }}
-    {{- $_ := set .singleReplicaMode.encryptionPvc "name" (.singleReplicaMode.encryptionPvc.name | default (printf "%s-encryption" $name)) }}
-    {{- $_ := set .singleReplicaMode.postgresPvc   "name" (.singleReplicaMode.postgresPvc.name   | default (printf "%s-postgres" $name)) }}
-    {{- $_ := set .singleReplicaMode.prometheusPvc "name" (.singleReplicaMode.prometheusPvc.name | default (printf "%s-prometheus" $name)) }}
+    {{- $_ := set .configSecret    "name" (.configSecret.name    | default (printf "%s-config" $name)) }}
+    {{- $_ := set .headlessService "name" (.headlessService.name | default (printf "%s-headless" $name)) }}
+    {{- $_ := set .imagePullSecret "name" (.imagePullSecret.name | default (printf "%s-regcred" $name)) }}
+    {{- $_ := set .ingress         "name" (.ingress.name         | default $name) }}
+    {{- $_ := set .service         "name" (.service.name         | default $name) }}
+    {{- $_ := set .serviceAccount  "name" (.serviceAccount.name  | default $name) }}
+    {{- $_ := set .statefulSet     "name" (.statefulSet.name     | default $name) }}
+  {{- end }}
+
+  {{- /* chart 1.x used a Deployment, upgrading in place would delete its PVCs and the data on them */}}
+  {{- range (lookup "apps/v1" "Deployment" .Release.Namespace "").items }}
+    {{- $labels := .metadata.labels | default dict }}
+    {{- if and (eq (get $labels "app.kubernetes.io/instance") $.Release.Name) (eq (get $labels "app.kubernetes.io/component") "control-plane") }}
+      {{- fail (printf "Deployment %s is from control-plane chart 1.x. Upgrading this release to 2.x would delete its PVCs and data. Pin --version 1.x for this release." .metadata.name) }}
+    {{- end }}
   {{- end }}
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
@@ -59,28 +65,6 @@ Set default values.
   {{- with .Values.config }}
     {{- $config := include "scp.loadMergePatch" (merge (dict "file" "config/config.yaml" "ctx" $) .) | fromYaml }}
     {{- $_ := set $ "config" $config }}
-  {{- end }}
-
-  {{- if .Values.singleReplicaMode.enabled }}
-    {{- if gt (int .Values.deployment.replicas) 1 }}
-      {{- fail "deployment.replicas must be 1 when singleReplicaMode is enabled" }}
-    {{- end }}
-  {{- else }}
-    {{- if or (not .config.kms) (not .config.kms.key_url) }}
-      {{- fail "config.kms.key must configured singleReplicaMode is disabled" }}
-    {{- end }}
-    {{- if or (not .config.data_sources) (not .config.data_sources.postgres) (not .config.data_sources.postgres.dsn) }}
-      {{- fail "config.dataSources.postgres must be configured when singleReplicaMode is disabled" }}
-    {{- end }}
-    {{- if or (not .config.data_sources) (not .config.data_sources.prometheus) (not .config.data_sources.prometheus.url) }}
-      {{- fail "config.dataSources.prometheus must be configured when singleReplicaMode is disabled" }}
-    {{- end }}
-  {{- end }}
-
-  {{- if .Values.container.image.slim }}
-    {{- if or (not .config.data_sources) (not .config.data_sources.postgres) (not .config.data_sources.postgres.dsn) }}
-      {{- fail "config.dataSources.postgres must be configured when container.image.slim=true" }}
-    {{- end }}
   {{- end }}
 
   {{- $_ := set . "defaultValuesSet" true }}
@@ -115,11 +99,7 @@ app.kubernetes.io/component: control-plane
 Print the image
 */}}
 {{- define "scp.image" }}
-{{- $tag := .tag }}
-{{- if .slim }}
-{{- $tag = ternary "slim" (printf "%s-slim" $tag) (eq $tag "latest") }}
-{{- end -}}
-{{- $image := printf "%s:%s" .repository $tag }}
+{{- $image := printf "%s:%s" .repository .tag }}
 {{- if or .registry .imagePullSecret.enabled .global.image.registry }}
 {{- $image = printf "%s/%s" (.registry | default (ternary .imagePullSecret.registry .global.image.registry .imagePullSecret.enabled)) $image }}
 {{- end -}}
@@ -141,22 +121,15 @@ List of external secretNames
       {{- end }}
     {{- end }}
     {{- with .kms }}
-      {{- if .enabled }}
-        {{- with .key }}
-          {{- if .secretName }}
-            {{- $secrets = append $secrets (merge (dict "name" "kms-key") .) }}
-          {{- end }}
-        {{- end }}
-        {{- range $k, $v := .rotatedKeys }}
-          {{- if $v.secretName }}
-            {{- $secrets = append $secrets (merge (dict "name" (printf "kms-rotated-key-%d" $k)) $v) }}
-          {{- end }}
+      {{- with .key }}
+        {{- if .secretName }}
+          {{- $secrets = append $secrets (merge (dict "name" "kms-key") .) }}
         {{- end }}
       {{- end }}
-    {{- end }}
-    {{- with .dataSources.postgres.tls }}
-      {{- if and .enabled .secretName }}
-        {{- $secrets = append $secrets (merge (dict "name" "postgres-tls") .) }}
+      {{- range $k, $v := .rotatedKeys }}
+        {{- if $v.secretName }}
+          {{- $secrets = append $secrets (merge (dict "name" (printf "kms-rotated-key-%d" $k)) $v) }}
+        {{- end }}
       {{- end }}
     {{- end }}
     {{- with .dataSources.prometheus.tls }}
