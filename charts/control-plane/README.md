@@ -1,5 +1,8 @@
 # Synadia Control Plane Helm Chart
 
+Chart version 2.x deploys Synadia Control Plane v2.
+For Control Plane v1, use chart version 1.x.
+
 ## Accessing the Helm Chart
 
 ```bash
@@ -17,10 +20,13 @@ helm upgrade --install control-plane synadia/control-plane
 ### Useful Tools and References
 
 - [Chart Values file](https://github.com/synadia-io/helm-charts/blob/main/charts/control-plane/values.yaml) - lists all possible configuration options
-- Login Details - On first run, the `admin` user's credentials will be printed to the logs here:
-  ```bash
-  kubectl logs -c syn-cp deployment/control-plane
-  ```
+
+## Upgrading from Chart 1.x
+
+An in-place upgrade from chart 1.x to 2.x is not currently supported.
+Control Plane v2 stores its data in a different format, and the upgrade would delete the 1.x PVCs.
+The chart stops the upgrade when it finds a 1.x Deployment in the release.
+Keep existing releases on 1.x with `--version 1.x`.
 
 ## Common Configuration
 
@@ -32,6 +38,23 @@ By default, you must add an Image Pull Secret that allows you to pull the Contro
 imagePullSecret:
   username: my-user
   password: my-password
+```
+
+### Mode
+
+Control Plane runs in one of two modes:
+
+- `standalone` (default) - there is no login, and every user is an admin.
+  Do not expose a standalone Control Plane to untrusted networks.
+- `managed` - users must log in.
+  The first user to complete setup in the UI becomes the admin, so complete setup before you expose the UI.
+
+```yaml
+config:
+  mode: managed
+  merge:
+    license:
+      enabled: true
 ```
 
 ### Exposing Control Plane via Ingress
@@ -51,12 +74,40 @@ ingress:
   tlsSecretName: ingress-tls
 ```
 
+### KMS Key
+
+By default, Control Plane generates an encryption key and stores it on the data PVC.
+To use your own key, set a KMS Key URL. URLs for KMS integrations are documented on the [GoCloud Secrets](https://gocloud.dev/howto/secrets/) website.
+A `base64key://` URL holds 32 random bytes, encoded as URL-safe base64 with padding.
+The below script will generate one, which can be used as the KMS Key URL:
+
+```bash
+echo "base64key://$(openssl rand -base64 32 | tr '+/' '-_')"
+```
+
+Set the URL directly, or store it in a Secret:
+
+```bash
+kubectl create secret generic control-plane-kms --from-literal=key.enc="base64key://..."
+```
+
+```yaml
+config:
+  kms:
+    key:
+      secretName: control-plane-kms
+```
+
 ### Full Example
 
 **values.yaml**
 
 ```yaml
 config:
+  mode: managed
+  merge:
+    license:
+      enabled: true
   server:
     url: https://cp.nats.io
 
@@ -64,7 +115,7 @@ ingress:
   enabled: true
   className: nginx
   hosts:
-    - host: cp.nats.io
+    - cp.nats.io
   tlsSecretName: ingress-tls
 ```
 
@@ -87,47 +138,17 @@ helm upgrade \
   synadia/control-plane
 ```
 
-## Deployment Modes
+## Storage
 
-### Single Replica Deployment
+Control Plane runs as a 1-replica StatefulSet.
+It stores all of its state on one PVC, `data-<statefulset name>-0`, mounted at `/data`:
 
-By default, the Control Plane deployment is a 1-replica Deployment that will create 3 Persistent Volume Claims.
+- the generated encryption key, when `config.kms.key` is not set
+- the internal NATS JetStream data, which holds all Control Plane records
+- the internal Prometheus data, when `config.dataSources.prometheus` is not set
 
-1. 1GiB PVC mounted at `/data/encryption` - stores the auto-generated KMS key.
-   This PVC is not needed if `config.kms.key` is configured.
-2. 10GiB PVC mounted at `/data/postgres` - stores the internal PostgreSQL Database data.
-   This PVC is not needed if an external PostgreSQL Database at `config.dataSources.postgres` is configured.
-3. 10GiB PVC mounted at `/data/prometheus` - stores the internal Prometheus Server data.
-   This PVC is not needed if an external Prometheus Server at `config.dataSources.prometheus` is configured.
+The PVC size defaults to 20GiB and is set with `persistence.size`.
+Kubernetes does not allow changes to the volume claim template after install, so resize the PVC directly.
+`helm uninstall` does not delete the PVC.
 
-### HA Deployment
-
-Requirements for an HA Deployment:
-
-1. KMS Key URL. URLs for KMS integrations are documented on the [GoCloud Secrets](https://gocloud.dev/howto/secrets/) website.
-   This script will generate a random base64 key, which can be used as the KMS Key URL:
-   ```bash
-   echo "base64key://$(head -c 32 /dev/urandom | basenc --base64url)"
-   ```
-2. External PostgreSQL Database
-3. External Prometheus Server
-
-Example Configuration:
-
-```yaml
-config:
-  kms:
-    key:
-      url: your KMS Key URL
-  dataSources:
-    postgres:
-      dsn: your PostgreSQL DSN
-    prometheus:
-      url: your Prometheus URL
-
-deployment:
-  replicas: 2
-
-singleReplicaMode:
-  enabled: false
-```
+HA deployments are not supported yet.

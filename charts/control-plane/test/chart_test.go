@@ -17,32 +17,28 @@ import (
 )
 
 type Resources struct {
-	Conf                           Resource[map[string]any]
-	ConfigSecret                   Resource[corev1.Secret]
-	Deployment                     Resource[appsv1.Deployment]
-	ImagePullSecret                Resource[corev1.Secret]
-	Ingress                        Resource[networkingv1.Ingress]
-	Service                        Resource[corev1.Service]
-	ServiceAccount                 Resource[corev1.ServiceAccount]
-	SingleReplicaModeEncryptionPvc Resource[corev1.PersistentVolumeClaim]
-	SingleReplicaModePostgresPvc   Resource[corev1.PersistentVolumeClaim]
-	SingleReplicaModePrometheusPvc Resource[corev1.PersistentVolumeClaim]
-	ExtraConfigMap                 Resource[corev1.ConfigMap]
-	ExtraService                   Resource[corev1.Service]
+	Conf            Resource[map[string]any]
+	ConfigSecret    Resource[corev1.Secret]
+	StatefulSet     Resource[appsv1.StatefulSet]
+	HeadlessService Resource[corev1.Service]
+	ImagePullSecret Resource[corev1.Secret]
+	Ingress         Resource[networkingv1.Ingress]
+	Service         Resource[corev1.Service]
+	ServiceAccount  Resource[corev1.ServiceAccount]
+	ExtraConfigMap  Resource[corev1.ConfigMap]
+	ExtraService    Resource[corev1.Service]
 }
 
 func (r *Resources) Iter() []MutableResource {
 	return []MutableResource{
 		r.Conf.Mutable(),
 		r.ConfigSecret.Mutable(),
-		r.Deployment.Mutable(),
+		r.StatefulSet.Mutable(),
+		r.HeadlessService.Mutable(),
 		r.ImagePullSecret.Mutable(),
 		r.Ingress.Mutable(),
 		r.Service.Mutable(),
 		r.ServiceAccount.Mutable(),
-		r.SingleReplicaModeEncryptionPvc.Mutable(),
-		r.SingleReplicaModePostgresPvc.Mutable(),
-		r.SingleReplicaModePrometheusPvc.Mutable(),
 		r.ExtraConfigMap.Mutable(),
 		r.ExtraService.Mutable(),
 	}
@@ -80,13 +76,16 @@ type K8sMetadata struct {
 func GenerateResources(fullName string) *Resources {
 	return &Resources{
 		Conf: Resource[map[string]any]{
-			ID: "syn-cp.yaml",
+			ID: "syn-cp.json",
 		},
 		ConfigSecret: Resource[corev1.Secret]{
 			ID: "Secret/" + fullName + "-config",
 		},
-		Deployment: Resource[appsv1.Deployment]{
-			ID: "Deployment/" + fullName,
+		StatefulSet: Resource[appsv1.StatefulSet]{
+			ID: "StatefulSet/" + fullName,
+		},
+		HeadlessService: Resource[corev1.Service]{
+			ID: "Service/" + fullName + "-headless",
 		},
 		ImagePullSecret: Resource[corev1.Secret]{
 			ID: "Secret/" + fullName + "-regcred",
@@ -99,15 +98,6 @@ func GenerateResources(fullName string) *Resources {
 		},
 		ServiceAccount: Resource[corev1.ServiceAccount]{
 			ID: "ServiceAccount/" + fullName,
-		},
-		SingleReplicaModeEncryptionPvc: Resource[corev1.PersistentVolumeClaim]{
-			ID: "PersistentVolumeClaim/" + fullName + "-encryption",
-		},
-		SingleReplicaModePostgresPvc: Resource[corev1.PersistentVolumeClaim]{
-			ID: "PersistentVolumeClaim/" + fullName + "-postgres",
-		},
-		SingleReplicaModePrometheusPvc: Resource[corev1.PersistentVolumeClaim]{
-			ID: "PersistentVolumeClaim/" + fullName + "-prometheus",
 		},
 		ExtraConfigMap: Resource[corev1.ConfigMap]{
 			ID: "ConfigMap/" + fullName + "-extra",
@@ -177,7 +167,7 @@ func HelmRender(t *testing.T, test *Test) *Resources {
 	}
 
 	require.True(t, resources.ConfigSecret.HasValue)
-	confStr, ok := resources.ConfigSecret.Value.StringData["syn-cp.yaml"]
+	confStr, ok := resources.ConfigSecret.Value.StringData["syn-cp.json"]
 	require.True(t, ok)
 
 	err = yaml.Unmarshal([]byte(confStr), &resources.Conf.Value)
@@ -193,22 +183,22 @@ func RenderAndCheck(t *testing.T, test *Test, expected *Resources) {
 	a := assert.New(t)
 
 	if actual.ConfigSecret.Value.StringData != nil {
-		conf, ok := actual.ConfigSecret.Value.StringData["syn-cp.yaml"]
+		conf, ok := actual.ConfigSecret.Value.StringData["syn-cp.json"]
 		if ok {
 			if expected.ConfigSecret.Value.StringData == nil {
 				expected.ConfigSecret.Value.StringData = map[string]string{}
 			}
-			expected.ConfigSecret.Value.StringData["syn-cp.yaml"] = conf
+			expected.ConfigSecret.Value.StringData["syn-cp.json"] = conf
 		}
 	}
 
-	if actual.Deployment.Value.Spec.Template.Annotations != nil {
-		configMapHash, ok := actual.Deployment.Value.Spec.Template.Annotations["checksum/config"]
+	if actual.StatefulSet.Value.Spec.Template.Annotations != nil {
+		configMapHash, ok := actual.StatefulSet.Value.Spec.Template.Annotations["checksum/config"]
 		if ok {
-			if expected.Deployment.Value.Spec.Template.Annotations == nil {
-				expected.Deployment.Value.Spec.Template.Annotations = map[string]string{}
+			if expected.StatefulSet.Value.Spec.Template.Annotations == nil {
+				expected.StatefulSet.Value.Spec.Template.Annotations = map[string]string{}
 			}
-			expected.Deployment.Value.Spec.Template.Annotations["checksum/config"] = configMapHash
+			expected.StatefulSet.Value.Spec.Template.Annotations["checksum/config"] = configMapHash
 		}
 	}
 

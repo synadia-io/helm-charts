@@ -40,15 +40,15 @@ func (d *DynamicDefaultsGetter) Get(t *testing.T) DynamicDefaults {
 	test := DefaultTest()
 	r := HelmRender(t, test)
 
-	require.True(t, r.Deployment.HasValue)
+	require.True(t, r.StatefulSet.HasValue)
 
 	var ok bool
-	d.dd.VersionLabel, ok = r.Deployment.Value.Labels["app.kubernetes.io/version"]
+	d.dd.VersionLabel, ok = r.StatefulSet.Value.Labels["app.kubernetes.io/version"]
 	require.True(t, ok)
-	d.dd.HelmChartLabel, ok = r.Deployment.Value.Labels["helm.sh/chart"]
+	d.dd.HelmChartLabel, ok = r.StatefulSet.Value.Labels["helm.sh/chart"]
 	require.True(t, ok)
 
-	containers := r.Deployment.Value.Spec.Template.Spec.Containers
+	containers := r.StatefulSet.Value.Spec.Template.Spec.Containers
 	require.Len(t, containers, 1)
 	d.dd.ControlPlaneImage = containers[0].Image
 
@@ -81,8 +81,7 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 		}
 	}
 
-	resource1Gi, _ := resource.ParseQuantity("1Gi")
-	resource10Gi, _ := resource.ParseQuantity("10Gi")
+	resource20Gi, _ := resource.ParseQuantity("20Gi")
 	replicas1 := int32(1)
 	falseBool := false
 	prefixPath := networkingv1.PathTypePrefix
@@ -95,6 +94,7 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 			HasValue: true,
 			Value: map[string]any{
 				"data_dir": "/data",
+				"mode":     "standalone",
 				"server": map[string]any{
 					"http_addr": ":8080",
 				},
@@ -115,26 +115,25 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 				},
 			},
 		},
-		Deployment: Resource[appsv1.Deployment]{
-			ID:       dr.Deployment.ID,
+		StatefulSet: Resource[appsv1.StatefulSet]{
+			ID:       dr.StatefulSet.ID,
 			HasValue: true,
-			Value: appsv1.Deployment{
+			Value: appsv1.StatefulSet{
 				TypeMeta: v1.TypeMeta{
-					Kind:       "Deployment",
+					Kind:       "StatefulSet",
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: v1.ObjectMeta{
 					Name:   fullName,
 					Labels: cpLabels(),
 				},
-				Spec: appsv1.DeploymentSpec{
+				Spec: appsv1.StatefulSetSpec{
 					Replicas: &replicas1,
 					Selector: &v1.LabelSelector{
 						MatchLabels: cpSelectorLabels(),
 					},
-					Strategy: appsv1.DeploymentStrategy{
-						Type: appsv1.RecreateDeploymentStrategyType,
-					},
+					ServiceName:         fullName + "-headless",
+					PodManagementPolicy: appsv1.ParallelPodManagement,
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: v1.ObjectMeta{
 							Labels: cpLabels(),
@@ -146,9 +145,8 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 									Name:  "syn-cp",
 									Args: []string{
 										"server",
-										"start",
 										"-c",
-										"/etc/syn-cp/syn-cp.yaml",
+										"/etc/syn-cp/syn-cp.json",
 									},
 									Ports: []corev1.ContainerPort{
 										{
@@ -157,9 +155,18 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 										},
 									},
 									StartupProbe: &corev1.Probe{
-										InitialDelaySeconds: 5,
-										PeriodSeconds:       3,
-										FailureThreshold:    20,
+										PeriodSeconds:    5,
+										FailureThreshold: 60,
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/healthz",
+												Port: intstr.FromString("http"),
+											},
+										},
+									},
+									ReadinessProbe: &corev1.Probe{
+										PeriodSeconds:    10,
+										FailureThreshold: 3,
 										ProbeHandler: corev1.ProbeHandler{
 											HTTPGet: &corev1.HTTPGetAction{
 												Path: "/healthz",
@@ -186,18 +193,6 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 											MountPath: "/data",
 											Name:      "data",
 										},
-										{
-											MountPath: "/data/encryption",
-											Name:      "encryption",
-										},
-										{
-											MountPath: "/data/postgres",
-											Name:      "postgres",
-										},
-										{
-											MountPath: "/data/prometheus",
-											Name:      "prometheus",
-										},
 									},
 								},
 							},
@@ -220,39 +215,46 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 										},
 									},
 								},
-								{
-									Name: "data",
-									VolumeSource: corev1.VolumeSource{
-										EmptyDir: &corev1.EmptyDirVolumeSource{},
-									},
+							},
+						},
+					},
+					VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: v1.ObjectMeta{
+								Name:   "data",
+								Labels: cpSelectorLabels(),
+							},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								AccessModes: []corev1.PersistentVolumeAccessMode{
+									"ReadWriteOnce",
 								},
-								{
-									Name: "encryption",
-									VolumeSource: corev1.VolumeSource{
-										PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-											ClaimName: "control-plane-encryption",
-										},
-									},
-								},
-								{
-									Name: "postgres",
-									VolumeSource: corev1.VolumeSource{
-										PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-											ClaimName: "control-plane-postgres",
-										},
-									},
-								},
-								{
-									Name: "prometheus",
-									VolumeSource: corev1.VolumeSource{
-										PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-											ClaimName: "control-plane-prometheus",
-										},
+								Resources: corev1.VolumeResourceRequirements{
+									Requests: corev1.ResourceList{
+										"storage": resource20Gi,
 									},
 								},
 							},
 						},
 					},
+				},
+			},
+		},
+		HeadlessService: Resource[corev1.Service]{
+			ID:       dr.HeadlessService.ID,
+			HasValue: true,
+			Value: corev1.Service{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "v1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name:   fullName + "-headless",
+					Labels: cpLabels(),
+				},
+				Spec: corev1.ServiceSpec{
+					ClusterIP:                "None",
+					PublishNotReadyAddresses: true,
+					Selector:                 cpSelectorLabels(),
 				},
 			},
 		},
@@ -349,78 +351,6 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 				ObjectMeta: v1.ObjectMeta{
 					Name:   fullName,
 					Labels: cpLabels(),
-				},
-			},
-		},
-		SingleReplicaModeEncryptionPvc: Resource[corev1.PersistentVolumeClaim]{
-			ID:       dr.ServiceAccount.ID,
-			HasValue: true,
-			Value: corev1.PersistentVolumeClaim{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "PersistentVolumeClaim",
-					APIVersion: "v1",
-				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:   fullName + "-encryption",
-					Labels: cpLabels(),
-				},
-				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes: []corev1.PersistentVolumeAccessMode{
-						"ReadWriteOnce",
-					},
-					Resources: corev1.VolumeResourceRequirements{
-						Requests: corev1.ResourceList{
-							"storage": resource1Gi,
-						},
-					},
-				},
-			},
-		},
-		SingleReplicaModePostgresPvc: Resource[corev1.PersistentVolumeClaim]{
-			ID:       dr.ServiceAccount.ID,
-			HasValue: true,
-			Value: corev1.PersistentVolumeClaim{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "PersistentVolumeClaim",
-					APIVersion: "v1",
-				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:   fullName + "-postgres",
-					Labels: cpLabels(),
-				},
-				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes: []corev1.PersistentVolumeAccessMode{
-						"ReadWriteOnce",
-					},
-					Resources: corev1.VolumeResourceRequirements{
-						Requests: corev1.ResourceList{
-							"storage": resource10Gi,
-						},
-					},
-				},
-			},
-		},
-		SingleReplicaModePrometheusPvc: Resource[corev1.PersistentVolumeClaim]{
-			ID:       dr.ServiceAccount.ID,
-			HasValue: true,
-			Value: corev1.PersistentVolumeClaim{
-				TypeMeta: v1.TypeMeta{
-					Kind:       "PersistentVolumeClaim",
-					APIVersion: "v1",
-				},
-				ObjectMeta: v1.ObjectMeta{
-					Name:   fullName + "-prometheus",
-					Labels: cpLabels(),
-				},
-				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes: []corev1.PersistentVolumeAccessMode{
-						"ReadWriteOnce",
-					},
-					Resources: corev1.VolumeResourceRequirements{
-						Requests: corev1.ResourceList{
-							"storage": resource10Gi,
-						},
-					},
 				},
 			},
 		},

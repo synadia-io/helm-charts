@@ -27,18 +27,16 @@ imagePullSecret:
 	expected := DefaultResources(t, test)
 	meta := []*v1.ObjectMeta{
 		&expected.ConfigSecret.Value.ObjectMeta,
-		&expected.Deployment.Value.ObjectMeta,
-		&expected.Deployment.Value.Spec.Template.ObjectMeta,
+		&expected.StatefulSet.Value.ObjectMeta,
+		&expected.StatefulSet.Value.Spec.Template.ObjectMeta,
+		&expected.HeadlessService.Value.ObjectMeta,
 		&expected.Service.Value.ObjectMeta,
-		&expected.SingleReplicaModeEncryptionPvc.Value.ObjectMeta,
-		&expected.SingleReplicaModePostgresPvc.Value.ObjectMeta,
-		&expected.SingleReplicaModePrometheusPvc.Value.ObjectMeta,
 	}
 	for _, m := range meta {
 		m.Labels["global"] = "global"
 	}
 
-	pts := &expected.Deployment.Value.Spec.Template.Spec
+	pts := &expected.StatefulSet.Value.Spec.Template.Spec
 	pts.ImagePullSecrets = nil
 
 	ctr := &pts.Containers[0]
@@ -83,13 +81,12 @@ podTemplate:
 
 	expected := DefaultResources(t, test)
 
-	pts := &expected.Deployment.Value.Spec.Template.Spec
+	pts := &expected.StatefulSet.Value.Spec.Template.Spec
 	pts.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{
 		{
-			MaxSkew:        1,
-			TopologyKey:    "kubernetes.io/hostname",
-			LabelSelector:  expected.Deployment.Value.Spec.Selector,
-			MatchLabelKeys: []string{"pod-template-hash"},
+			MaxSkew:       1,
+			TopologyKey:   "kubernetes.io/hostname",
+			LabelSelector: expected.StatefulSet.Value.Spec.Selector,
 		},
 	}
 
@@ -143,7 +140,17 @@ imagePullSecret:
     metadata:
       labels:
         test: test
-deployment:
+statefulSet:
+  merge:
+    metadata:
+      labels:
+        test: test
+persistence:
+  merge:
+    metadata:
+      labels:
+        test: test
+headlessService:
   merge:
     metadata:
       labels:
@@ -167,29 +174,17 @@ serviceAccount:
     metadata:
       labels:
         test: test
-singleReplicaMode:
-  encryptionPvc:
-    merge:
-      metadata:
-        labels:
-          test: test
-  postgresPvc:
-    merge:
-      metadata:
-        labels:
-          test: test
-  prometheusPvc:
-    merge:
-      metadata:
-        labels:
-          test: test
 `,
 		"patch": `
 configSecret:
   patch: [{op: add, path: /metadata/labels/test, value: test}]
 imagePullSecret:
   patch: [{op: add, path: /metadata/labels/test, value: test}]
-deployment:
+statefulSet:
+  patch: [{op: add, path: /metadata/labels/test, value: test}]
+persistence:
+  patch: [{op: add, path: /metadata/labels/test, value: test}]
+headlessService:
   patch: [{op: add, path: /metadata/labels/test, value: test}]
 podTemplate:
   patch: [{op: add, path: /metadata/labels/test, value: test}]
@@ -200,13 +195,6 @@ service:
 serviceAccount:
   enabled: true
   patch: [{op: add, path: /metadata/labels/test, value: test}]
-singleReplicaMode:
-  encryptionPvc:
-    patch: [{op: add, path: /metadata/labels/test, value: test}]
-  postgresPvc:
-    patch: [{op: add, path: /metadata/labels/test, value: test}]
-  prometheusPvc:
-    patch: [{op: add, path: /metadata/labels/test, value: test}]
 `,
 	}
 
@@ -218,20 +206,19 @@ singleReplicaMode:
 			expected := DefaultResources(t, test)
 			meta := []*v1.ObjectMeta{
 				&expected.ConfigSecret.Value.ObjectMeta,
-				&expected.Deployment.Value.ObjectMeta,
-				&expected.Deployment.Value.Spec.Template.ObjectMeta,
+				&expected.StatefulSet.Value.ObjectMeta,
+				&expected.StatefulSet.Value.Spec.Template.ObjectMeta,
+				&expected.StatefulSet.Value.Spec.VolumeClaimTemplates[0].ObjectMeta,
+				&expected.HeadlessService.Value.ObjectMeta,
 				&expected.ImagePullSecret.Value.ObjectMeta,
 				&expected.Service.Value.ObjectMeta,
 				&expected.ServiceAccount.Value.ObjectMeta,
-				&expected.SingleReplicaModeEncryptionPvc.Value.ObjectMeta,
-				&expected.SingleReplicaModePostgresPvc.Value.ObjectMeta,
-				&expected.SingleReplicaModePrometheusPvc.Value.ObjectMeta,
 			}
 			for _, m := range meta {
 				m.Labels["test"] = "test"
 			}
 
-			pts := &expected.Deployment.Value.Spec.Template.Spec
+			pts := &expected.StatefulSet.Value.Spec.Template.Spec
 			pts.ServiceAccountName = "control-plane"
 
 			ctr := &pts.Containers[0]

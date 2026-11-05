@@ -3,70 +3,16 @@ package test
 import (
 	"testing"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
-
-func TestDisableSingleReplicaMode(t *testing.T) {
-	t.Parallel()
-	test := DefaultTest()
-	test.Values = `
-config:
-  kms:
-    enabled: true
-    key:
-      url: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
-  dataSources:
-    postgres:
-      dsn: postgres://localhost:5432/localdb
-    prometheus:
-      url: https://localhost:9090
-container:
-  image:
-    slim: true
-deployment:
-  replicas:
-    2
-singleReplicaMode:
-  enabled: false
-`
-	expected := DefaultResources(t, test)
-	expected.Conf.Value["kms"] = map[string]any{
-		"key_url": "base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=",
-	}
-	expected.Conf.Value["data_sources"] = map[string]any{
-		"postgres": map[string]any{
-			"dsn": "postgres://localhost:5432/localdb",
-		},
-		"prometheus": map[string]any{
-			"url": "https://localhost:9090",
-		},
-	}
-
-	two := int32(2)
-	expected.Deployment.Value.Spec.Strategy = appsv1.DeploymentStrategy{}
-	expected.Deployment.Value.Spec.Replicas = &two
-
-	pts := &expected.Deployment.Value.Spec.Template.Spec
-	pts.Volumes = append(pts.Volumes[:2], pts.Volumes[5:]...)
-
-	ctr := &pts.Containers[0]
-	ctr.Image = ctr.Image + "-slim"
-	ctr.VolumeMounts = append(ctr.VolumeMounts[:2], ctr.VolumeMounts[5:]...)
-
-	expected.SingleReplicaModeEncryptionPvc.HasValue = false
-	expected.SingleReplicaModePostgresPvc.HasValue = false
-	expected.SingleReplicaModePrometheusPvc.HasValue = false
-
-	RenderAndCheck(t, test, expected)
-}
 
 func TestConfigOptions(t *testing.T) {
 	t.Parallel()
 	test := DefaultTest()
 	test.Values = `
 config:
+  mode: managed
   server:
     url: https://cp.nats.io
     httpPort: 8081
@@ -78,6 +24,7 @@ config:
     - secretName: rotated-key
 `
 	expected := DefaultResources(t, test)
+	expected.Conf.Value["mode"] = "managed"
 	expected.Conf.Value["server"] = map[string]any{
 		"url":       "https://cp.nats.io",
 		"http_addr": ":8081",
@@ -90,9 +37,38 @@ config:
 		},
 	}
 
-	pts := &expected.Deployment.Value.Spec.Template.Spec
+	pts := &expected.StatefulSet.Value.Spec.Template.Spec
+	pts.Volumes = append(pts.Volumes,
+		corev1.Volume{
+			Name: "kms-key",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "key",
+				},
+			},
+		},
+		corev1.Volume{
+			Name: "kms-rotated-key-1",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "rotated-key",
+				},
+			},
+		},
+	)
+
 	ctr := &pts.Containers[0]
 	ctr.Ports[0].ContainerPort = 8081
+	ctr.VolumeMounts = append(ctr.VolumeMounts,
+		corev1.VolumeMount{
+			Name:      "kms-key",
+			MountPath: "/etc/syn-cp/kms",
+		},
+		corev1.VolumeMount{
+			Name:      "kms-rotated-key-1",
+			MountPath: "/etc/syn-cp/kms/rotated-key-1",
+		},
+	)
 
 	RenderAndCheck(t, test, expected)
 }
@@ -112,14 +88,9 @@ config:
     merge:
       key_url: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
   dataSources:
-    postgres:
-      merge:
-        dsn: postgres://localhost:5432/localdb
     prometheus:
       merge:
         url: https://localhost:9090
-singleReplicaMode:
-  enabled: false
 `,
 		"patch": `
 config:
@@ -129,12 +100,8 @@ config:
   kms:
      patch: [{op: add, path: /key_url, value: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=}]
   dataSources:
-    postgres:
-      patch: [{op: add, path: /dsn, value: postgres://localhost:5432/localdb}]
     prometheus:
       patch: [{op: add, path: /url, value: https://localhost:9090}]
-singleReplicaMode:
-  enabled: false
 `,
 	}
 
@@ -153,26 +120,13 @@ singleReplicaMode:
 				"key_url": "base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=",
 			}
 			expected.Conf.Value["data_sources"] = map[string]any{
-				"postgres": map[string]any{
-					"dsn": "postgres://localhost:5432/localdb",
-				},
 				"prometheus": map[string]any{
 					"url": "https://localhost:9090",
 				},
 			}
 
-			expected.Deployment.Value.Spec.Strategy = appsv1.DeploymentStrategy{}
-
-			pts := &expected.Deployment.Value.Spec.Template.Spec
-			pts.Volumes = append(pts.Volumes[:2], pts.Volumes[5:]...)
-
-			ctr := &pts.Containers[0]
-			ctr.VolumeMounts = append(ctr.VolumeMounts[:2], ctr.VolumeMounts[5:]...)
+			ctr := &expected.StatefulSet.Value.Spec.Template.Spec.Containers[0]
 			ctr.VolumeMounts[1].MountPath = "/mnt/data"
-
-			expected.SingleReplicaModeEncryptionPvc.HasValue = false
-			expected.SingleReplicaModePostgresPvc.HasValue = false
-			expected.SingleReplicaModePrometheusPvc.HasValue = false
 
 			RenderAndCheck(t, test, expected)
 		})
@@ -189,11 +143,6 @@ config:
       enabled: true
       secretName: server-tls
   dataSources:
-    postgres:
-      dsn: postgres://localhost:5432/localdb
-      tls:
-        enabled: true
-        secretName: postgres-tls
     prometheus:
       url: https://localhost:9090
       tls:
@@ -211,9 +160,6 @@ config:
 		},
 	}
 	expected.Conf.Value["data_sources"] = map[string]any{
-		"postgres": map[string]any{
-			"dsn": "postgres://localhost:5432/localdb?sslmode=verify-full&sslrootcert=/etc/syn-cp/certs/postgres/tls.ca",
-		},
 		"prometheus": map[string]any{
 			"url": "https://localhost:9090",
 			"tls": map[string]any{
@@ -222,21 +168,13 @@ config:
 		},
 	}
 
-	pts := &expected.Deployment.Value.Spec.Template.Spec
+	pts := &expected.StatefulSet.Value.Spec.Template.Spec
 	pts.Volumes = append(pts.Volumes,
 		corev1.Volume{
 			Name: "server-tls",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: "server-tls",
-				},
-			},
-		},
-		corev1.Volume{
-			Name: "postgres-tls",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: "postgres-tls",
 				},
 			},
 		},
@@ -255,10 +193,6 @@ config:
 		corev1.VolumeMount{
 			Name:      "server-tls",
 			MountPath: "/etc/syn-cp/certs/server",
-		},
-		corev1.VolumeMount{
-			Name:      "postgres-tls",
-			MountPath: "/etc/syn-cp/certs/postgres",
 		},
 		corev1.VolumeMount{
 			Name:      "prometheus-tls",
