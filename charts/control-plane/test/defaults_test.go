@@ -134,6 +134,10 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 					},
 					ServiceName:         fullName + "-headless",
 					PodManagementPolicy: appsv1.ParallelPodManagement,
+					PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+						WhenDeleted: appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+						WhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: v1.ObjectMeta{
 							Labels: cpLabels(),
@@ -223,6 +227,9 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 							ObjectMeta: v1.ObjectMeta{
 								Name:   "data",
 								Labels: cpSelectorLabels(),
+								Annotations: map[string]string{
+									"helm.sh/resource-policy": "keep",
+								},
 							},
 							Spec: corev1.PersistentVolumeClaimSpec{
 								AccessModes: []corev1.PersistentVolumeAccessMode{

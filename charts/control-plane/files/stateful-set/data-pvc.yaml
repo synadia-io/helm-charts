@@ -1,6 +1,8 @@
 {{- with .Values.persistence }}
 metadata:
   name: data
+  annotations:
+    helm.sh/resource-policy: keep
   # volume claim templates are immutable, so use labels that do not change between chart versions
   labels:
     {{- include "scp.selectorLabels" $ | nindent 4 }}

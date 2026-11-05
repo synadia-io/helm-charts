@@ -16,6 +16,11 @@ spec:
   serviceName: {{ .Values.headlessService.name }}
   podManagementPolicy: Parallel
 
+  # keep the data PVCs when the StatefulSet is deleted or scaled down
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+
   template:
     {{- with .Values.podTemplate }}
     {{- include "scp.loadMergePatch" (merge (dict "file" "stateful-set/pod-template.yaml" "ctx" $) .) | nindent 4 }}
