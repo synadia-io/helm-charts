@@ -201,7 +201,7 @@ extraVolumeMounts: []
 # example:
 #
 #   extraEnv:
-#     MQGW_LOG_LEVEL: debug
+#     MQG_LOG_LEVEL: debug
 #     NATS_PASSWORD:
 #       valueFrom:
 #         secretKeyRef:

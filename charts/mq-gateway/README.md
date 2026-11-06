@@ -102,7 +102,7 @@ fills in only what it manages, and refuses a value set both ways:
 | `tls.existingSecret` | `tls`, the listeners' certificate, key and optional client CA, under `/etc/mq-gateway/tls` |
 | `license.existingSecret` | `license.file`, the Secret's key mounted at `/etc/mq-gateway/license/license.jwt` |
 
-Each pod's gateway id is its pod name, set as `MQGW_ID`, since gateways
+Each pod's gateway id is its pod name, set as `MQG_ID`, since gateways
 sharing a sessions bucket need distinct ids; `config.id` is refused. A
 config must serve MQTT or AMQP (an `mqtt` or `amqp` block, even `{}`) and
 keep `monitor.addr`, whose `/readyz` and `/livez` are the probes.
@@ -121,7 +121,7 @@ config:
       - { name: mqtt-ws, addr: ":8080", ws-path: /mqtt }
 ```
 
-Every serving setting with a flag also has an `MQGW_` variable, which
+Every serving setting with a flag also has an `MQG_` variable, which
 outranks the file. `extraEnv` sets them, and the variables an `env://`
 location in the config reads, as a literal or a whole `valueFrom` body:
 
@@ -131,7 +131,7 @@ config:
     user: gateway
     password: env://NATS_PASSWORD
 extraEnv:
-  MQGW_LOG_FORMAT: json
+  MQG_LOG_FORMAT: json
   NATS_PASSWORD:
     valueFrom:
       secretKeyRef:

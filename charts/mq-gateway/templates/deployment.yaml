@@ -74,7 +74,7 @@ spec:
             - /etc/mq-gateway/config/config.yaml
           env:
             # Replicas sharing a sessions bucket need distinct ids.
-            - name: MQGW_ID
+            - name: MQG_ID
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name

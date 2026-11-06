@@ -54,7 +54,7 @@ jobs:
 
         # A license from a Secret or in the config selects the licensed image.
         helm template licensed charts/mq-gateway "${base[@]}" \
-          --set license.existingSecret=mqgw-license > /tmp/licensed.yaml
+          --set license.existingSecret=mqg-license > /tmp/licensed.yaml
         grep -q 'image: "registry.synadia.io/mq-gateway-licensed:' /tmp/licensed.yaml
         grep -q 'file: /etc/mq-gateway/license/license.jwt' /tmp/licensed.yaml
         helm template token charts/mq-gateway "${base[@]}" \
