@@ -96,10 +96,10 @@ image:
   tag: 0.1.10
 ```
 
-`registry.synadia.io` requires authentication, so unless you point `image.registry`
-at an open mirror you must supply a pull secret; without one the pod fails to
-start with `ImagePullBackOff`. Create the Secret outside the chart, using the
-credentials issued with your trial or license:
+The licensed image pulls from `registry.synadia.io` without credentials. The
+unlicensed image needs them: without a pull secret its pod fails to start with
+`ImagePullBackOff`. Create the Secret outside the chart, using the credentials
+issued to you:
 
 ```sh
 kubectl create secret docker-registry synadia-registry \
@@ -116,10 +116,6 @@ image:
   pullSecrets:
     - name: synadia-registry
 ```
-
-Registry credentials and an Insights license are separate concerns. Adding
-`config.license.token` or `config.license.file` selects the licensed image but
-does not authenticate the pull.
 
 When `configSecret.existingSecret` is used, Helm cannot inspect that Secret to
 detect a license or its web settings. Select the licensed image explicitly and,
