@@ -769,6 +769,23 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/insights-0.1.0/insights-0.1.0.tgz
     version: 0.1.0
+  mq-gateway:
+  - apiVersion: v2
+    appVersion: 0.3.0
+    created: "2026-11-06T11:11:52.834672945Z"
+    description: MQTT and AMQP 1.0 clients on NATS
+    digest: ef110842fd7dd307c9934b98bc8e57944dfe56b09b43d0cfbaea70d36df9f2a3
+    home: https://docs.synadia.com/mq-gateway
+    maintainers:
+    - name: Synadia
+      url: https://github.com/synadia-io
+    name: mq-gateway
+    sources:
+    - https://github.com/synadia-io/helm-charts
+    type: application
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/mq-gateway-0.1.0/mq-gateway-0.1.0.tgz
+    version: 0.1.0
   nex-ce:
   - apiVersion: v2
     appVersion: 0.1.8
@@ -1411,4 +1428,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2026-09-23T22:22:41.536754297Z"
+generated: "2026-11-06T11:11:52.834854225Z"
