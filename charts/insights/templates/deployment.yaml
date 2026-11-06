@@ -1,0 +1,20 @@
+{{- if ne .Values.subcommand "serve" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "insights.fullname" . }}
+  labels:
+    {{- include "insights.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  {{- if eq .Values.subcommand "mcp" }}
+  # A rolling update would route a session to a pod that never opened it.
+  strategy:
+    type: Recreate
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "insights.selectorLabels" . | nindent 6 }}
+  template:
+    {{- include "insights.podTemplate" . | nindent 4 }}
+{{- end }}

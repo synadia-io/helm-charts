@@ -1,12 +1,39 @@
+# Insights subcommand the container runs:
+#
+#   serve       A full instance that scrapes, indexes and serves the UI. Runs as
+#               a one-replica StatefulSet with the data volume.
+#   web         The web UI alone, reaching an instance over NATS.
+#   http        HTTP gateway over the read-only query API.
+#   mcp         MCP server over the read-only query API, on its http transport.
+#   prometheus  One /metrics endpoint for every node in the deployment.
+#
+# Everything but serve is a stateless NATS client: it runs as a Deployment of
+# replicaCount pods with no data volume, and needs a NATS connection
+# (config.nats.server, INSIGHTS_NATS_SERVER, or --server).
+subcommand: serve
+
+# Arguments appended after the subcommand and --config. A flag outranks the
+# same setting in extraEnv and in config.
+extraArgs: []
+
+# Replicas of a stateless subcommand. serve runs one, and so does mcp, which
+# keeps client sessions in process memory.
+replicaCount: 1
+
 # Application configuration. This map is written directly to config.yaml, so
 # keys below `config` match the Insights config file one-for-one.
 #
 # See https://docs.synadia.com/insights/reference/configuration for the
 # complete configuration reference.
 #
-# Insights needs a system to observe, so a deployable config also sets one of
+# serve needs a system to observe, so its config also sets one of
 # `simulator.enabled`, `sys`, or `systems`. The chart refuses to render
 # without one.
+#
+# http, mcp, and prometheus bind loopback by default, so the chart listens on
+# the pod network for them where config leaves the address unset:
+# `http.listen` 0.0.0.0:8080, `mcp.http` 0.0.0.0:8090 (with `mcp.transport`
+# http), and `prometheus.hostname` 0.0.0.0.
 config:
   # Persist DuckDB and embedded JetStream data on the chart's data volume.
   data-dir: /var/lib/insights
@@ -68,6 +95,7 @@ service:
   targetPort: ""
   annotations: {}
 
+# The data volume of serve. The stateless subcommands mount none.
 persistence:
   enabled: true
   # Use an existing PVC instead of a StatefulSet volume claim template.
@@ -107,6 +135,9 @@ securityContext:
 # Requires Insights 0.1.10 or newer, which is where /healthz was added. If you
 # pin image.tag to an older release, override these back to `tcpSocket: {port:
 # http}` or the pod will never become ready.
+#
+# mcp and prometheus serve no /healthz, so for them the chart turns a /healthz
+# check into a TCP check on the same port.
 startupProbe:
   httpGet:
     path: /healthz

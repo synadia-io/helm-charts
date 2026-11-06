@@ -27,6 +27,15 @@ jobs:
       run: |
         set -euo pipefail
 
+        # set -e ignores a failing `!` command, so a negated assertion has to
+        # exit on its own.
+        fails() {
+          if "$@" > /dev/null 2>&1; then
+            echo "expected to fail: $*" >&2
+            exit 1
+          fi
+        }
+
         helm template default charts/insights \
           --set config.simulator.enabled=true > /tmp/insights-default.yaml
         grep -q 'image: "registry.synadia.io/insights:' /tmp/insights-default.yaml
@@ -39,9 +48,9 @@ jobs:
         helm template disabled charts/insights \
           --set config.simulator.enabled=true \
           --set config.web.enabled=false > /tmp/insights-disabled.yaml
-        ! grep -q 'startupProbe:' /tmp/insights-disabled.yaml
-        ! grep -q 'livenessProbe:' /tmp/insights-disabled.yaml
-        ! grep -q 'readinessProbe:' /tmp/insights-disabled.yaml
+        fails grep -q 'startupProbe:' /tmp/insights-disabled.yaml
+        fails grep -q 'livenessProbe:' /tmp/insights-disabled.yaml
+        fails grep -q 'readinessProbe:' /tmp/insights-disabled.yaml
 
         helm template external charts/insights \
           --set configSecret.existingSecret=my-config \
@@ -50,7 +59,7 @@ jobs:
 
         # The seed reaches the container only when an operator supplies a
         # Secret to take it from; otherwise the application default stands.
-        ! grep -q 'INSIGHTS_WEB_SESSION_SEED' /tmp/insights-default.yaml
+        fails grep -q 'INSIGHTS_WEB_SESSION_SEED' /tmp/insights-default.yaml
 
         helm template seeded charts/insights \
           --set config.simulator.enabled=true \
@@ -67,11 +76,93 @@ jobs:
           --set extraEnv.FROM_SECRET.valueFrom.secretKeyRef.key=k > /tmp/insights-env.yaml
         grep -q 'value: "hello"' /tmp/insights-env.yaml
         grep -q 'name: FROM_SECRET' /tmp/insights-env.yaml
-        ! helm template bad-env charts/insights \
+        fails helm template bad-env charts/insights \
           --set config.simulator.enabled=true \
-          --set 'extraEnv.BAD={a,b}' > /dev/null 2>&1
+          --set 'extraEnv.BAD={a,b}'
 
         # A config that observes no system must fail to render.
-        ! helm template invalid charts/insights > /dev/null 2>&1
+        fails helm template invalid charts/insights
+
+        # serve owns a ReadWriteOnce database, so it stays a single-replica
+        # StatefulSet with its volume and refuses to scale.
+        grep -q 'kind: StatefulSet' /tmp/insights-default.yaml
+        grep -q 'volumeClaimTemplates:' /tmp/insights-default.yaml
+        fails grep -q 'kind: Deployment' /tmp/insights-default.yaml
+        fails helm template scaled charts/insights \
+          --set config.simulator.enabled=true \
+          --set replicaCount=2
+
+        # The client subcommands are stateless: a scalable Deployment with no
+        # data volume. web forces its UI on, so it is probed even when the
+        # shared config disables it for serve.
+        nats=(--set config.nats.server=nats://nats:4222)
+        helm template web charts/insights "${nats[@]}" \
+          --set subcommand=web \
+          --set replicaCount=3 \
+          --set config.web.enabled=false \
+          --set 'extraArgs[0]=--log-level=debug' > /tmp/insights-web.yaml
+        grep -q 'kind: Deployment' /tmp/insights-web.yaml
+        grep -q 'replicas: 3' /tmp/insights-web.yaml
+        fails grep -q 'kind: StatefulSet' /tmp/insights-web.yaml
+        fails grep -q 'name: data' /tmp/insights-web.yaml
+        grep -A1 'args:' /tmp/insights-web.yaml | grep -q -- '- web'
+        grep -q -- '- "--log-level=debug"' /tmp/insights-web.yaml
+        grep -q 'path: /healthz' /tmp/insights-web.yaml
+
+        # A client with no NATS connection cannot reach Insights. The
+        # connection may come from config, extraEnv, or extraArgs.
+        fails helm template no-nats charts/insights --set subcommand=web
+        helm template env-nats charts/insights --set subcommand=web \
+          --set extraEnv.INSIGHTS_NATS_SERVER=nats://nats:4222 > /dev/null
+        helm template arg-nats charts/insights --set subcommand=web \
+          --set 'extraArgs[0]=--server=nats://nats:4222' > /dev/null
+
+        # The gateway refuses to start without a bearer token or an explicit
+        # opt-out, and binds the pod network rather than loopback.
+        fails helm template no-token charts/insights "${nats[@]}" \
+          --set subcommand=http
+        helm template http charts/insights "${nats[@]}" \
+          --set subcommand=http \
+          --set extraEnv.INSIGHTS_HTTP_AUTH_TOKEN.valueFrom.secretKeyRef.name=gw \
+          --set extraEnv.INSIGHTS_HTTP_AUTH_TOKEN.valueFrom.secretKeyRef.key=token > /tmp/insights-http.yaml
+        grep -q 'listen: 0.0.0.0:8080' /tmp/insights-http.yaml
+        grep -q 'containerPort: 8080' /tmp/insights-http.yaml
+        grep -q 'path: /healthz' /tmp/insights-http.yaml
+
+        # mcp serves a remote client only over http, and it and prometheus have
+        # no /healthz, so they are probed over TCP on the port they bind.
+        fails helm template stdio charts/insights "${nats[@]}" \
+          --set subcommand=mcp \
+          --set config.mcp.transport=stdio
+        # The transport is resolved as Insights resolves it: a flag outranks
+        # env, which outranks config.
+        fails helm template env-stdio charts/insights "${nats[@]}" \
+          --set subcommand=mcp \
+          --set extraEnv.INSIGHTS_MCP_TRANSPORT=stdio
+        helm template arg-http charts/insights "${nats[@]}" \
+          --set subcommand=mcp \
+          --set config.mcp.transport=stdio \
+          --set 'extraArgs[0]=--transport=http' > /dev/null
+        # Sessions live in one process, so mcp neither scales nor rolls.
+        fails helm template mcp-scaled charts/insights "${nats[@]}" \
+          --set subcommand=mcp \
+          --set replicaCount=2
+        helm template mcp charts/insights "${nats[@]}" \
+          --set subcommand=mcp > /tmp/insights-mcp.yaml
+        grep -q 'type: Recreate' /tmp/insights-mcp.yaml
+        fails grep -q 'type: Recreate' /tmp/insights-web.yaml
+        grep -q 'transport: http' /tmp/insights-mcp.yaml
+        grep -q 'containerPort: 8090' /tmp/insights-mcp.yaml
+        grep -q 'tcpSocket:' /tmp/insights-mcp.yaml
+        fails grep -q 'path: /healthz' /tmp/insights-mcp.yaml
+        helm template prometheus charts/insights "${nats[@]}" \
+          --set subcommand=prometheus > /tmp/insights-prometheus.yaml
+        grep -q 'hostname: 0.0.0.0' /tmp/insights-prometheus.yaml
+        grep -q 'containerPort: 9091' /tmp/insights-prometheus.yaml
+        grep -q 'tcpSocket:' /tmp/insights-prometheus.yaml
+
+        # One-shot commands such as db have no service to run.
+        fails helm template one-shot charts/insights "${nats[@]}" \
+          --set subcommand=db
 
         helm package charts/insights --destination /tmp

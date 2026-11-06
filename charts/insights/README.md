@@ -1,8 +1,10 @@
 # Insights Helm chart
 
-This chart runs one persistent Insights instance. It intentionally contains
-only the Kubernetes resources the application needs: a StatefulSet, Service,
-config Secret, and data volume.
+This chart runs one persistent Insights instance, or one of the stateless
+Insights services that reach an instance over NATS. It intentionally contains
+only the Kubernetes resources the application needs: a StatefulSet and data
+volume for the instance or a Deployment for a stateless service, a Service, and
+a config Secret.
 
 ## Install
 
@@ -39,12 +41,80 @@ config:
     password: secret
 ```
 
-Insights needs a system to observe, so `config` must set one of
+An instance needs a system to observe, so `config` must set one of
 `simulator.enabled`, `sys`, or `systems`. The chart refuses to render without
 one rather than deploying a pod that cannot start.
 
 The complete application configuration is documented in the
 [Insights configuration reference](https://docs.synadia.com/insights/reference/configuration).
+
+## Subcommands
+
+`subcommand` selects the Insights command the container runs. The default,
+`serve`, is the instance above. The others are clients of an instance that
+reach its API over NATS, hold no state, and run as a Deployment of
+`replicaCount` pods:
+
+| `subcommand` | Runs | Workload | Listens on | Probe |
+| --- | --- | --- | --- | --- |
+| `serve` | Scraper, indexer, database, and web UI | StatefulSet, one replica, data volume | `web.port`, 8080 | `/healthz` while the web UI is on |
+| `web` | The web UI alone | Deployment | `web.port`, 8080 | `/healthz` |
+| `http` | HTTP gateway over the read-only query API | Deployment | `http.listen`, 0.0.0.0:8080 | `/healthz` |
+| `mcp` | MCP server over the read-only query API | Deployment, one replica | `mcp.http`, 0.0.0.0:8090 | TCP |
+| `prometheus` | One `/metrics` endpoint for every node | Deployment | `prometheus.port`, 9091 | TCP |
+
+A client needs a NATS connection to the instance: `config.nats`, an
+`INSIGHTS_NATS_*` variable in `extraEnv`, or a flag in `extraArgs`. The chart
+refuses to render without a server or context. Insights binds these services to
+loopback by default, so the chart writes the pod-network address above into
+`config` wherever it is left unset.
+
+A web tier beside an instance:
+
+```yaml
+subcommand: web
+replicaCount: 2
+config:
+  nats:
+    server: nats://nats.nats.svc.cluster.local:4222
+```
+
+The HTTP gateway refuses to start without a bearer token. Take it from a Secret:
+
+```yaml
+subcommand: http
+config:
+  nats:
+    server: nats://nats.nats.svc.cluster.local:4222
+extraEnv:
+  INSIGHTS_HTTP_AUTH_TOKEN:
+    valueFrom:
+      secretKeyRef:
+        name: insights-http
+        key: token
+```
+
+Set `config.http.allow-unauthenticated: true` instead only for a gateway no
+untrusted client can reach.
+
+`mcp` always runs its http transport. Stdio serves only a client that spawns the
+process, so the chart refuses a stdio transport. The server keeps each client
+session in process memory, so it runs as one replica and is replaced rather
+than rolled on upgrade. It applies no authorization: anyone who reaches the
+Service can query Insights through it, so keep it off untrusted networks.
+
+`extraArgs` appends flags after the subcommand and `--config`. A flag outranks
+the same setting in `extraEnv` and in `config`:
+
+```yaml
+extraArgs:
+  - --log-level=debug
+```
+
+The chart reads the container port from `config`. Set `service.targetPort` too
+when the listener comes from anywhere else: a flag in `extraArgs`, a variable in
+`extraEnv`, or a config in `configSecret.existingSecret`, which the chart cannot
+read. That listener must bind the pod network, not loopback.
 
 ## Configuration mapping
 
@@ -125,8 +195,9 @@ When `configSecret.existingSecret` is used, Helm cannot inspect that Secret to
 detect a license or its web settings. Select the licensed image explicitly and,
 if needed, set `service.targetPort` to the port in that config. Set
 `startupProbe`, `livenessProbe`, and `readinessProbe` to `null` if its web server
-is disabled. Insights reads the config at startup, so restart the StatefulSet
-after changing an externally managed Secret:
+is disabled. Insights reads the config at startup, so restart the StatefulSet,
+or the Deployment of a stateless subcommand, after changing an externally
+managed Secret:
 
 ```sh
 kubectl rollout restart statefulset/insights
@@ -239,6 +310,8 @@ seed stays out of your values, out of the rendered manifests, and out of git.
 the deployment has issued.
 
 ## Persistence
+
+Persistence applies to `serve`. The stateless subcommands mount no data volume.
 
 Persistence is enabled by default with a 10 GiB `ReadWriteOnce` volume claim.
 Set `persistence.size`, `persistence.storageClass`, and
