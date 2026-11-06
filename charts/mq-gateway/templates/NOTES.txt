@@ -1,0 +1,14 @@
+MQ Gateway is available inside the cluster at {{ include "mq-gateway.fullname" . }}.{{ .Release.Namespace }}.svc on:
+{{- range include "mq-gateway.listeners" . | fromYamlArray }}
+  {{ .name }}: {{ .port }}
+{{- end }}
+
+The gateway creates no streams or KV buckets. Until those its config names
+exist, it refuses the clients that need them, and /healthz names what is
+missing:
+
+  kubectl port-forward deployment/{{ include "mq-gateway.fullname" . }} {{ include "mq-gateway.monitorPort" . }}
+  curl http://127.0.0.1:{{ include "mq-gateway.monitorPort" . }}/healthz
+
+`mq-gateway generate --config <file> --format nats-cli` prints the nats CLI
+commands that create them.

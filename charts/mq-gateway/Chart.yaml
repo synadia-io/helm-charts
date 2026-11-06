@@ -1,0 +1,12 @@
+apiVersion: v2
+name: mq-gateway
+description: MQTT and AMQP 1.0 clients on NATS
+type: application
+version: "0.1.0"
+appVersion: "0.3.0"
+home: https://docs.synadia.com/mq-gateway
+sources:
+  - https://github.com/synadia-io/helm-charts
+maintainers:
+  - name: Synadia
+    url: https://github.com/synadia-io
