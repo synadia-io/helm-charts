@@ -85,21 +85,13 @@ The default image is selected from the application config:
 | No `license.token` or `license.file` | `registry.synadia.io/insights` |
 | `license.token` or `license.file` set | `registry.synadia.io/insights-licensed` |
 
-Set `image.tag` to pin a version. Set `image.registry` for a registry mirror.
-Set both `image.registry` and `image.repository` when the mirror uses a custom
-layout. An explicit repository name takes precedence over automatic edition
-selection.
+Set `image.tag` to pin a version. An explicit `image.repository` takes
+precedence over automatic edition selection.
 
-```yaml
-image:
-  registry: mirror.example.com
-  tag: 0.1.10
-```
-
-`registry.synadia.io` requires authentication, so unless you point `image.registry`
-at an open mirror you must supply a pull secret; without one the pod fails to
-start with `ImagePullBackOff`. Create the Secret outside the chart, using the
-credentials issued with your trial or license:
+`insights` requires authentication to `registry.synadia.io`; without a pull
+secret the pod fails to start with `ImagePullBackOff`. `insights-licensed` is
+public, so a trial needs no pull secret. Create the Secret outside the chart,
+using the registry credentials Synadia issued you:
 
 ```sh
 kubectl create secret docker-registry synadia-registry \
@@ -116,10 +108,6 @@ image:
   pullSecrets:
     - name: synadia-registry
 ```
-
-Registry credentials and an Insights license are separate concerns. Adding
-`config.license.token` or `config.license.file` selects the licensed image but
-does not authenticate the pull.
 
 When `configSecret.existingSecret` is used, Helm cannot inspect that Secret to
 detect a license or its web settings. Select the licensed image explicitly and,
