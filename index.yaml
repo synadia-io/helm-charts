@@ -659,6 +659,22 @@ entries:
   insights:
   - apiVersion: v2
     appVersion: 1.2.1
+    created: "2026-11-09T16:48:30.945692217Z"
+    description: Real-time observability for NATS infrastructure
+    digest: 9b853bd34462d7fe1740c8befce4354dd2ea59d65c36c1a66e56b19cbbfc50c6
+    home: https://docs.synadia.com/insights
+    maintainers:
+    - name: Synadia
+      url: https://github.com/synadia-io
+    name: insights
+    sources:
+    - https://github.com/synadia-io/helm-charts
+    type: application
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/insights-0.1.7/insights-0.1.7.tgz
+    version: 0.1.7
+  - apiVersion: v2
+    appVersion: 1.2.1
     created: "2026-09-17T17:29:39.920996664Z"
     description: Real-time observability for NATS infrastructure
     digest: 619effbb0cb07d21b8c468dd802127c17c3d284f9f67fe1189d904fb74bdc68d
@@ -1428,4 +1444,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2026-11-06T11:11:52.834854225Z"
+generated: "2026-11-09T16:48:30.945899243Z"
