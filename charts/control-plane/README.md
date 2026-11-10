@@ -23,10 +23,43 @@ helm upgrade --install control-plane synadia/control-plane
 
 ## Upgrading from Chart 1.x
 
-An in-place upgrade from chart 1.x to 2.x is not currently supported.
-Control Plane v2 stores its data in a different format, and the upgrade would delete the 1.x PVCs.
-The chart stops the upgrade when it finds a 1.x Deployment in the release.
-Keep existing releases on 1.x with `--version 1.x`.
+A multi-replica 1.x release (`singleReplicaMode.enabled: false`) upgrades in place to a multi-replica 2.x release.
+On first start, Control Plane imports the 1.x data from the 1.x Postgres database.
+
+1. Upgrade the release to the final 1.x chart version.
+2. Keep the 1.x values file, and add `config.mode`.
+   Every 1.x user logs in, and 2.x defaults to `standalone`, which has no login and makes every user an admin.
+   To keep logins, set:
+
+   ```yaml
+   config:
+     mode: managed
+     merge:
+       license:
+         enabled: true
+   ```
+
+3. Run `helm upgrade` with the 2.x chart and the values file.
+
+Chart 2.x reads these 1.x values:
+
+| 1.x value | In 2.x |
+|---|---|
+| `config.dataSources.postgres` | Control Plane imports the 1.x data from this database on first start. |
+| `config.kms` | Unchanged. It must include every active key URL that 1.x used, so that Control Plane can decrypt the 1.x data. |
+| `deployment.replicas` | The number of replicas when `statefulSet.replicas` is not set. A cluster needs 3 or more. |
+| `deployment.name` | The StatefulSet name when `statefulSet.name` is not set. |
+| `deployment.merge`, `deployment.patch` | Not supported. Move them to `statefulSet` or `podTemplate`. |
+| `container.image.tag` | A 1.x tag is not supported. Remove it to use the chart's default. |
+| `singleReplicaMode.*`, `container.image.slim` | Not used. |
+
+The 1.x Deployment is replaced by a StatefulSet.
+
+A single-replica 1.x release cannot currently upgrade to 2.x.
+Keep it on 1.x with `--version 1.x`.
+
+Under `helm install` and `helm upgrade`, the chart stops an upgrade from 1.x that does not meet these requirements.
+Under `helm template` and tools like Argo CD, the chart cannot read the cluster, so it does not check.
 
 ## Common Configuration
 
@@ -138,10 +171,36 @@ helm upgrade \
   synadia/control-plane
 ```
 
+### Multi-Replica Cluster
+
+Production deployments run a cluster of 3 or more replicas.
+Every replica needs the same KMS key, and metrics go to an external Prometheus:
+
+```yaml
+statefulSet:
+  replicas: 3
+
+config:
+  kms:
+    key:
+      secretName: control-plane-kms
+  dataSources:
+    prometheus:
+      url: https://prometheus.example.com
+```
+
+A release cannot switch between a single replica and a multi-replica cluster after install, because Control Plane cannot convert its data between the two.
+The chart stops such an upgrade under `helm upgrade`, and Control Plane refuses to start under other tools.
+A multi-replica cluster can change its number of replicas.
+
+A multi-replica cluster gets a PodDisruptionBudget that lets one replica be down at a time, so that a node drain does not break quorum.
+Pods that are not ready can always be evicted, so a failing replica does not block a drain.
+Set `podDisruptionBudget.enabled: false` to manage your own.
+
 ## Storage
 
-Control Plane runs as a 1-replica StatefulSet.
-It stores all of its state on one PVC, `data-<statefulset name>-0`, mounted at `/data`:
+Control Plane runs as a StatefulSet, with 1 replica by default.
+Each replica stores all of its state on its own PVC, `data-<statefulset name>-<index>`, mounted at `/data`:
 
 - the generated encryption key, when `config.kms.key` is not set
 - the internal NATS JetStream data, which holds all Control Plane records
@@ -149,6 +208,4 @@ It stores all of its state on one PVC, `data-<statefulset name>-0`, mounted at `
 
 The PVC size defaults to 20GiB and is set with `persistence.size`.
 Kubernetes does not allow changes to the volume claim template after install, so resize the PVC directly.
-`helm uninstall` does not delete the PVC.
-
-HA deployments are not supported yet.
+`helm uninstall` and scaling down do not delete the PVCs.
