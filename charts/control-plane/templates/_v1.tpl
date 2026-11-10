@@ -1,8 +1,19 @@
 {{- /*
 Upgrades from control-plane chart 1.x. Removing 1.x upgrade support means deleting this file, the includes of
-scp.v1Defaults, scp.v1Validate and scp.v1UpgradeGuard, the deployment.name fallback in scp.defaultValues,
-and the Postgres config (files/config/postgres.yaml and the postgres-tls secret).
+scp.v1ReuseValuesGuard, scp.v1Defaults, scp.v1Validate and scp.v1UpgradeGuard, the deployment.name fallback in
+scp.defaultValues, the syn-cp.yaml key of the config Secret, and the Postgres config (files/config/postgres.yaml and
+the postgres-tls secret).
 */}}
+
+{{/*
+helm upgrade --reuse-values from chart 1.x replaces the chart 2.x defaults with the 1.x values, so the keys that 2.x
+added are missing
+*/}}
+{{- define "scp.v1ReuseValuesGuard" }}
+{{- if not (and (kindIs "map" .Values.statefulSet) (kindIs "map" .Values.headlessService)) }}
+  {{- fail "The values are missing statefulSet and headlessService, which chart 2.x adds. helm upgrade --reuse-values from chart 1.x does this. Pass the values file with -f, or use --reset-then-reuse-values instead." }}
+{{- end }}
+{{- end }}
 
 {{/*
 chart 1.x values set the replica count in deployment.replicas
@@ -26,6 +37,10 @@ Reject chart 1.x values that 2.x cannot apply
 {{- end }}
 {{- if or (dig "deployment" "merge" (dict) .Values) (dig "deployment" "patch" (list) .Values) }}
   {{- fail "deployment.merge and deployment.patch changed the chart 1.x Deployment. Chart 2.x runs a StatefulSet, so move them to statefulSet.merge and statefulSet.patch, or to podTemplate for changes to the pods." }}
+{{- end }}
+{{- /* the 1.x data was created with a login for every user, so the mode must be chosen rather than defaulted */}}
+{{- if and (dig "migration" "v1" "postgres_dsn" "" .config) (not .Values.config.mode) }}
+  {{- fail "config.dataSources.postgres.dsn imports the data of a control-plane chart 1.x install, where every user must log in. Chart 2.x defaults config.mode to standalone, which requires no login and makes every user an admin. Set config.mode to managed to keep logins, which also requires config.merge.license.enabled: true, or to standalone to drop them." }}
 {{- end }}
 {{- if regexMatch "^v?1\\." (toString .Values.container.image.tag) }}
   {{- fail (printf "container.image.tag %s is a Control Plane 1.x image, and chart 2.x needs a 2.x image. Remove container.image.tag to use the chart's default." (toString .Values.container.image.tag)) }}
@@ -66,6 +81,20 @@ input: map with 2 keys:
   {{- end }}
 {{- end }}
 
+{{- /* the import reads the final 1.x database schema, which Control Plane 1.14.1 has; the image tag can differ from the chart's */}}
+{{- $version := "" }}
+{{- range (dig "spec" "template" "spec" "containers" (list) .deployment) }}
+  {{- if eq .name "syn-cp" }}
+    {{- $version = regexReplaceAll "^.*:" (regexReplaceAll "@.*$" .image "") "" | trimSuffix "-slim" }}
+  {{- end }}
+{{- end }}
+{{- if not (regexMatch "^v?[0-9]+\\.[0-9]+\\.[0-9]+$" $version) }}
+  {{- $version = get (.deployment.metadata.labels | default dict) "app.kubernetes.io/version" }}
+{{- end }}
+{{- if and (regexMatch "^v?[0-9]+\\.[0-9]+\\.[0-9]+$" $version) (not (semverCompare ">=1.14.1" $version)) }}
+  {{- fail (printf "Deployment %s runs Control Plane %s. Control Plane 2.x imports the data of 1.14.1 or later, so upgrade the release to the final 1.x chart version first." $name $version) }}
+{{- end }}
+
 {{- if eq (include "scp.replicaMode" $ctx) "single" }}
   {{- fail (printf "Deployment %s is from a multi-replica control-plane chart 1.x release, which upgrades only to a multi-replica cluster. Set statefulSet.replicas to 3 or more." $name) }}
 {{- end }}
@@ -74,18 +103,14 @@ input: map with 2 keys:
   {{- fail (printf "Deployment %s is from control-plane chart 1.x. Set config.dataSources.postgres.dsn to the Postgres database that 1.x uses, so that Control Plane imports the 1.x data." $name) }}
 {{- end }}
 
-{{- /* every 1.x user logs in, and the 2.x default has no login */}}
-{{- if not $ctx.Values.config.mode }}
-  {{- fail (printf "Deployment %s is from control-plane chart 1.x, where every user must log in. Chart 2.x defaults config.mode to standalone, which requires no login and makes every user an admin. Set config.mode to managed to keep logins, which also requires config.merge.license.enabled: true, or to standalone to drop them." $name) }}
-{{- end }}
-
 {{- /* v2 decrypts the 1.x data only with the key URLs that 1.x used */}}
 {{- $secretName := $ctx.Values.configSecret.name }}
 {{- $raw := dig "data" "syn-cp.yaml" "" (lookup "v1" "Secret" $ctx.Release.Namespace $secretName) }}
 {{- if not $raw }}
-  {{- fail (printf "Cannot read the control-plane chart 1.x config from key syn-cp.yaml of Secret %s." $secretName) }}
+  {{- fail (printf "Cannot read the control-plane chart 1.x config from key syn-cp.yaml of Secret %s. If an earlier upgrade of this release to 2.x failed, run helm rollback to its last 1.x revision, then upgrade again." $secretName) }}
 {{- end }}
-{{- $v1 := $raw | b64dec | fromYaml }}
+{{- $_ := set $ctx "v1Config" ($raw | b64dec) }}
+{{- $v1 := $ctx.v1Config | fromYaml }}
 {{- $v1Keys := prepend (dig "kms" "rotated_key_urls" (list) $v1) (dig "kms" "key_url" "" $v1) }}
 {{- $v2Keys := prepend (dig "kms" "rotated_key_urls" (list) $ctx.config) (dig "kms" "key_url" "" $ctx.config) }}
 {{- range $i, $k := $v1Keys }}

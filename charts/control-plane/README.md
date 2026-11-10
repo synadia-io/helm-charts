@@ -27,6 +27,7 @@ A multi-replica 1.x release (`singleReplicaMode.enabled: false`) upgrades in pla
 On first start, Control Plane imports the 1.x data from the 1.x Postgres database.
 
 1. Upgrade the release to the final 1.x chart version.
+   Control Plane 2.x imports the data of Control Plane 1.14.1 or later.
 2. Keep the 1.x values file, and add `config.mode`.
    Every 1.x user logs in, and 2.x defaults to `standalone`, which has no login and makes every user an admin.
    To keep logins, set:
@@ -39,7 +40,21 @@ On first start, Control Plane imports the 1.x data from the 1.x Postgres databas
          enabled: true
    ```
 
-3. Run `helm upgrade` with the 2.x chart and the values file.
+3. Run `helm upgrade` with the 2.x chart and the values file, passed with `-f`.
+   Do not use `--reuse-values`, which keeps the 1.x chart defaults and leaves out the values that 2.x adds.
+   use `--reset-then-reuse-values`.
+
+Control Plane imports the 1.x data before it starts serving, so the release is unavailable until the import completes.
+
+If the upgrade fails, `helm rollback` returns the release to 1.x, which still has its Postgres data.
+The PVCs of the 2.x StatefulSet stay behind and hold the partial import.
+Delete them before you upgrade again, otherwise the next import skips records that already exist and keeps their old values:
+
+```bash
+kubectl delete pvc -l app.kubernetes.io/instance=<release>,app.kubernetes.io/component=control-plane
+```
+
+When the import has completed, `config.dataSources.postgres.dsn` can be removed.
 
 Chart 2.x reads these 1.x values:
 
@@ -53,13 +68,18 @@ Chart 2.x reads these 1.x values:
 | `container.image.tag` | A 1.x tag is not supported. Remove it to use the chart's default. |
 | `singleReplicaMode.*`, `container.image.slim` | Not used. |
 
-The 1.x Deployment is replaced by a StatefulSet.
+The 1.x Deployment is replaced by a StatefulSet, and each replica gets a PVC (see [Storage](#storage)).
+A multi-replica 1.x release had no PVCs, so the cluster needs a default StorageClass, or set `persistence.storageClassName`.
+
+`config.merge` and the other `merge` and `patch` options reach the 2.x config unchanged.
+Control Plane checks the config at startup and refuses keys that 2.x does not know, so check any 1.x overrides against the 2.x config before you upgrade.
 
 A single-replica 1.x release cannot currently upgrade to 2.x.
 Keep it on 1.x with `--version 1.x`.
 
 Under `helm install` and `helm upgrade`, the chart stops an upgrade from 1.x that does not meet these requirements.
-Under `helm template` and tools like Argo CD, the chart cannot read the cluster, so it does not check.
+Under `helm template` and tools like Argo CD, the chart cannot read the cluster, so it checks only the values:
+`config.dataSources.postgres.dsn` requires `config.mode`.
 
 ## Common Configuration
 
@@ -209,3 +229,6 @@ Each replica stores all of its state on its own PVC, `data-<statefulset name>-<i
 The PVC size defaults to 20GiB and is set with `persistence.size`.
 Kubernetes does not allow changes to the volume claim template after install, so resize the PVC directly.
 `helm uninstall` and scaling down do not delete the PVCs.
+
+The PVCs are named after the StatefulSet, so `statefulSet.name`, `nameOverride` and `fullnameOverride` cannot change after install.
+A StatefulSet with another name would start on new, empty PVCs, so the chart stops such an upgrade.

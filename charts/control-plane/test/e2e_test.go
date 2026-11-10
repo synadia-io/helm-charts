@@ -110,7 +110,7 @@ config:
 
 	// failed upgrades leave the 1.x release as it was, so the cases run in order against it
 	require.ErrorContains(t, upgrade(map[string]string{}),
-		"where every user logs in")
+		"where every user must log in")
 	require.ErrorContains(t, upgrade(map[string]string{"config.mode": "standalone", "deployment.replicas": "1", "singleReplicaMode.enabled": "true"}),
 		"upgrades only to a multi-replica cluster")
 	require.ErrorContains(t, upgrade(map[string]string{"config.mode": "standalone", "config.dataSources.postgres.dsn": ""}),
@@ -120,12 +120,52 @@ config:
 	require.ErrorContains(t, upgrade(map[string]string{"config.mode": "standalone", "config.kms.rotatedKeys": "null"}),
 		"missing the 1.x kms.rotated_key_urls[0]")
 
-	require.NoError(t, upgrade(map[string]string{"config.mode": "managed", "config.merge.license.enabled": "true"}))
+	managed := map[string]string{"config.mode": "managed", "config.merge.license.enabled": "true"}
+	require.NoError(t, upgrade(managed))
 	_, err := k8s.GetDeploymentE(t, kubectl, e2eRelease+"-control-plane")
 	require.Error(t, err)
 	replicas, err := k8s.RunKubectlAndGetOutputE(t, kubectl, "get", "statefulset", e2eRelease+"-control-plane", "-o", "jsonpath={.spec.replicas}")
 	require.NoError(t, err)
 	require.Equal(t, "3", replicas)
+
+	// the 1.x config stays while the upgrade runs, and the next upgrade drops it without rolling the pods
+	v1Config := func() string {
+		out, err := k8s.RunKubectlAndGetOutputE(t, kubectl, "get", "secret", e2eRelease+"-control-plane-config", "-o", `jsonpath={.data.syn-cp\.yaml}`)
+		require.NoError(t, err)
+		return out
+	}
+	checksum := func() string {
+		out, err := k8s.RunKubectlAndGetOutputE(t, kubectl, "get", "statefulset", e2eRelease+"-control-plane", "-o", `jsonpath={.spec.template.metadata.annotations.checksum/config}`)
+		require.NoError(t, err)
+		return out
+	}
+	require.NotEmpty(t, v1Config())
+	before := checksum()
+	require.NoError(t, upgrade(managed))
+	require.Empty(t, v1Config())
+	require.Equal(t, before, checksum())
+}
+
+// The v1 migration reads the database of Control Plane 1.14.1 or later, whatever the chart version.
+func TestE2EUpgradeV1Version(t *testing.T) {
+	t.Parallel()
+	kubectl, opts, chart := e2eSetup(t)
+
+	key := e2eKey(t)
+	installV1(t, kubectl, "--set", "singleReplicaMode.enabled=false", "--set", "deployment.replicas=3",
+		"--set", "container.image.tag=1.13.0", "--set", "config.kms.key.url="+key,
+		"--set", "config.dataSources.postgres.dsn=postgres://cp:cp@postgres:5432/cp",
+		"--set", "config.dataSources.prometheus.url=http://prometheus:9090")
+
+	opts.SetValues = map[string]string{
+		"statefulSet.replicas":              "3",
+		"config.mode":                       "standalone",
+		"config.kms.key.url":                key,
+		"config.dataSources.postgres.dsn":   "postgres://cp:cp@postgres:5432/cp",
+		"config.dataSources.prometheus.url": "http://prometheus:9090",
+	}
+	err := helm.UpgradeE(t, opts, chart, e2eRelease)
+	require.ErrorContains(t, err, "runs Control Plane 1.13.0")
 }
 
 // A 2.x release cannot switch between a single replica and a multi-replica cluster, but a cluster can change size.
@@ -150,6 +190,16 @@ func TestE2EReplicaMode(t *testing.T) {
 		require.ErrorContains(t, err, "runs a single replica, and this upgrade would make it a multi-replica cluster")
 	})
 
+	t.Run("rename", func(t *testing.T) {
+		t.Parallel()
+		_, opts, chart := e2eSetup(t)
+		helm.Install(t, opts, chart, e2eRelease)
+
+		opts.SetValues = map[string]string{"statefulSet.name": "renamed"}
+		err := helm.UpgradeE(t, opts, chart, e2eRelease)
+		require.ErrorContains(t, err, "would replace it with StatefulSet renamed")
+	})
+
 	t.Run("resize multi", func(t *testing.T) {
 		t.Parallel()
 		_, opts, chart := e2eSetup(t)
@@ -159,7 +209,6 @@ func TestE2EReplicaMode(t *testing.T) {
 		opts.SetValues["statefulSet.replicas"] = "5"
 		require.NoError(t, helm.UpgradeE(t, opts, chart, e2eRelease))
 
-		// with no values at all, helm upgrade reuses the release's values
 		opts.SetValues = map[string]string{"statefulSet.replicas": "1"}
 		err := helm.UpgradeE(t, opts, chart, e2eRelease)
 		require.ErrorContains(t, err, "runs a multi-replica cluster, and this upgrade would make it a single replica")

@@ -35,6 +35,7 @@ Set default values.
 */}}
 {{- define "scp.defaultValues" }}
 {{- if not .defaultValuesSet }}
+  {{- include "scp.v1ReuseValuesGuard" . }}
   {{- $name := include "scp.fullname" . }}
   {{- with .Values }}
     {{- $_ := set .configSecret        "name" (.configSecret.name        | default (printf "%s-config" $name)) }}
@@ -106,12 +107,20 @@ so these checks run only under helm install and helm upgrade.
 {{- define "scp.upgradeGuard" }}
 {{- $mode := include "scp.replicaMode" . }}
 
-{{- /* cp-server cannot convert the data of a single replica to a multi-replica cluster, or back */}}
-{{- with lookup "apps/v1" "StatefulSet" .Release.Namespace .Values.statefulSet.name }}
-  {{- $was := get (.metadata.annotations | default dict) "control-plane.synadia.io/replica-mode" }}
-  {{- if and $was (ne $was $mode) }}
-    {{- $describe := dict "single" "a single replica" "cluster" "a multi-replica cluster" }}
-    {{- fail (printf "StatefulSet %s runs %s, and this upgrade would make it %s. Control Plane cannot convert its data between the two, so keep statefulSet.replicas %s." .metadata.name (get $describe $was) (get $describe $mode) (ternary "at 3 or more" "at 1" (eq $was "cluster"))) }}
+{{- range (lookup "apps/v1" "StatefulSet" .Release.Namespace "").items }}
+  {{- $labels := .metadata.labels | default dict }}
+  {{- if and (eq (get $labels "app.kubernetes.io/instance") $.Release.Name) (eq (get $labels "app.kubernetes.io/component") "control-plane") }}
+    {{- /* a StatefulSet with another name starts on new, empty PVCs */}}
+    {{- if ne .metadata.name $.Values.statefulSet.name }}
+      {{- fail (printf "StatefulSet %s holds the data of this release, and this upgrade would replace it with StatefulSet %s, which starts on new, empty PVCs. Keep statefulSet.name, nameOverride and fullnameOverride as they were at install." .metadata.name $.Values.statefulSet.name) }}
+    {{- end }}
+
+    {{- /* cp-server cannot convert the data of a single replica to a multi-replica cluster, or back */}}
+    {{- $was := get (.metadata.annotations | default dict) "control-plane.synadia.io/replica-mode" }}
+    {{- if and $was (ne $was $mode) }}
+      {{- $describe := dict "single" "a single replica" "cluster" "a multi-replica cluster" }}
+      {{- fail (printf "StatefulSet %s runs %s, and this upgrade would make it %s. Control Plane cannot convert its data between the two, so keep statefulSet.replicas %s." .metadata.name (get $describe $was) (get $describe $mode) (ternary "at 3 or more" "at 1" (eq $was "cluster"))) }}
+    {{- end }}
   {{- end }}
 {{- end }}
 {{- include "scp.v1UpgradeGuard" . }}

@@ -3,8 +3,10 @@ metadata:
     {{- include "scp.labels" $ | nindent 4 }}
   annotations:
     {{- if .Values.podTemplate.configChecksumAnnotation }}
-    {{- $configMap := include "scp.loadMergePatch" (merge (dict "file" "config-secret.yaml" "ctx" $) .Values.configSecret) }}
-    checksum/config: {{ sha256sum $configMap }}
+    {{- $configSecret := include "scp.loadMergePatch" (merge (dict "file" "config-secret.yaml" "ctx" $) .Values.configSecret) | fromYaml }}
+    {{- /* the pods do not read the chart 1.x config, so dropping it after the upgrade from 1.x does not roll them */}}
+    {{- $_ := unset ($configSecret.stringData | default dict) "syn-cp.yaml" }}
+    checksum/config: {{ toYaml $configSecret | sha256sum }}
     {{- end }}
 spec:
   containers:

@@ -92,6 +92,7 @@ func TestV1Postgres(t *testing.T) {
 	test := DefaultTest()
 	test.Values = `
 config:
+  mode: standalone
   dataSources:
     postgres:
       dsn: postgres://cp:pass@postgres:5432/cp?connect_timeout=10
@@ -128,7 +129,7 @@ config:
 	RenderAndCheck(t, test, expected)
 }
 
-// A chart 1.x multi-replica values file renders a multi-replica cluster without changes.
+// A chart 1.x multi-replica values file renders a multi-replica cluster once config.mode is added.
 func TestV1Values(t *testing.T) {
 	t.Parallel()
 	test := DefaultTest()
@@ -144,6 +145,10 @@ container:
   image:
     slim: true
 config:
+  mode: managed
+  merge:
+    license:
+      enabled: true
   kms:
     key:
       url: base64key://smGbjm71Nxd1Ig5FS0wj9SlbzAIrnolCz9bQQ6uAhl4=
@@ -223,6 +228,14 @@ singleReplicaMode:
 		"1.x image": {
 			values: `{container: {image: {tag: 1.14.1}}}`,
 			err:    "container.image.tag 1.14.1 is a Control Plane 1.x image",
+		},
+		"1.x postgres without mode": {
+			values: `{config: {dataSources: {postgres: {dsn: "postgres://cp:pass@postgres:5432/cp"}}}}`,
+			err:    "Set config.mode to managed to keep logins",
+		},
+		"1.x reuse-values": {
+			values: `{statefulSet: null, headlessService: null}`,
+			err:    "use --reset-then-reuse-values",
 		},
 		"managed without license": {
 			values: `{config: {mode: managed}}`,
