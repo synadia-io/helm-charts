@@ -14,6 +14,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
 )
 
 type Resources struct {
@@ -23,6 +24,7 @@ type Resources struct {
 	HeadlessService Resource[corev1.Service]
 	ImagePullSecret Resource[corev1.Secret]
 	Ingress         Resource[networkingv1.Ingress]
+	PDB             Resource[policyv1.PodDisruptionBudget]
 	Service         Resource[corev1.Service]
 	ServiceAccount  Resource[corev1.ServiceAccount]
 	ExtraConfigMap  Resource[corev1.ConfigMap]
@@ -37,6 +39,7 @@ func (r *Resources) Iter() []MutableResource {
 		r.HeadlessService.Mutable(),
 		r.ImagePullSecret.Mutable(),
 		r.Ingress.Mutable(),
+		r.PDB.Mutable(),
 		r.Service.Mutable(),
 		r.ServiceAccount.Mutable(),
 		r.ExtraConfigMap.Mutable(),
@@ -92,6 +95,9 @@ func GenerateResources(fullName string) *Resources {
 		},
 		Ingress: Resource[networkingv1.Ingress]{
 			ID: "Ingress/" + fullName,
+		},
+		PDB: Resource[policyv1.PodDisruptionBudget]{
+			ID: "PodDisruptionBudget/" + fullName,
 		},
 		Service: Resource[corev1.Service]{
 			ID: "Service/" + fullName,

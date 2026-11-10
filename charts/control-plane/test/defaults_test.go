@@ -10,6 +10,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -87,6 +88,8 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 	prefixPath := networkingv1.PathTypePrefix
 	fsGroup := int64(1000)
 	fsGroupChangePolicy := corev1.FSGroupChangeOnRootMismatch
+	maxUnavailable1 := intstr.FromInt32(1)
+	alwaysAllow := policyv1.AlwaysAllow
 
 	return &Resources{
 		Conf: Resource[map[string]any]{
@@ -113,6 +116,9 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 					Name:   fullName + "-config",
 					Labels: cpLabels(),
 				},
+				StringData: map[string]string{
+					"syn-cp.yaml": "",
+				},
 			},
 		},
 		StatefulSet: Resource[appsv1.StatefulSet]{
@@ -126,6 +132,9 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 				ObjectMeta: v1.ObjectMeta{
 					Name:   fullName,
 					Labels: cpLabels(),
+					Annotations: map[string]string{
+						"control-plane.synadia.io/replica-mode": "single",
+					},
 				},
 				Spec: appsv1.StatefulSetSpec{
 					Replicas: &replicas1,
@@ -188,6 +197,10 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 											},
 										},
 									},
+									Lifecycle: &corev1.Lifecycle{
+										PreStop: &corev1.LifecycleHandler{Sleep: &corev1.SleepAction{Seconds: 5}},
+									},
+									TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 									VolumeMounts: []corev1.VolumeMount{
 										{
 											MountPath: "/etc/syn-cp",
@@ -320,6 +333,27 @@ func DefaultResources(t *testing.T, test *Test) *Resources {
 							},
 						},
 					},
+				},
+			},
+		},
+		PDB: Resource[policyv1.PodDisruptionBudget]{
+			ID:       dr.PDB.ID,
+			HasValue: false,
+			Value: policyv1.PodDisruptionBudget{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "PodDisruptionBudget",
+					APIVersion: "policy/v1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name:   fullName,
+					Labels: cpLabels(),
+				},
+				Spec: policyv1.PodDisruptionBudgetSpec{
+					Selector: &v1.LabelSelector{
+						MatchLabels: cpSelectorLabels(),
+					},
+					MaxUnavailable:             &maxUnavailable1,
+					UnhealthyPodEvictionPolicy: &alwaysAllow,
 				},
 			},
 		},

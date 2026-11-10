@@ -1,0 +1,6 @@
+{{- include "scp.defaultValues" . }}
+{{- with .Values.podDisruptionBudget }}
+{{- if and .enabled (eq (include "scp.replicaMode" $) "cluster") }}
+{{- include "scp.loadMergePatch" (merge (dict "file" "pod-disruption-budget.yaml" "ctx" $) .) }}
+{{- end }}
+{{- end }}

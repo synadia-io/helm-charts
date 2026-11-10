@@ -1,0 +1,14 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Values.podDisruptionBudget.name }}
+  labels:
+    {{- include "scp.labels" $ | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "scp.selectorLabels" $ | nindent 6 }}
+  # the cluster keeps quorum while one replica is down
+  maxUnavailable: 1
+  # a replica that is not ready does not count towards quorum, so evicting it does not block a drain
+  unhealthyPodEvictionPolicy: AlwaysAllow

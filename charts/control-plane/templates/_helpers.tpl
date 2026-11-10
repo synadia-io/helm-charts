@@ -37,25 +37,20 @@ Set default values.
 {{- if not .defaultValuesSet }}
   {{- $name := include "scp.fullname" . }}
   {{- with .Values }}
-    {{- $_ := set .configSecret    "name" (.configSecret.name    | default (printf "%s-config" $name)) }}
-    {{- $_ := set .headlessService "name" (.headlessService.name | default (printf "%s-headless" $name)) }}
-    {{- $_ := set .imagePullSecret "name" (.imagePullSecret.name | default (printf "%s-regcred" $name)) }}
-    {{- $_ := set .ingress         "name" (.ingress.name         | default $name) }}
-    {{- $_ := set .service         "name" (.service.name         | default $name) }}
-    {{- $_ := set .serviceAccount  "name" (.serviceAccount.name  | default $name) }}
-    {{- $_ := set .statefulSet     "name" (.statefulSet.name     | default $name) }}
-  {{- end }}
-
-  {{- /* chart 1.x used a Deployment, upgrading in place would delete its PVCs and the data on them */}}
-  {{- range (lookup "apps/v1" "Deployment" .Release.Namespace "").items }}
-    {{- $labels := .metadata.labels | default dict }}
-    {{- if and (eq (get $labels "app.kubernetes.io/instance") $.Release.Name) (eq (get $labels "app.kubernetes.io/component") "control-plane") }}
-      {{- fail (printf "Deployment %s is from control-plane chart 1.x. Upgrading this release to 2.x would delete its PVCs and data. Pin --version 1.x for this release." .metadata.name) }}
-    {{- end }}
+    {{- $_ := set .configSecret        "name" (.configSecret.name        | default (printf "%s-config" $name)) }}
+    {{- $_ := set .headlessService     "name" (.headlessService.name     | default (printf "%s-headless" $name)) }}
+    {{- $_ := set .imagePullSecret     "name" (.imagePullSecret.name     | default (printf "%s-regcred" $name)) }}
+    {{- $_ := set .ingress             "name" (.ingress.name             | default $name) }}
+    {{- $_ := set .podDisruptionBudget "name" (.podDisruptionBudget.name | default $name) }}
+    {{- $_ := set .service             "name" (.service.name             | default $name) }}
+    {{- $_ := set .serviceAccount      "name" (.serviceAccount.name      | default $name) }}
+    {{- $_ := set .statefulSet         "name" (.statefulSet.name         | default (get . "deployment" | default dict).name | default $name) }}
   {{- end }}
 
   {{- $values := get (include "tplYaml" (dict "doc" .Values "ctx" $) | fromJson) "doc" }}
   {{- $_ := set . "Values" $values }}
+
+  {{- include "scp.v1Defaults" . }}
 
   {{- range $k, $v := .Values.config.kms.rotatedKeys }}
     {{- $_ := set $v "dir" ($v.dir | default (printf "/etc/syn-cp/kms/rotated-key-%d" $k)) }}
@@ -67,8 +62,59 @@ Set default values.
     {{- $_ := set $ "config" $config }}
   {{- end }}
 
+  {{- include "scp.validate" . }}
+  {{- include "scp.upgradeGuard" . }}
+
   {{- $_ := set . "defaultValuesSet" true }}
 {{- end }}
+{{- end }}
+
+{{/*
+single or cluster
+*/}}
+{{- define "scp.replicaMode" -}}
+{{- ternary "cluster" "single" (gt (int .Values.statefulSet.replicas) 1) }}
+{{- end }}
+
+{{/*
+Reject configurations that cp-server cannot run
+*/}}
+{{- define "scp.validate" }}
+{{- $replicas := int .Values.statefulSet.replicas }}
+{{- $replicasKey := .replicasKey | default "statefulSet.replicas" }}
+{{- if and (ne $replicas 1) (lt $replicas 3) }}
+  {{- fail (printf "%s is %d. Set statefulSet.replicas to 1 for a single replica, or to 3 or more for a multi-replica cluster." $replicasKey $replicas) }}
+{{- end }}
+{{- if gt $replicas 1 }}
+  {{- if not (dig "kms" "key_url" "" .config) }}
+    {{- fail "A multi-replica cluster requires config.kms.key, a key shared by every replica." }}
+  {{- end }}
+  {{- if not (dig "data_sources" "prometheus" "url" "" .config) }}
+    {{- fail "A multi-replica cluster requires an external Prometheus. Set config.dataSources.prometheus.url." }}
+  {{- end }}
+{{- end }}
+{{- if and (eq (dig "mode" "" .config) "managed") (not (dig "license" "enabled" false .config)) }}
+  {{- fail "config.mode managed requires config.merge.license.enabled: true." }}
+{{- end }}
+{{- include "scp.v1Validate" . }}
+{{- end }}
+
+{{/*
+Reject upgrades that cp-server cannot carry the data across. lookup returns nothing under helm template and tools like Argo CD,
+so these checks run only under helm install and helm upgrade.
+*/}}
+{{- define "scp.upgradeGuard" }}
+{{- $mode := include "scp.replicaMode" . }}
+
+{{- /* cp-server cannot convert the data of a single replica to a multi-replica cluster, or back */}}
+{{- with lookup "apps/v1" "StatefulSet" .Release.Namespace .Values.statefulSet.name }}
+  {{- $was := get (.metadata.annotations | default dict) "control-plane.synadia.io/replica-mode" }}
+  {{- if and $was (ne $was $mode) }}
+    {{- $describe := dict "single" "a single replica" "cluster" "a multi-replica cluster" }}
+    {{- fail (printf "StatefulSet %s runs %s, and this upgrade would make it %s. Control Plane cannot convert its data between the two, so keep statefulSet.replicas %s." .metadata.name (get $describe $was) (get $describe $mode) (ternary "at 3 or more" "at 1" (eq $was "cluster"))) }}
+  {{- end }}
+{{- end }}
+{{- include "scp.v1UpgradeGuard" . }}
 {{- end }}
 
 {{/*
@@ -130,6 +176,11 @@ List of external secretNames
         {{- if $v.secretName }}
           {{- $secrets = append $secrets (merge (dict "name" (printf "kms-rotated-key-%d" $k)) $v) }}
         {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- with .dataSources.postgres.tls }}
+      {{- if and .enabled .secretName }}
+        {{- $secrets = append $secrets (merge (dict "name" "postgres-tls") .) }}
       {{- end }}
     {{- end }}
     {{- with .dataSources.prometheus.tls }}

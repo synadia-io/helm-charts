@@ -41,6 +41,15 @@ livenessProbe:
     path: /healthz
     port: http
 
+# keeps a stopping pod serving until the Services drop it
+lifecycle:
+  preStop:
+    sleep:
+      seconds: 5
+
+# the last log lines become the termination message of a failed container
+terminationMessagePolicy: FallbackToLogsOnError
+
 volumeMounts:
 # config secret
 - name: config

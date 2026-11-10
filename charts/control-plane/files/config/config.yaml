@@ -1,6 +1,6 @@
 {{- with .Values.config }}
 
-mode: {{ .mode | quote }}
+mode: {{ .mode | default "standalone" | quote }}
 
 ############################################################
 # server
@@ -30,6 +30,31 @@ kms:
 data_sources:
   prometheus:
     {{- toYaml $prometheus | nindent 4 }}
+{{- end }}
+{{- end }}
+
+############################################################
+# v1 migration
+############################################################
+{{- with .dataSources.postgres }}
+{{- $postgres := include "scp.loadMergePatch" (merge (dict "file" "config/postgres.yaml" "ctx" $) .) | fromYaml }}
+{{- with $postgres.dsn }}
+# 2.x does not use Postgres, it imports the data of a 1.x install from it
+migration:
+  v1:
+    postgres_dsn: {{ . | quote }}
+{{- end }}
+{{- end }}
+
+############################################################
+# replicas
+############################################################
+{{- $replicas := int $.Values.statefulSet.replicas }}
+{{- if gt $replicas 1 }}
+# every member lists every member, including itself
+replicas:
+{{- range $i := until $replicas }}
+- {{ printf "%s-%d.%s.%s.svc.%s" $.Values.statefulSet.name $i $.Values.headlessService.name $.Release.Namespace $.Values.clusterDomain | quote }}
 {{- end }}
 {{- end }}
 

@@ -13,6 +13,9 @@ func TestConfigOptions(t *testing.T) {
 	test.Values = `
 config:
   mode: managed
+  merge:
+    license:
+      enabled: true
   server:
     url: https://cp.nats.io
     httpPort: 8081
@@ -25,6 +28,7 @@ config:
 `
 	expected := DefaultResources(t, test)
 	expected.Conf.Value["mode"] = "managed"
+	expected.Conf.Value["license"] = map[string]any{"enabled": true}
 	expected.Conf.Value["server"] = map[string]any{
 		"url":       "https://cp.nats.io",
 		"http_addr": ":8081",

@@ -44,7 +44,8 @@ imagePullSecret:
 config:
   # standalone: no login, every user is an admin.
   # managed: requires login and config.merge.license.enabled=true
-  mode: standalone
+  # defaults to standalone, an upgrade from chart 1.x must set it
+  mode:
 
   server:
     # URL where Control Plane server will be accessed
@@ -96,6 +97,36 @@ config:
     patch: []
 
   dataSources:
+    # Control Plane 2.x does not use Postgres
+    # when the DSN is set, Control Plane imports the data of a chart 1.x install from this database on first start
+    # config.kms must include every key URL that 1.x used
+    postgres:
+      # DSN to the chart 1.x PostgreSQL, TLS settings will be automatically added if supplied
+      dsn:
+      tls:
+        enabled: false
+        # set secretName in order to mount an existing secret to dir
+        secretName:
+        dir: /etc/syn-cp/certs/postgres
+        cert:
+        key:
+        ca: tls.ca
+
+        # add TLS options to DSN
+        # if cert and key are set, sslcert and sslkey will be added to the dsn
+        # if ca is set, sslrootcert will be added to the dsn
+        addToDsn: true
+        # sslmode to add to dsn, if addToDsn is true
+        addToDsnSslMode: verify-full
+
+        # merge or patch the tls config
+        merge: {}
+        patch: []
+
+      # merge or patch the postgres config
+      merge: {}
+      patch: []
+
     prometheus:
       # URL to external Prometheus. When unset, the internal Prometheus stores data on the data PVC
       url:
@@ -122,13 +153,18 @@ config:
 ############################################################
 # stateful set
 ############################################################
-# runs 1 replica, HA is not supported yet
 statefulSet:
+  # 1 runs a single replica, which may use the internal Prometheus and the default KMS key
+  # 3 or more runs a multi-replica cluster, which requires config.kms.key and config.dataSources.prometheus.url
+  # an existing release cannot switch between a single replica and a multi-replica cluster
+  # defaults to the chart 1.x deployment.replicas, then 1
+  replicas:
+
   # merge or patch the stateful set
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#statefulset-v1-apps
   merge: {}
   patch: []
-  # defaults to "{{ include "scp.fullname" $ }}"
+  # defaults to the chart 1.x deployment.name, then "{{ include "scp.fullname" $ }}"
   name:
 
 ############################################################
@@ -223,6 +259,9 @@ service:
 ############################################################
 # gives each pod a stable DNS name for peer discovery, includes pods that are not ready
 # clients must use the service above, which only routes to ready pods
+# multi-replica members find each other at <pod>.<headless service>.<namespace>.svc.<clusterDomain>
+clusterDomain: cluster.local
+
 headlessService:
   # merge or patch the headless service
   # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#service-v1-core
@@ -230,6 +269,20 @@ headlessService:
   patch: []
   # defaults to "{{ include "scp.fullname" $ }}-headless"
   # cannot change after install
+  name:
+
+############################################################
+# pod disruption budget
+############################################################
+# rendered only for a multi-replica cluster, allows 1 replica to be down at a time
+podDisruptionBudget:
+  enabled: true
+
+  # merge or patch the pod disruption budget
+  # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#poddisruptionbudget-v1-policy
+  merge: {}
+  patch: []
+  # defaults to "{{ include "scp.fullname" $ }}"
   name:
 
 ############################################################

@@ -85,6 +85,17 @@ container:
   image:
     tag: 2.99.0
 `,
+		"multi-replica": `
+statefulSet:
+  replicas: 5
+config:
+  kms:
+    key:
+      secretName: control-plane-kms
+  dataSources:
+    prometheus:
+      url: https://prometheus:9090
+`,
 	}
 
 	for name, value := range values {

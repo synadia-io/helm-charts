@@ -1,0 +1,29 @@
+{{- with .Values.config.dataSources.postgres}}
+
+{{- if .dsn }}
+  {{- $dsn := .dsn }}
+  {{- if and .tls.enabled .tls.addToDsn }}
+    {{- $dsnMap := urlParse .dsn }}
+    {{- $dsnQuery := $dsnMap.query | default "" }}
+    {{- $dsnQuery = printf "%s%ssslmode=%s" $dsnQuery (ternary "" "&" (not $dsnQuery)) .tls.addToDsnSslMode }}
+
+    {{- with .tls }}
+      {{- if .secretName }}
+        {{- $dir := trimSuffix "/" .dir }}
+        {{- if and .cert .key }}
+          {{- $dsnQuery = printf "%s&sslcert=%s/%s" $dsnQuery $dir .cert }}
+          {{- $dsnQuery = printf "%s&sslkey=%s/%s" $dsnQuery $dir .key }}
+        {{- end }}
+        {{- if .ca }}
+          {{- $dsnQuery = printf "%s&sslrootcert=%s/%s" $dsnQuery $dir .ca }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+
+    {{- $_ := set $dsnMap "query" $dsnQuery }}
+    {{- $dsn = urlJoin $dsnMap }}
+  {{- end }}
+dsn: {{ $dsn | quote }}
+{{- end }}
+
+{{- end }}
