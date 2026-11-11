@@ -108,6 +108,14 @@ persistence:
   # its data-dir setting.
   mountPath: /var/lib/insights
 
+# Size the memory limit at config.db.memory-limit + 2Gi + 2Gi for Go (see
+# Memory in the README), and keep the request equal to it. For the default
+# 4GiB DuckDB limit:
+#   resources:
+#     requests:
+#       memory: 8Gi
+#     limits:
+#       memory: 8Gi
 resources: {}
 
 podAnnotations: {}
