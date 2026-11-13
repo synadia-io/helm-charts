@@ -325,13 +325,49 @@ The volume claim template is immutable once the StatefulSet exists, so
 cannot be changed by upgrading the release. Expanding a volume is a change to
 the PVC, made through a StorageClass that allows expansion.
 
+## Memory
+
+`resources` is empty by default, so the pod has no memory limit. Set one sized
+to the application's DuckDB limit, `config.db.memory-limit` (default `4GiB`):
+
+```
+limits.memory >= db.memory-limit + 2Gi + Go allowance
+```
+
+DuckDB keeps the memory it tracks under `db.memory-limit`, but the process
+holds up to about 2 GiB more in freed memory the allocator has not yet returned.
+The Go allowance covers everything outside DuckDB, including the embedded NATS
+server: 2 GiB, or 4 GiB for a large fleet. The default limit therefore needs
+8 GiB:
+
+```yaml
+config:
+  db:
+    memory-limit: 4GiB
+resources:
+  requests:
+    memory: 8Gi
+  limits:
+    memory: 8Gi
+```
+
+Keep the request equal to the limit so the pod is only scheduled on a node that
+can hold its peak. To fit a smaller pod, lower `db.memory-limit` rather than the
+headroom. With `systems`, each system has its own DuckDB, so add each system's
+`memory-limit` and 2 GiB per system.
+
+The chart does not set `GOMEMLIMIT`. It bounds the Go heap only, so the pod's
+memory limit is the wrong value for it. To set it, use the Go allowance:
+
+```yaml
+extraEnv:
+  GOMEMLIMIT: 2GiB
+```
+
 ## Security context
 
 The pod runs as UID and GID 1000 with `runAsNonRoot`, and `fsGroup` gives the
 data volume to that group. Override `podSecurityContext` for a cluster that
 assigns its own UID range, such as OpenShift.
 
-The container drops all capabilities and disallows privilege escalation. A
-`memory-limit` in the application config bounds DuckDB's buffer pool only, so
-size `resources.limits.memory` above it to leave headroom for Go, embedded
-NATS, and allocations outside that pool.
+The container drops all capabilities and disallows privilege escalation.
