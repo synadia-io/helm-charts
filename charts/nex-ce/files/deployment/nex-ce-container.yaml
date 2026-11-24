@@ -8,6 +8,8 @@ securityContext:
     - ALL
 
 args:
+- node
+- up
 - --config
 - /app/config.json
 

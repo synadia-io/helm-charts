@@ -54,6 +54,14 @@ config:
   logLevel: "info"
   workloadsNamespace:
   connectorsNamespace:
+  # Host a Synadia Catalog on this node. Connectors need a running catalog.
+  # It serves on this node's NATS connection, in the account of config.creds.
+  catalog:
+    enabled: false
+    # NUID of the catalog, required when enabled. This must match the catalog_id
+    # of the Catalog platform component.
+    id:
+    name: Synadia Catalog
   # URL for NATS Server
   url:
   # Certificate Authority for Validation of Server Certificate
@@ -83,6 +91,7 @@ config:
 # deployment
 ############################################################
 deployment:
+  # Every replica gets the same config.nodeSeed. Does not currently support > 1 replica.
   replicas: 1
 
   # merge or patch the stateful set
@@ -116,7 +125,7 @@ podTemplate:
 container:
   image:
     repository: nexce
-    tag: 0.1.8
+    tag: 0.3.3
     pullPolicy:
     # defaults to global.registry
     registry:
