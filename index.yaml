@@ -836,6 +836,20 @@ entries:
     version: 0.1.0
   nex-ce:
   - apiVersion: v2
+    appVersion: 0.3.3
+    created: "2026-11-25T17:18:58.387686391Z"
+    description: Synadia Nex CE
+    digest: 6af447a728a883beb953d8c98214d901cf3e86148cf8cf130142af1913d3476e
+    home: http://github.com/synadia-io/helm-charts
+    maintainers:
+    - email: info@synadia.com
+      name: Synadia
+      url: https://github.com/synadia-io
+    name: nex-ce
+    urls:
+    - https://github.com/synadia-io/helm-charts/releases/download/nex-ce-0.2.0/nex-ce-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
     appVersion: 0.1.8
     created: "2026-09-14T19:14:37.018708067Z"
     description: Synadia Nex CE
@@ -1476,4 +1490,4 @@ entries:
     urls:
     - https://github.com/synadia-io/helm-charts/releases/download/synadia-server-1.0.0/synadia-server-1.0.0.tgz
     version: 1.0.0
-generated: "2026-11-18T23:04:12.581561356Z"
+generated: "2026-11-25T17:18:58.387849944Z"
