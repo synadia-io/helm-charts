@@ -331,14 +331,21 @@ the PVC, made through a StorageClass that allows expansion.
 to the application's DuckDB limit, `config.db.memory-limit` (default `4GiB`):
 
 ```
-limits.memory >= db.memory-limit + 2Gi + Go allowance
+limits.memory >= db.memory-limit + 2Gi + Go allowance + 128Mi
 ```
 
 DuckDB keeps the memory it tracks under `db.memory-limit`, but the process
 holds up to about 2 GiB more in freed memory the allocator has not yet returned.
-The Go allowance covers everything outside DuckDB, including the embedded NATS
-server: 2 GiB, or 4 GiB for a large fleet. The default limit therefore needs
-8 GiB:
+The Go allowance is twice Go's live heap. With the sink on an
+[external NATS server](https://docs.synadia.com/insights/guides/deployment#external-nats-sink),
+the live heap is about 64 MiB plus 128 MiB per fleet unit, as defined in the
+[deployment guide](https://docs.synadia.com/insights/guides/deployment#memory):
+an allowance of about 400 MiB for one unit and 2.6 GiB for ten. The embedded
+sink, the default, adds its NATS server's JetStream memory to that heap;
+`insights ops sizing` measures the live heap of a running instance, that memory
+included. The 128 MiB is the binary and memory that is neither Go's nor
+DuckDB's. With the default limit and an external sink, 8 GiB leaves Go about
+1.9 GiB, enough for about seven units:
 
 ```yaml
 config:
@@ -353,16 +360,16 @@ resources:
 
 Keep the request equal to the limit so the pod is only scheduled on a node that
 can hold its peak. To fit a smaller pod, lower `db.memory-limit` rather than the
-headroom. With `systems`, each system has its own DuckDB, so add each system's
-`memory-limit` and 2 GiB per system.
+headroom, but not below the commit floor `insights ops sizing` estimates. With
+`systems`, each system has its own DuckDB, so add each system's `memory-limit`
+and 2 GiB per system.
 
-The chart does not set `GOMEMLIMIT`. It bounds the Go heap only, so the pod's
-memory limit is the wrong value for it. To set it, use the Go allowance:
-
-```yaml
-extraEnv:
-  GOMEMLIMIT: 2GiB
-```
+Insights derives Go's soft memory limit from the pod's limit: what is left once
+each system has its `db.memory-limit` and 2 GiB, less 128 MiB. The chart
+therefore sets no `GOMEMLIMIT`. Set `config.go.memory-limit` to override the
+derived limit, or on a cgroup v1 node, where Insights cannot see the pod's limit
+and sets none; a `GOMEMLIMIT` in `extraEnv` overrides both. When the pod leaves
+Go less than 256 MiB, Insights sets no limit and logs `Go memory limit not set`.
 
 ## Security context
 
