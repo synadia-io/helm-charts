@@ -136,6 +136,13 @@ translates env var map to list
 {{- end }}
 
 {{/*
+Image pull secrets for workload and connector pods, as a JSON list
+*/}}
+{{- define "nce.workloadPullSecrets" -}}
+{{- .Values.config.imagePullSecrets | default .Values.global.image.pullSecretNames | default list | toJson }}
+{{- end }}
+
+{{/*
 List of external secretNames
 */}}
 {{- define "nce.secretNames" -}}
