@@ -54,6 +54,9 @@ config:
   logLevel: "info"
   workloadsNamespace:
   connectorsNamespace:
+  # image pull secrets added to every workload and connector pod.
+  # defaults to global.image.pullSecretNames.
+  imagePullSecrets: []
   # Host a Synadia Catalog on this node. Connectors need a running catalog.
   # It serves on this node's NATS connection, in the account of config.creds.
   catalog:
@@ -125,7 +128,7 @@ podTemplate:
 container:
   image:
     repository: nexce
-    tag: 0.3.3
+    tag: 0.3.4
     pullPolicy:
     # defaults to global.registry
     registry:
