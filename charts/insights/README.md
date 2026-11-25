@@ -325,13 +325,56 @@ The volume claim template is immutable once the StatefulSet exists, so
 cannot be changed by upgrading the release. Expanding a volume is a change to
 the PVC, made through a StorageClass that allows expansion.
 
+## Memory
+
+`resources` is empty by default, so the pod has no memory limit. Set one sized
+to the application's DuckDB limit, `config.db.memory-limit` (default `4GiB`):
+
+```
+limits.memory >= db.memory-limit + 2Gi + Go allowance + 128Mi
+```
+
+DuckDB keeps the memory it tracks under `db.memory-limit`, but the process
+holds up to about 2 GiB more in freed memory the allocator has not yet returned.
+The Go allowance is twice Go's live heap. With the sink on an
+[external NATS server](https://docs.synadia.com/insights/guides/deployment#external-nats-sink),
+the live heap is about 64 MiB plus 128 MiB per fleet unit, as defined in the
+[deployment guide](https://docs.synadia.com/insights/guides/deployment#memory):
+an allowance of about 400 MiB for one unit and 2.6 GiB for ten. The embedded
+sink, the default, adds its NATS server's JetStream memory to that heap;
+`insights ops sizing` measures the live heap of a running instance, that memory
+included. The 128 MiB is the binary and memory that is neither Go's nor
+DuckDB's. With the default limit and an external sink, 8 GiB leaves Go about
+1.9 GiB, enough for about seven units:
+
+```yaml
+config:
+  db:
+    memory-limit: 4GiB
+resources:
+  requests:
+    memory: 8Gi
+  limits:
+    memory: 8Gi
+```
+
+Keep the request equal to the limit so the pod is only scheduled on a node that
+can hold its peak. To fit a smaller pod, lower `db.memory-limit` rather than the
+headroom, but not below the commit floor `insights ops sizing` estimates. With
+`systems`, each system has its own DuckDB, so add each system's `memory-limit`
+and 2 GiB per system.
+
+Insights derives Go's soft memory limit from the pod's limit: what is left once
+each system has its `db.memory-limit` and 2 GiB, less 128 MiB. The chart
+therefore sets no `GOMEMLIMIT`. Set `config.go.memory-limit` to override the
+derived limit, or on a cgroup v1 node, where Insights cannot see the pod's limit
+and sets none; a `GOMEMLIMIT` in `extraEnv` overrides both. When the pod leaves
+Go less than 256 MiB, Insights sets no limit and logs `Go memory limit not set`.
+
 ## Security context
 
 The pod runs as UID and GID 1000 with `runAsNonRoot`, and `fsGroup` gives the
 data volume to that group. Override `podSecurityContext` for a cluster that
 assigns its own UID range, such as OpenShift.
 
-The container drops all capabilities and disallows privilege escalation. A
-`memory-limit` in the application config bounds DuckDB's buffer pool only, so
-size `resources.limits.memory` above it to leave headroom for Go, embedded
-NATS, and allocations outside that pool.
+The container drops all capabilities and disallows privilege escalation.
