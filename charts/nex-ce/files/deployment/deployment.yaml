@@ -11,6 +11,11 @@ spec:
 
   replicas: {{ .Values.deployment.replicas }}
 
+  # The node ID comes from config.nodeSeed, so a rolling update would briefly
+  # run two nodes with one ID.
+  strategy:
+    type: Recreate
+
   template:
     {{- with .Values.podTemplate }}
     {{- include "nce.loadMergePatch" (merge (dict "file" "deployment/pod-template.yaml" "ctx" $) .) | nindent 4 }}

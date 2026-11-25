@@ -8,10 +8,18 @@ securityContext:
     - ALL
 
 args:
+- node
+- up
 - --config
 - /app/config.json
 
 env:
+{{- if .Values.config.catalog.enabled }}
+# seed a new catalog with Synadia's connectors. nex skips this when the
+# catalog's stream already exists, so an existing catalog is never changed.
+- name: YES_SEED
+  value: "true"
+{{- end }}
 {{- with .Values.container.env }}
 {{- include "nce.env" . }}
 {{- end }}
